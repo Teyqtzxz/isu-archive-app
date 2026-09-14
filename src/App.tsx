@@ -389,6 +389,14 @@ function StaffDashboard({
     thisMonth: theses.filter(t => t.dateAdded >= "2024-11").length,
   };
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: MouseEvent) => setMenuOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuOpen]);
+
   const TABS: { id: StaffTab; label: string; icon: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: "⊞" },
     { id: "register", label: "Register", icon: "+" },
@@ -410,7 +418,27 @@ function StaffDashboard({
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {stats.pending > 0 && <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#F7D000", border: "1.5px solid #006439" }} />}
           </button>
-          <div onClick={onSignOut} role="button" tabIndex={0} style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #23305B, #3a4f8a)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }} title="Sign Out">RS</div>
+          <div style={{ position: "relative" }}>
+            <div
+              onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
+              role="button"
+              tabIndex={0}
+              style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #23305B, #3a4f8a)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}
+            >RS</div>
+            {menuOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#fff", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)", border: "1px solid rgba(0,100,57,0.1)", minWidth: 170, zIndex: 9999, padding: 6 }}>
+                <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Research Staff</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>CAS Department Staff</div>
+                </div>
+                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }}
+                  style={{ width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, fontWeight: 500, color: "#CD202B", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#FDEDEA")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                >Sign Out</button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tab nav */}
@@ -789,7 +817,14 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
 function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; onSearch: (q: string) => void; onSignOut: () => void }) {
   const [heroQuery, setHeroQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuOpen]);
 
   const quickFilters = ["Recent", "Agriculture", "Computer Science", "Forestry", "Biology", "Education"];
 
@@ -809,7 +844,27 @@ function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; o
             <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.1 }}>ISU Thesis Archive</div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>Echague Campus</div>
           </div>
-          <div onClick={onSignOut} role="button" tabIndex={0} title="Sign Out" style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #F7D000, #c4a000)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#7a6500", cursor: "pointer" }}>JD</div>
+          <div style={{ position: "relative" }}>
+            <div
+              onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
+              role="button"
+              tabIndex={0}
+              title="Account"
+              style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #F7D000, #c4a000)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#7a6500", cursor: "pointer" }}>JD</div>
+            {menuOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#fff", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)", border: "1px solid rgba(0,100,57,0.1)", minWidth: 170, zIndex: 9999, padding: 6 }}>
+                <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Juan Dela Cruz</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>Student</div>
+                </div>
+                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }}
+                  style={{ width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, fontWeight: 500, color: "#CD202B", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#FDEDEA")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                >Sign Out</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
