@@ -127,7 +127,15 @@ function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^\w\s]/g, " ").split(/\s+/).filter(Boolean);
 }
 
-function bm25Score(query: string, doc: Thesis, avgDocLen: number): { score: number; termScores: { term: string; score: number; field: string }[] } {
+function findMatchScore(queryTerm: string, docToken: string): number {
+  if (queryTerm.length < 2) return 0;
+  if (docToken === queryTerm) return 1;
+  if (docToken.startsWith(queryTerm)) return 0.8;
+  if (docToken.includes(queryTerm)) return 0.6;
+  return 0;
+}
+
+function bm25Score(query: string, doc: Thesis, avgDocLen: number, corpus: Thesis[]): { score: number; termScores: { term: string; score: number; field: string }[] } {
   const k1 = 1.5, b = 0.75;
   const tokens = tokenize(query);
   const docText = `${doc.title} ${doc.abstract} ${doc.keywords.join(" ")}`;
@@ -135,18 +143,33 @@ function bm25Score(query: string, doc: Thesis, avgDocLen: number): { score: numb
   const docLen = docTokens.length;
   const termFreq: Record<string, number> = {};
   docTokens.forEach(t => { termFreq[t] = (termFreq[t] || 0) + 1; });
-  const N = SAMPLE_THESES.length;
+  const N = corpus.length;
   const termScores: { term: string; score: number; field: string }[] = [];
   let total = 0;
-  tokens.forEach(term => {
-    const tf = termFreq[term] || 0;
-    const df = SAMPLE_THESES.filter(d => tokenize(`${d.title} ${d.abstract} ${d.keywords.join(" ")}`).includes(term)).length;
-    if (df === 0) return;
-    const idf = Math.log((N - df + 0.5) / (df + 0.5) + 1);
-    const tfNorm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / avgDocLen)));
+  tokens.forEach(queryTerm => {
+    let bestTf = 0;
+    let bestField = "abstract";
+    docTokens.forEach(dt => {
+      const m = findMatchScore(queryTerm, dt);
+      if (m > 0) {
+        bestTf += m;
+        const titleTokens = tokenize(doc.title);
+        const kwTokens = tokenize(doc.keywords.join(" "));
+        if (titleTokens.some(t => findMatchScore(queryTerm, t) > 0)) bestField = "title";
+        else if (kwTokens.some(t => findMatchScore(queryTerm, t) > 0)) bestField = "keyword";
+      }
+    });
+    if (bestTf === 0) return;
+    let dfCount = 0;
+    corpus.forEach(d => {
+      const dTokens = tokenize(`${d.title} ${d.abstract} ${d.keywords.join(" ")}`);
+      if (dTokens.some(dt => findMatchScore(queryTerm, dt) > 0)) dfCount++;
+    });
+    if (dfCount === 0) return;
+    const idf = Math.log((N - dfCount + 0.5) / (dfCount + 0.5) + 1);
+    const tfNorm = (bestTf * (k1 + 1)) / (bestTf + k1 * (1 - b + b * (docLen / avgDocLen)));
     const s = idf * tfNorm;
-    const field = tokenize(doc.title).includes(term) ? "title" : tokenize(doc.keywords.join(" ")).includes(term) ? "keyword" : "abstract";
-    termScores.push({ term, score: s, field });
+    termScores.push({ term: queryTerm, score: s, field: bestField });
     total += s;
   });
   return { score: total, termScores };
@@ -351,12 +374,14 @@ function StaffDashboard({
   onTabChange,
   onRegisterSuccess,
   onSearch,
+  onSignOut,
 }: {
   theses: Thesis[];
   activeTab: StaffTab;
   onTabChange: (t: StaffTab) => void;
   onRegisterSuccess: (thesis: Thesis) => void;
   onSearch: () => void;
+  onSignOut: () => void;
 }) {
   const stats = {
     total: theses.length,
@@ -385,7 +410,7 @@ function StaffDashboard({
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {stats.pending > 0 && <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#F7D000", border: "1.5px solid #006439" }} />}
           </button>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #23305B, #3a4f8a)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>RS</div>
+          <div onClick={onSignOut} role="button" tabIndex={0} style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #23305B, #3a4f8a)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }} title="Sign Out">RS</div>
         </div>
 
         {/* Tab nav */}
@@ -504,7 +529,7 @@ function StaffDashboard({
                 </div>
               </div>
             ))}
-            <button style={{ marginTop: 24, width: "100%", padding: "12px", borderRadius: 8, background: "#FDEDEA", border: "1px solid rgba(205,32,43,0.2)", color: "#CD202B", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={onSignOut} style={{ marginTop: 24, width: "100%", padding: "12px", borderRadius: 8, background: "#FDEDEA", border: "1px solid rgba(205,32,43,0.2)", color: "#CD202B", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
               Sign Out
             </button>
           </div>
@@ -761,7 +786,7 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
 }
 
 // ─── Screen 6: Student Dashboard ──────────────────────────────────────────────
-function StudentDashboard({ theses, onSearch }: { theses: Thesis[]; onSearch: (q: string) => void }) {
+function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; onSearch: (q: string) => void; onSignOut: () => void }) {
   const [heroQuery, setHeroQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -784,7 +809,7 @@ function StudentDashboard({ theses, onSearch }: { theses: Thesis[]; onSearch: (q
             <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.1 }}>ISU Thesis Archive</div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>Echague Campus</div>
           </div>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #F7D000, #c4a000)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#7a6500" }}>JD</div>
+          <div onClick={onSignOut} role="button" tabIndex={0} title="Sign Out" style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #F7D000, #c4a000)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#7a6500", cursor: "pointer" }}>JD</div>
         </div>
       </header>
 
@@ -902,7 +927,7 @@ function SearchScreen({
     if (yearFilter) f = f.filter(t => t.year === parseInt(yearFilter));
     if (statusFilter) f = f.filter(t => t.status === statusFilter);
     if (!query.trim()) return f.map(t => ({ thesis: t, score: 0, termScores: [] as { term: string; score: number; field: string }[] }));
-    return f.map(t => ({ thesis: t, ...bm25Score(query, t, avgDocLen) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+    return f.map(t => ({ thesis: t, ...bm25Score(query, t, avgDocLen, f) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
   })();
 
   const maxScore = Math.max(...results.map(r => r.score), 0.01);
@@ -1228,6 +1253,12 @@ export default function App() {
     setTimeout(() => setToast("Thesis registered!"), 100);
   }
 
+  function handleSignOut() {
+    setScreen("login");
+    setRole("staff");
+    setStaffTab("dashboard");
+  }
+
   function goSearch(q = "") {
     setSearchInitialQuery(q);
     setScreen("search");
@@ -1248,11 +1279,12 @@ export default function App() {
           onTabChange={setStaffTab}
           onRegisterSuccess={thesis => { handleRegisterSuccess(thesis); }}
           onSearch={() => goSearch()}
+          onSignOut={handleSignOut}
         />
       )}
 
       {screen === "student-dashboard" && (
-        <StudentDashboard theses={theses} onSearch={goSearch} />
+        <StudentDashboard theses={theses} onSearch={goSearch} onSignOut={handleSignOut} />
       )}
 
       {screen === "search" && (
