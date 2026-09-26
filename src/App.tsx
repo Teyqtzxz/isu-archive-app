@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen = "login" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
@@ -191,22 +192,26 @@ function ISUSeal({ size = 40 }: { size?: number }) {
 }
 
 function StatusBadge({ status }: { status: Thesis["status"] }) {
-  const map = {
-    archived: { bg: "#F0F8F4", color: "#006439", border: "rgba(0,100,57,0.3)", label: "Archived" },
-    pending: { bg: "#FFF8E1", color: "#7a6500", border: "rgba(247,208,0,0.5)", label: "Pending" },
-    needs_review: { bg: "#FDEDEA", color: "#a01820", border: "rgba(205,32,43,0.3)", label: "Needs Review" },
-  };
-  const s = map[status];
+  const cls = {
+    archived: "status-archived",
+    pending: "status-pending",
+    needs_review: "status-needs-review",
+  }[status];
+  const label = {
+    archived: "Archived",
+    pending: "Pending",
+    needs_review: "Needs Review",
+  }[status];
   return (
-    <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600, letterSpacing: "0.2px", whiteSpace: "nowrap" }}>
-      {s.label}
+    <span className={`status-badge ${cls}`}>
+      {label}
     </span>
   );
 }
 
 function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
   return (
-    <span style={{ background: "#E8EBF2", color: "#23305B", border: "1px solid #c5ccdf", padding: small ? "2px 7px" : "3px 9px", borderRadius: 4, fontSize: small ? 10 : 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+    <span className={`dept-badge${small ? " dept-badge--small" : ""}`}>
       {dept}
     </span>
   );
@@ -215,13 +220,7 @@ function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
   return (
-    <div className="animate-toast" style={{
-      position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
-      background: "#006439", color: "#fff", padding: "12px 20px",
-      borderRadius: 10, fontSize: 14, fontWeight: 500, zIndex: 9999,
-      display: "flex", alignItems: "center", gap: 10,
-      boxShadow: "0 4px 20px rgba(0,100,57,0.4)", whiteSpace: "nowrap"
-    }}>
+    <div className="animate-toast isu-toast">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.2)" />
         <path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -230,16 +229,6 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
     </div>
   );
 }
-
-// Safe-area-aware header height helper
-const HEADER_STYLE: React.CSSProperties = {
-  background: "#006439",
-  paddingTop: "env(safe-area-inset-top, 0px)",
-  boxShadow: "0 2px 8px rgba(0,100,57,0.25)",
-  position: "sticky",
-  top: 0,
-  zIndex: 50,
-};
 
 // ─── Screen 1: Login ──────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
@@ -252,62 +241,46 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh", display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(160deg, #F0F8F4 0%, #FFFFFF 55%, #F0F8F4 100%)",
-      padding: "24px 16px", position: "relative", overflow: "hidden",
-      paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)",
-    }}>
+    <div className="login-wrap">
       {/* Top brand stripe */}
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: "calc(env(safe-area-inset-top, 0px) + 4px)", background: "linear-gradient(90deg, #006439 0%, #F7D000 50%, #CD202B 100%)", zIndex: 10 }} />
+      <div className="login-stripe" />
 
       {/* BG circles */}
-      <div style={{ position: "absolute", top: -80, left: -80, width: 320, height: 320, borderRadius: "50%", background: "rgba(0,100,57,0.04)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -60, right: -60, width: 240, height: 240, borderRadius: "50%", background: "rgba(247,208,0,0.07)", pointerEvents: "none" }} />
+      <div className="bg-circle bg-circle--a" />
+      <div className="bg-circle bg-circle--b" />
 
-      <div className="animate-fade-in" style={{
-        background: "#fff", borderRadius: 16, padding: "40px 28px",
-        boxShadow: "0 4px 32px rgba(0,100,57,0.10), 0 1px 4px rgba(0,0,0,0.04)",
-        width: "100%", maxWidth: 400, border: "1px solid rgba(0,100,57,0.08)"
-      }}>
+      <div className="animate-fade-in login-card">
         {/* Seal */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+        <div className="login-seal-row">
           <ISUSeal size={72} />
         </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#006439", textAlign: "center", marginBottom: 4, letterSpacing: "-0.3px" }}>
+        <h1 className="login-h1">
           ISU Thesis Archive
         </h1>
-        <p style={{ fontSize: 13, fontWeight: 500, color: "#23305B", textAlign: "center", marginBottom: 2 }}>
+        <p className="login-sub-title">
           Isabela State University
         </p>
-        <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginBottom: 28 }}>
+        <p className="login-sub-campus">
           Echague Campus
         </p>
 
-        <div style={{ height: 1, background: "linear-gradient(90deg, transparent, #e5e7eb, transparent)", marginBottom: 22 }} />
+        <div className="login-divider" />
 
         {/* Role selector */}
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#6B7280", textAlign: "center", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <p className="role-label">
             Sign in as
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div className="role-grid">
             {(["staff", "student"] as Role[]).map(role => (
               <button
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                style={{
-                  padding: "12px 8px", borderRadius: 8, cursor: "pointer",
-                  border: `2px solid ${selectedRole === role ? "#006439" : "#E5E7EB"}`,
-                  background: selectedRole === role ? "#F0F8F4" : "#fff",
-                  transition: "all 0.15s",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                }}
+                className={`role-btn${selectedRole === role ? " role-btn-active" : ""}`}
               >
-                <span style={{ fontSize: 22 }}>{role === "staff" ? "👩‍💼" : "🎓"}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: selectedRole === role ? "#006439" : "#6B7280", textTransform: "capitalize" }}>
+                <span className="role-emoji">{role === "staff" ? "👩‍💼" : "🎓"}</span>
+                <span className={`role-name ${selectedRole === role ? "role-name-active" : "role-name-default"}`}>
                   {role === "staff" ? "Research Staff" : "Student"}
                 </span>
               </button>
@@ -316,8 +289,8 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
         </div>
 
         {/* Info pill */}
-        <div style={{ background: "#F0F8F4", borderRadius: 8, padding: "9px 14px", marginBottom: 20, border: "1px solid rgba(0,100,57,0.12)" }}>
-          <p style={{ fontSize: 12, color: "#006439", fontWeight: 500, margin: 0, textAlign: "center" }}>
+        <div className="info-pill">
+          <p>
             {selectedRole === "staff" ? "🔒 Staff access · Register & manage theses" : "🔍 Student access · Search & browse archive"}
           </p>
         </div>
@@ -326,16 +299,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
         <button
           onClick={handleLogin}
           disabled={loading}
-          style={{
-            width: "100%", padding: "13px 20px", borderRadius: 8,
-            border: "1.5px solid #006439", background: loading ? "#F0F8F4" : "#fff",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-            cursor: loading ? "default" : "pointer", fontSize: 14, fontWeight: 600,
-            color: "#006439", transition: "all 0.15s",
-            boxShadow: loading ? "none" : "0 1px 4px rgba(0,100,57,0.10)"
-          }}
-          onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "#F0F8F4"; }}
-          onMouseLeave={e => { if (!loading) e.currentTarget.style.background = "#fff"; }}
+          className="gbtn"
         >
           {loading ? (
             <>
@@ -355,13 +319,13 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
           )}
         </button>
 
-        <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginTop: 16 }}>
+        <p className="login-foot">
           Secure login with your @isu.edu.ph account
         </p>
       </div>
 
-      <div style={{ marginTop: 28, textAlign: "center" }}>
-        <p style={{ fontSize: 11, color: "#9CA3AF" }}>© 2025 Isabela State University · Echague Campus</p>
+      <div className="site-foot">
+        <p>© 2025 Isabela State University · Echague Campus</p>
       </div>
     </div>
   );
@@ -405,57 +369,49 @@ function StaffDashboard({
   ];
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#F9FAFB", display: "flex", flexDirection: "column" }}>
+    <div className="app-root">
       {/* Header */}
-      <header style={HEADER_STYLE}>
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", gap: 11, height: 60 }}>
+      <header className="site-header">
+        <div className="header-inner">
           <ISUSeal size={36} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.1 }}>Thesis Archive — Staff</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", fontWeight: 400 }}>ISU Echague Campus</div>
+          <div className="header-brand">
+            <div className="header-title">Thesis Archive — Staff</div>
+            <div className="header-sub">ISU Echague Campus</div>
           </div>
-          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#fff", padding: 8, borderRadius: 8, position: "relative" }}>
+          <button className="icon-btn">
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            {stats.pending > 0 && <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#F7D000", border: "1.5px solid #006439" }} />}
+            {stats.pending > 0 && <span className="dot-notif" />}
           </button>
-          <div style={{ position: "relative" }}>
+          <div className="avatar-wrap">
             <div
               onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
               role="button"
               tabIndex={0}
-              style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #23305B, #3a4f8a)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}
+              className="avatar avatar-staff"
             >RS</div>
             {menuOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#fff", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)", border: "1px solid rgba(0,100,57,0.1)", minWidth: 170, zIndex: 9999, padding: 6 }}>
-                <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", marginBottom: 4 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Research Staff</div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>CAS Department Staff</div>
+              <div className="dropdown">
+                <div className="dropdown-header">
+                  <div className="dropdown-name">Research Staff</div>
+                  <div className="dropdown-sub">CAS Department Staff</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }}
-                  style={{ width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, fontWeight: 500, color: "#CD202B", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#FDEDEA")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                >Sign Out</button>
+                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
+                  Sign Out
+                </button>
               </div>
             )}
           </div>
         </div>
 
         {/* Tab nav */}
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 4px", display: "flex", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <div className="tabs-nav">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => tab.id === "search" ? onSearch() : onTabChange(tab.id)}
-              style={{
-                flex: 1, padding: "10px 4px", background: "none", border: "none",
-                cursor: "pointer", color: activeTab === tab.id ? "#F7D000" : "rgba(255,255,255,0.65)",
-                fontSize: 12, fontWeight: activeTab === tab.id ? 700 : 500,
-                borderBottom: `2.5px solid ${activeTab === tab.id ? "#F7D000" : "transparent"}`,
-                transition: "all 0.15s", display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-              }}
+              className={`tab-btn${activeTab === tab.id ? " tab-btn-active" : ""}`}
             >
-              <span style={{ fontSize: 14 }}>{tab.icon}</span>
+              <span className="tab-icon">{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -463,11 +419,11 @@ function StaffDashboard({
       </header>
 
       {/* Content */}
-      <main style={{ flex: 1, maxWidth: 800, width: "100%", margin: "0 auto", padding: "20px 16px 24px" }}>
+      <main className="app-shell">
         {activeTab === "dashboard" && (
           <div className="animate-fade-in">
             {/* Welcome */}
-            <div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", marginBottom: 14, border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 8px rgba(0,100,57,0.05)", display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="card card-pad card-mb" style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500, marginBottom: 2 }}>Welcome back</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "#111827", marginBottom: 6 }}>Research Staff</div>
@@ -482,48 +438,42 @@ function StaffDashboard({
             </div>
 
             {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+            <div className="stat-grid">
               {[
                 { label: "Total Theses", value: stats.total, color: "#006439", bg: "#F0F8F4", border: "rgba(0,100,57,0.15)", icon: "📚" },
                 { label: "Pending Review", value: stats.pending, color: "#7a6500", bg: "#FFF8E1", border: "rgba(247,208,0,0.4)", icon: "🕐" },
                 { label: "This Month", value: stats.thisMonth, color: "#23305B", bg: "#E8EBF2", border: "rgba(35,48,91,0.2)", icon: "📅" },
               ].map(s => (
-                <div key={s.label} style={{ background: s.bg, borderRadius: 10, padding: "14px 10px", border: `1px solid ${s.border}`, borderTop: `4px solid ${s.color}`, textAlign: "center" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: s.color, fontWeight: 500, marginTop: 4, opacity: 0.85 }}>{s.label}</div>
+                <div key={s.label} className="stat-card" style={{ background: s.bg, borderColor: s.border, borderTop: `4px solid ${s.color}` }}>
+                  <div className="stat-icon">{s.icon}</div>
+                  <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+                  <div className="stat-label" style={{ color: s.color }}>{s.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-              <button onClick={() => onTabChange("register")} style={{ padding: "13px 12px", borderRadius: 8, background: "#006439", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px rgba(0,100,57,0.25)", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#004d2b")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#006439")}>
+            <div className="action-grid">
+              <button onClick={() => onTabChange("register")} className="btn btn-primary action-btn">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
                 Register Thesis
               </button>
-              <button onClick={onSearch} style={{ padding: "13px 12px", borderRadius: 8, background: "#fff", border: "2px solid #23305B", color: "#23305B", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#E8EBF2")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+              <button onClick={onSearch} className="btn btn-outline-blue action-btn">
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                 Search Archive
               </button>
             </div>
 
             {/* Recent theses table */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 8px rgba(0,100,57,0.04)", overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Recent Theses</span>
+            <div className="card">
+              <div className="card-title-row">
+                <span className="card-title">Recent Theses</span>
                 <span style={{ fontSize: 11, color: "#9CA3AF" }}>{theses.length} total</span>
               </div>
               {theses.slice(0, 6).map((t, i) => (
-                <div key={t.id} style={{ padding: "13px 18px", borderBottom: i < 5 ? "1px solid #F9FAFB" : "none", cursor: "pointer", transition: "background 0.1s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#FAFCFB")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                <div key={t.id} className="row-hover" style={{ padding: "13px 18px", borderBottom: i < 5 ? "1px solid #F9FAFB" : "none" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#23305B", margin: 0, flex: 1, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{t.title}</p>
+                    <p className="clamp-2" style={{ fontSize: 13, fontWeight: 600, color: "#23305B", margin: 0, flex: 1, lineHeight: 1.4 }}>{t.title}</p>
                     <StatusBadge status={t.status} />
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -542,7 +492,7 @@ function StaffDashboard({
         )}
 
         {activeTab === "settings" && (
-          <div className="animate-fade-in" style={{ background: "#fff", borderRadius: 12, padding: "24px 20px", border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 8px rgba(0,100,57,0.04)" }}>
+          <div className="animate-fade-in card card-pad-lg">
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 20 }}>Settings</h2>
             {[
               { label: "Department", value: "College of Arts & Sciences", icon: "🏛️" },
@@ -557,7 +507,7 @@ function StaffDashboard({
                 </div>
               </div>
             ))}
-            <button onClick={onSignOut} style={{ marginTop: 24, width: "100%", padding: "12px", borderRadius: 8, background: "#FDEDEA", border: "1px solid rgba(205,32,43,0.2)", color: "#CD202B", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={onSignOut} className="btn-danger-soft">
               Sign Out
             </button>
           </div>
@@ -611,95 +561,84 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
     });
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "11px 14px", borderRadius: 8,
-    border: "1.5px solid #E5E7EB", fontSize: 13, color: "#111827",
-    outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif",
-    background: extractState === "extracting" ? "#F9FAFB" : "#fff",
-    transition: "border-color 0.15s"
-  };
-
   return (
     <div className="animate-fade-in">
       {/* Step indicator */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
+      <div className="steps-row">
         {steps.map((s, i) => (
-          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: s.active || s.done ? 1 : 0.38 }}>
-              <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: s.done ? "#006439" : s.active ? "#F7D000" : "#E5E7EB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: s.done ? "#fff" : s.active ? "#7a6500" : "#9CA3AF" }}>
+          <div key={s.label} className="step-col">
+            <div className="step-node-wrap" style={{ opacity: s.active || s.done ? 1 : 0.38 }}>
+              <div className={`step-node ${s.done ? "step-node-done" : s.active ? "step-node-active" : "step-node-todo"}`}>
                 {s.done ? "✓" : i + 1}
               </div>
-              <span style={{ fontSize: 11, fontWeight: 600, color: s.active ? "#006439" : "#9CA3AF", whiteSpace: "nowrap" }}>{s.label}</span>
+              <span className={`step-label ${s.active ? "step-label-active" : "step-label-todo"}`}>{s.label}</span>
             </div>
-            {i < 2 && <div style={{ flex: 1, height: 1, background: s.done ? "#006439" : "#E5E7EB" }} />}
+            {i < 2 && <div className={`step-line ${s.done ? "step-line-done" : "step-line-todo"}`} />}
           </div>
         ))}
       </div>
 
       {/* Form card */}
       {(extractState === "idle" || extractState === "extracting") && (
-        <div style={{ background: "#fff", borderRadius: 12, padding: "20px", border: "1px solid rgba(0,100,57,0.08)", borderTop: "4px solid #006439", boxShadow: "0 2px 8px rgba(0,100,57,0.06)", marginBottom: 14 }}>
+        <div className="card card-pad-xl card-accent card-mb">
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 16 }}>Thesis Details</h2>
 
           {/* Drive link */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-              Google Drive Link <span style={{ color: "#CD202B" }}>*</span>
+          <div className="field-mb">
+            <label className="field-label">
+              Google Drive Link <span className="field-req">*</span>
             </label>
             <div style={{ display: "flex", gap: 8 }}>
               <div style={{ position: "relative", flex: 1 }}>
                 <input value={form.driveLink} onChange={e => setForm(p => ({ ...p, driveLink: e.target.value }))}
                   placeholder="https://drive.google.com/file/d/..."
-                  disabled={extractState === "extracting"} style={inputStyle}
-                  onFocus={e => (e.target.style.borderColor = "#006439")}
-                  onBlur={e => (e.target.style.borderColor = "#E5E7EB")} />
+                  disabled={extractState === "extracting"} className="input" />
               </div>
               <button onClick={() => { if (navigator.clipboard) navigator.clipboard.readText().then(t => setForm(p => ({ ...p, driveLink: t }))).catch(() => {}); }}
                 disabled={extractState === "extracting"}
-                style={{ padding: "0 14px", borderRadius: 8, border: "1.5px solid #E5E7EB", background: "#F9FAFB", cursor: "pointer", fontSize: 16, color: "#6B7280" }}
+                className="paste-btn"
                 title="Paste from clipboard">📋</button>
             </div>
-            <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Paste the "Anyone with the link" share URL from Google Drive</p>
+            <p className="hint">Paste the "Anyone with the link" share URL from Google Drive</p>
           </div>
 
           {/* Title */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Title <span style={{ color: "#CD202B" }}>*</span></label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full thesis title" disabled={extractState === "extracting"} style={inputStyle}
-              onFocus={e => (e.target.style.borderColor = "#006439")} onBlur={e => (e.target.style.borderColor = "#E5E7EB")} />
+          <div className="field-mb">
+            <label className="field-label">Title <span className="field-req">*</span></label>
+            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full thesis title" disabled={extractState === "extracting"} className="input" />
           </div>
 
           {/* Dept + Year */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Department <span style={{ color: "#CD202B" }}>*</span></label>
+              <label className="field-label">Department <span className="field-req">*</span></label>
               <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} disabled={extractState === "extracting"}
-                style={{ ...inputStyle, color: form.department ? "#111827" : "#9CA3AF", appearance: "none" }}>
+                className="input" style={{ color: form.department ? "#111827" : "#9CA3AF", appearance: "none" }}>
                 <option value="">Select dept.</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Academic Year</label>
+              <label className="field-label">Academic Year</label>
               <select value={form.year} onChange={e => setForm(p => ({ ...p, year: e.target.value }))} disabled={extractState === "extracting"}
-                style={{ ...inputStyle, appearance: "none" }}>
+                className="input" style={{ appearance: "none" }}>
                 {[2025, 2024, 2023, 2022, 2021, 2020].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           </div>
 
           {/* Adviser */}
-          <div style={{ marginBottom: 4 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Adviser <span style={{ color: "#CD202B" }}>*</span></label>
+          <div>
+            <label className="field-label">Adviser <span className="field-req">*</span></label>
             <select value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))} disabled={extractState === "extracting"}
-              style={{ ...inputStyle, color: form.adviser ? "#111827" : "#9CA3AF", appearance: "none" }}>
+              className="input" style={{ color: form.adviser ? "#111827" : "#9CA3AF", appearance: "none" }}>
               <option value="">Select adviser</option>
               {ADVISERS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
 
           {error && (
-            <div style={{ background: "#FDEDEA", border: "1px solid rgba(205,32,43,0.3)", borderRadius: 8, padding: "10px 14px", marginTop: 14, fontSize: 13, color: "#a01820", display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="error-box">
               ⚠️ {error}
             </div>
           )}
@@ -708,17 +647,15 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
 
       {/* Extracting state */}
       {extractState === "extracting" && (
-        <div className="animate-fade-in" style={{ background: "#FFF8E1", borderRadius: 12, padding: "24px 20px", border: "1px solid rgba(247,208,0,0.4)", textAlign: "center", marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-            <div style={{ position: "relative", width: 52, height: 52 }}>
-              <div className="animate-spin" style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "3px solid #FFF8E1", borderTopColor: "#F7D000" }} />
-              <div style={{ position: "absolute", inset: 8, borderRadius: "50%", background: "#FFF8E1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📄</div>
-            </div>
+        <div className="animate-fade-in extract-panel">
+          <div className="spin-ring">
+            <div className="animate-spin spin-ring-inner" />
+            <div className="spin-core">📄</div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#7a6500", marginBottom: 6 }}>Reading PDF and filling in details...</div>
-          <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>pdf.js · Scanning pages 1–4 · Regex: Abstract/Keywords</div>
-          <div style={{ height: 5, borderRadius: 3, background: "rgba(247,208,0,0.2)", overflow: "hidden" }}>
-            <div style={{ height: "100%", borderRadius: 3, background: "#F7D000", width: "72%", transition: "width 2.5s ease" }} />
+          <div className="extract-title">Reading PDF and filling in details...</div>
+          <div className="extract-sub">pdf.js · Scanning pages 1–4 · Regex: Abstract/Keywords</div>
+          <div className="progress-track">
+            <div className="progress-fill" />
           </div>
         </div>
       )}
@@ -727,30 +664,25 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
       {(extractState === "success" || extractState === "needs_review") && (
         <div className="animate-slide-up">
           {/* Status bar */}
-          <div style={{
-            borderRadius: 10, padding: "14px 16px", marginBottom: 14,
-            background: extractState === "success" ? "#F0F8F4" : "#FFF8E1",
-            border: `1px solid ${extractState === "success" ? "rgba(0,100,57,0.2)" : "rgba(247,208,0,0.5)"}`,
-            display: "flex", alignItems: "center", gap: 12
-          }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: extractState === "success" ? "#006439" : "#F7D000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className={`status-bar ${extractState === "success" ? "status-bar-success" : "status-bar-review"}`}>
+            <div className={`status-icon ${extractState === "success" ? "status-icon-success" : "status-icon-review"}`}>
               {extractState === "success"
                 ? <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 : <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01" stroke="#7a6500" strokeWidth="2" strokeLinecap="round" /></svg>
               }
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: extractState === "success" ? "#006439" : "#7a6500" }}>
+              <div className={`status-title ${extractState === "success" ? "status-title-success" : "status-title-review"}`}>
                 {extractState === "success" ? "Details filled in. Please review:" : "Could not read PDF completely. Please fill in:"}
               </div>
-              <div style={{ fontSize: 12, color: "#6B7280" }}>
+              <div className="status-sub">
                 {extractState === "success" ? "Abstract and keywords extracted — edit if needed" : "Manual entry required for abstract and keywords"}
               </div>
             </div>
           </div>
 
           {/* Thesis summary */}
-          <div style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", marginBottom: 12, border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 6px rgba(0,100,57,0.04)" }}>
+          <div className="review-card">
             <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", lineHeight: 1.45, margin: "0 0 8px" }}>{form.title}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <DeptBadge dept={form.department} small />
@@ -759,41 +691,37 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
           </div>
 
           {/* Editable abstract */}
-          <div style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", marginBottom: 12, border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 6px rgba(0,100,57,0.04)" }}>
+          <div className="review-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Abstract</label>
-              <span style={{ fontSize: 10, color: "#9CA3AF", background: "#F3F4F6", padding: "2px 7px", borderRadius: 4 }}>Editable</span>
+              <label className="field-label" style={{ marginBottom: 0 }}>Abstract</label>
+              <span className="overlap-lbl">Editable</span>
             </div>
-            <textarea value={abstract} onChange={e => setAbstract(e.target.value)} rows={5}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #E5E7EB", fontSize: 13, color: "#374151", lineHeight: 1.6, resize: "vertical", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }}
-              onFocus={e => (e.target.style.borderColor = "#006439")} onBlur={e => (e.target.style.borderColor = "#E5E7EB")} />
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}>{abstract.split(" ").filter(Boolean).length} words</div>
+            <textarea value={abstract} onChange={e => setAbstract(e.target.value)} rows={5} className="textarea" />
+            <div className="word-count">{abstract.split(" ").filter(Boolean).length} words</div>
           </div>
 
           {/* Keywords chips */}
-          <div style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", marginBottom: 16, border: "1px solid rgba(0,100,57,0.08)", boxShadow: "0 2px 6px rgba(0,100,57,0.04)" }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Keywords (Chips Input)</label>
+          <div className="review-card">
+            <label className="field-label" style={{ marginBottom: 10 }}>Keywords (Chips Input)</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
               {keywords.map(kw => (
-                <span key={kw} style={{ background: "#FFF8E1", border: "1px solid rgba(247,208,0,0.5)", color: "#7a6500", padding: "4px 10px", borderRadius: 4, fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+                <span key={kw} className="kw-chip">
                   {kw}
-                  <button onClick={() => setKeywords(p => p.filter(k => k !== kw))} style={{ background: "none", border: "none", cursor: "pointer", color: "#CD202B", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                  <button onClick={() => setKeywords(p => p.filter(k => k !== kw))} className="kw-chip-x">×</button>
                 </span>
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <input value={newKw} onChange={e => setNewKw(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }}
-                placeholder="Add keyword, press Enter..." style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1.5px solid #E5E7EB", fontSize: 12, outline: "none" }}
-                onFocus={e => (e.target.style.borderColor = "#006439")} onBlur={e => (e.target.style.borderColor = "#E5E7EB")} />
-              <button onClick={() => { if (newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }}
-                style={{ padding: "8px 14px", borderRadius: 8, background: "#F0F8F4", border: "1px solid rgba(0,100,57,0.2)", color: "#006439", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                placeholder="Add keyword, press Enter..." className="input" style={{ padding: "8px 12px", fontSize: 12 }} />
+              <button onClick={() => { if (newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }} className="chip-add">
                 + Add
               </button>
             </div>
           </div>
 
-          <button onClick={handleSave} style={{ width: "100%", padding: "15px", borderRadius: 8, background: "#006439", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,100,57,0.25)" }}>
+          <button onClick={handleSave} className="btn-submit">
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {extractState === "success" ? "Confirm & Save" : "Save Manually"}
           </button>
@@ -802,9 +730,7 @@ function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (t
 
       {/* Submit button */}
       {extractState === "idle" && (
-        <button onClick={handleSubmit} style={{ width: "100%", padding: "15px", borderRadius: 8, background: "#006439", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,100,57,0.25)", transition: "background 0.15s" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#004d2b")}
-          onMouseLeave={e => (e.currentTarget.style.background = "#006439")}>
+        <button onClick={handleSubmit} className="btn-submit">
           <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Submit
         </button>
@@ -835,52 +761,50 @@ function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; o
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#F9FAFB", display: "flex", flexDirection: "column" }}>
+    <div className="app-root">
       {/* Header */}
-      <header style={HEADER_STYLE}>
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", gap: 11, height: 60 }}>
+      <header className="site-header">
+        <div className="header-inner">
           <ISUSeal size={34} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.1 }}>ISU Thesis Archive</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>Echague Campus</div>
+          <div className="header-brand">
+            <div className="header-title">ISU Thesis Archive</div>
+            <div className="header-sub">Echague Campus</div>
           </div>
-          <div style={{ position: "relative" }}>
+          <div className="avatar-wrap">
             <div
               onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
               role="button"
               tabIndex={0}
               title="Account"
-              style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #F7D000, #c4a000)", border: "2px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#7a6500", cursor: "pointer" }}>JD</div>
+              className="avatar avatar-student">JD</div>
             {menuOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#fff", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)", border: "1px solid rgba(0,100,57,0.1)", minWidth: 170, zIndex: 9999, padding: 6 }}>
-                <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", marginBottom: 4 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Juan Dela Cruz</div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>Student</div>
+              <div className="dropdown">
+                <div className="dropdown-header">
+                  <div className="dropdown-name">Juan Dela Cruz</div>
+                  <div className="dropdown-sub">Student</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }}
-                  style={{ width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, fontWeight: 500, color: "#CD202B", background: "none", border: "none", borderRadius: 6, cursor: "pointer" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#FDEDEA")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                >Sign Out</button>
+                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
+                  Sign Out
+                </button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      <main style={{ flex: 1, maxWidth: 800, width: "100%", margin: "0 auto" }}>
+      <main className="app-shell" style={{ padding: 0 }}>
         {/* Hero search section */}
-        <div style={{ background: "linear-gradient(160deg, #006439 0%, #004d2b 100%)", padding: "40px 20px 48px", textAlign: "center" }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 6, letterSpacing: "-0.3px" }}>
+        <div className="hero-section">
+          <h1 className="hero-h1">
             Discover ISU Research
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.72)", marginBottom: 28, fontWeight: 400 }}>
+          <p className="hero-sub">
             Browse all archived theses from all departments and years
           </p>
 
           {/* Big search input */}
-          <div style={{ position: "relative", maxWidth: 560, margin: "0 auto 16px" }}>
-            <svg style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <div className="search-box">
+            <svg className="search-icon" width="20" height="20" fill="none" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7" stroke="rgba(0,100,57,0.5)" strokeWidth="2.5" />
               <path d="M20 20l-3-3" stroke="rgba(0,100,57,0.5)" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
@@ -890,28 +814,21 @@ function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; o
               onChange={e => setHeroQuery(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSearch()}
               placeholder="Search for thesis topics, authors, keywords, departments..."
-              style={{
-                width: "100%", padding: "18px 18px 18px 52px", borderRadius: 12,
-                border: "none", fontSize: 15, color: "#111827", outline: "none",
-                boxSizing: "border-box", boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                fontFamily: "Inter, sans-serif"
-              }}
+              className="search-input-lg"
             />
           </div>
-          <button onClick={handleSearch} style={{ padding: "15px 40px", borderRadius: 10, background: "#F7D000", border: "none", color: "#7a6500", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.2)", transition: "all 0.15s", width: "100%", maxWidth: 560 }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#ffe033")}
-            onMouseLeave={e => (e.currentTarget.style.background = "#F7D000")}>
+          <button onClick={handleSearch} className="btn btn-yellow search-btn-lg">
             Search Theses
           </button>
         </div>
 
         <div style={{ padding: "20px 16px 32px" }}>
           {/* Quick filter chips */}
-          <div style={{ overflowX: "auto", marginBottom: 24 }}>
-            <div style={{ display: "flex", gap: 8, width: "max-content", paddingBottom: 4 }}>
+          <div className="chip-row">
+            <div className="chip-row-inner">
               {quickFilters.map(f => (
                 <button key={f} onClick={() => { setActiveFilter(f === activeFilter ? "" : f); if (f !== "Recent") onSearch(f); }}
-                  style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px solid ${activeFilter === f ? "#006439" : "#E5E7EB"}`, background: activeFilter === f ? "#006439" : "#fff", color: activeFilter === f ? "#fff" : "#374151", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}>
+                  className={`chip${activeFilter === f ? " chip-active" : ""}`}>
                   {f}
                 </button>
               ))}
@@ -922,21 +839,20 @@ function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; o
           <div style={{ marginBottom: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Recent Theses</h2>
-              <button onClick={() => onSearch("")} style={{ fontSize: 12, color: "#006439", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+              <button onClick={() => onSearch("")} className="why-btn">View all →</button>
             </div>
             <div style={{ overflowX: "auto", marginRight: -16, paddingRight: 16 }}>
               <div style={{ display: "flex", gap: 12, width: "max-content" }}>
                 {recent.map(t => (
-                  <div key={t.id} style={{ width: 240, background: "#fff", borderRadius: 10, padding: "14px", border: "1px solid rgba(0,100,57,0.08)", borderLeft: "4px solid #006439", boxShadow: "0 2px 8px rgba(0,100,57,0.06)", flexShrink: 0 }}>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "#23305B", lineHeight: 1.45, margin: "0 0 10px", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{t.title}</p>
+                  <div key={t.id} className="carousel-card">
+                    <p className="clamp-3" style={{ fontSize: 12, fontWeight: 600, color: "#23305B", lineHeight: 1.45, margin: "0 0 10px" }}>{t.title}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <DeptBadge dept={t.department} small />
                       <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t.year}</span>
                     </div>
                     <button onClick={() => onSearch(t.title.split(" ").slice(0, 4).join(" "))}
-                      style={{ marginTop: 12, width: "100%", padding: "7px", borderRadius: 6, border: "1.5px solid rgba(0,100,57,0.25)", background: "#fff", color: "#006439", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "#F0F8F4")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                      className="btn btn-outline-green"
+                      style={{ marginTop: 12, width: "100%", padding: "7px", borderRadius: 6, fontSize: 12 }}>
                       Open →
                     </button>
                   </div>
@@ -991,13 +907,13 @@ function SearchScreen({
   const hasActiveFilters = deptFilter || yearFilter || statusFilter;
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#F9FAFB" }}>
+    <div className="app-root" style={{ background: "#F9FAFB" }}>
       {/* Sticky header + search */}
-      <div style={{ ...HEADER_STYLE }}>
+      <div className="site-header">
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
           {/* Top bar */}
-          <div style={{ padding: "0 16px", display: "flex", alignItems: "center", gap: 10, height: 56 }}>
-            <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#fff", padding: 6, borderRadius: 6, display: "flex" }}>
+          <div className="search-topbar">
+            <button onClick={onBack} className="back-btn">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             <ISUSeal size={26} />
@@ -1006,20 +922,20 @@ function SearchScreen({
                 {role === "staff" ? "Search Archive" : "ISU Thesis Archive"}
               </span>
             </div>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.1)", padding: "3px 8px", borderRadius: 10 }}>{theses.length} theses</span>
+            <span className="count-pill">{theses.length} theses</span>
           </div>
           {/* Search input */}
-          <div style={{ padding: "0 14px 12px" }}>
-            <div style={{ position: "relative" }}>
-              <svg style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} width="16" height="16" fill="none" viewBox="0 0 24 24">
+          <div className="search-bar-row">
+            <div className="search-bar">
+              <svg className="search-bar-icon" width="16" height="16" fill="none" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" stroke="rgba(0,100,57,0.4)" strokeWidth="2" />
                 <path d="M20 20l-3-3" stroke="rgba(0,100,57,0.4)" strokeWidth="2" strokeLinecap="round" />
               </svg>
               <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search by title, author, keyword, year..."
-                style={{ width: "100%", padding: "12px 36px 12px 36px", borderRadius: 8, border: "none", background: "#fff", fontSize: 14, color: "#111827", outline: "none", boxSizing: "border-box", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }} />
+                className="search-input" />
               {query && (
-                <button onClick={() => setQuery("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "#E5E7EB", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 13, color: "#6B7280" }}>×</button>
+                <button onClick={() => setQuery("")} className="search-clear">×</button>
               )}
             </div>
           </div>
@@ -1027,28 +943,28 @@ function SearchScreen({
       </div>
 
       {/* Filter chips */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
+      <div className="filter-bar">
         <div style={{ maxWidth: 800, margin: "0 auto", overflowX: "auto" }}>
-          <div style={{ display: "flex", gap: 8, padding: "10px 16px", width: "max-content" }}>
+          <div className="filter-row-inner">
             <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-              style={{ padding: "6px 10px", borderRadius: 20, border: `1.5px solid ${deptFilter ? "#006439" : "#E5E7EB"}`, fontSize: 12, fontWeight: 500, color: deptFilter ? "#006439" : "#6B7280", background: deptFilter ? "#F0F8F4" : "#fff", outline: "none", cursor: "pointer", appearance: "none" }}>
+              className={`select-pill${deptFilter ? " select-pill-active" : ""}`}>
               <option value="">{role === "staff" ? "My Department ▼" : "All Departments ▼"}</option>
               {allDepts.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
-              style={{ padding: "6px 10px", borderRadius: 20, border: `1.5px solid ${yearFilter ? "#006439" : "#E5E7EB"}`, fontSize: 12, fontWeight: 500, color: yearFilter ? "#006439" : "#6B7280", background: yearFilter ? "#F0F8F4" : "#fff", outline: "none", cursor: "pointer", appearance: "none" }}>
+              className={`select-pill${yearFilter ? " select-pill-active" : ""}`}>
               <option value="">All Years ▼</option>
               {allYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
             {role === "staff" && ["archived", "pending", "needs_review"].map(s => (
               <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
-                style={{ padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${statusFilter === s ? "#006439" : "#E5E7EB"}`, fontSize: 12, fontWeight: 500, color: statusFilter === s ? "#006439" : "#6B7280", background: statusFilter === s ? "#F0F8F4" : "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>
+                className={`btn-pill${statusFilter === s ? " btn-pill-active" : ""}`}>
                 {s === "needs_review" ? "Needs Review" : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
             {hasActiveFilters && (
               <button onClick={() => { setDeptFilter(""); setYearFilter(""); setStatusFilter(""); }}
-                style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid #CD202B", fontSize: 12, fontWeight: 600, color: "#CD202B", background: "#FDEDEA", cursor: "pointer", whiteSpace: "nowrap" }}>
+                className="btn-clear">
                 ✕ Clear
               </button>
             )}
@@ -1057,7 +973,7 @@ function SearchScreen({
       </div>
 
       {/* Results */}
-      <main style={{ maxWidth: 800, margin: "0 auto", padding: "14px 16px 100px" }}>
+      <main className="results-main">
         {/* Header row */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
@@ -1069,7 +985,7 @@ function SearchScreen({
           </div>
           {selected.size > 0 && (
             <button onClick={() => onCombinedSummary(results.filter(r => selected.has(r.thesis.id)).map(r => r.thesis), query)}
-              style={{ padding: "7px 12px", borderRadius: 8, background: "#006439", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              className="btn btn-primary" style={{ padding: "7px 12px", fontSize: 12 }}>
               📋 Summary ({selected.size})
             </button>
           )}
@@ -1091,25 +1007,20 @@ function SearchScreen({
             const showPreview = previewId === t.id;
 
             return (
-              <div key={t.id} style={{ background: isSelected ? "#F0F8F4" : "#fff", borderRadius: 10, border: `1px solid ${isSelected ? "rgba(0,100,57,0.25)" : "rgba(0,100,57,0.08)"}`, borderLeft: "4px solid #006439", boxShadow: "0 2px 8px rgba(0,100,57,0.06)", overflow: "hidden", transition: "box-shadow 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,100,57,0.12)")}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,100,57,0.06)")}>
-                <div style={{ padding: "14px 16px" }}>
+              <div key={t.id} className={`result-card${isSelected ? " result-card-selected" : ""}`}>
+                <div className="result-pad">
                   <div style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
                     <input type="checkbox" checked={isSelected} onChange={() => setSelected(prev => { const n = new Set(prev); n.has(t.id) ? n.delete(t.id) : n.add(t.id); return n; })}
                       style={{ marginTop: 3, accentColor: "#006439", cursor: "pointer", flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
-                      <button onClick={() => setPreviewId(showPreview ? null : t.id)}
-                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", display: "block" }}>
-                        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#23305B", lineHeight: 1.45, margin: 0, transition: "color 0.1s" }}
-                          onMouseEnter={e => (e.currentTarget.style.color = "#006439")}
-                          onMouseLeave={e => (e.currentTarget.style.color = "#23305B")}>
+                      <button onClick={() => setPreviewId(showPreview ? null : t.id)} className="result-title-btn">
+                        <h3 className="result-title">
                           {t.title}
                         </h3>
                       </button>
                     </div>
                     {pct > 0 && (
-                      <div style={{ flexShrink: 0, background: "#006439", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
+                      <div className="score-pill">
                         {pct}%
                       </div>
                     )}
@@ -1123,30 +1034,29 @@ function SearchScreen({
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingLeft: 24, marginBottom: query && termScores.length > 0 ? 8 : 0 }}>
                     {t.keywords.slice(0, 4).map(kw => (
-                      <span key={kw} style={{ fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 8px", borderRadius: 4 }}>{kw}</span>
+                      <span key={kw} className="kw-mini">{kw}</span>
                     ))}
                   </div>
 
                   {/* BM25 why this rank */}
                   {query && termScores.length > 0 && (
                     <div style={{ paddingLeft: 24 }}>
-                      <button onClick={() => setExpandedRank(isExpanded ? null : t.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#006439", fontWeight: 600, padding: 0 }}>
+                      <button onClick={() => setExpandedRank(isExpanded ? null : t.id)} className="why-btn">
                         <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                         Why this rank?
                         <svg style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                       </button>
                       {isExpanded && (
-                        <div className="animate-slide-up" style={{ background: "#F0F8F4", borderRadius: 8, padding: "12px 14px", marginTop: 8, border: "1px solid rgba(0,100,57,0.12)" }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#006439", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>BM25 Term Scores</div>
+                        <div className="animate-slide-up term-box">
+                          <div className="term-overline">BM25 Term Scores</div>
                           {termScores.map(ts => (
-                            <div key={ts.term} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "#111827", minWidth: 80, fontFamily: "monospace" }}>{ts.term}</span>
-                              <div style={{ flex: 1, height: 5, borderRadius: 3, background: "#E5E7EB", overflow: "hidden" }}>
-                                <div style={{ height: "100%", borderRadius: 3, background: "#006439", width: `${Math.min(100, (ts.score / Math.max(...termScores.map(x => x.score))) * 100)}%` }} />
+                            <div key={ts.term} className="term-row">
+                              <span className="term-name">{ts.term}</span>
+                              <div className="term-track">
+                                <div className="term-fill" style={{ width: `${Math.min(100, (ts.score / Math.max(...termScores.map(x => x.score))) * 100)}%` }} />
                               </div>
-                              <span style={{ fontSize: 11, color: "#6B7280", minWidth: 34 }}>{ts.score.toFixed(2)}</span>
-                              <span style={{ fontSize: 10, color: ts.field === "title" ? "#006439" : ts.field === "keyword" ? "#7a6500" : "#9CA3AF", background: ts.field === "title" ? "#F0F8F4" : ts.field === "keyword" ? "#FFF8E1" : "#F3F4F6", padding: "1px 6px", borderRadius: 3, fontWeight: 600 }}>
+                              <span className="term-score">{ts.score.toFixed(2)}</span>
+                              <span className={`term-field term-field-${ts.field}`}>
                                 {ts.field}
                               </span>
                             </div>
@@ -1162,10 +1072,10 @@ function SearchScreen({
 
                 {/* Inline abstract preview */}
                 {showPreview && (
-                  <div className="animate-slide-up" style={{ background: "#FAFCFB", borderTop: "1px solid rgba(0,100,57,0.08)", padding: "14px 16px" }}>
+                  <div className="animate-slide-up preview-box">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#006439", textTransform: "uppercase", letterSpacing: "0.4px" }}>Abstract</span>
-                      <a href={t.driveLink} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#23305B", fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, border: "1.5px solid #23305B", padding: "4px 10px", borderRadius: 6, background: "#fff" }}>
+                      <span className="term-overline" style={{ marginBottom: 0 }}>Abstract</span>
+                      <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
                         <svg width="11" height="11" fill="none" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                         Open in Drive
                       </a>
@@ -1182,9 +1092,7 @@ function SearchScreen({
       {/* Floating FAB */}
       {results.length >= 2 && (
         <button onClick={() => onCombinedSummary(results.map(r => r.thesis).slice(0, 10), query)}
-          style={{ position: "fixed", bottom: 24, right: 20, background: "#006439", color: "#fff", border: "none", padding: "13px 18px", borderRadius: 24, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 20px rgba(0,100,57,0.4)", zIndex: 40, transition: "transform 0.15s" }}
-          onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
-          onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}>
+          className="fab">
           📋 Combined Summary ({Math.min(results.length, 10)})
         </button>
       )}
@@ -1217,52 +1125,52 @@ function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesis[]; qu
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }} />
-      <div className="animate-slide-up-modal" style={{ position: "relative", background: "#fff", borderRadius: "20px 20px 0 0", maxHeight: "90dvh", display: "flex", flexDirection: "column", boxShadow: "0 -4px 40px rgba(0,0,0,0.2)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <div className="modal-overlay">
+      <div onClick={onClose} className="modal-backdrop" />
+      <div className="animate-slide-up-modal modal-sheet">
         {/* Handle */}
-        <div style={{ padding: "12px 0 0", display: "flex", justifyContent: "center" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "#E5E7EB" }} />
+        <div className="sheet-handle-row">
+          <div className="sheet-handle" />
         </div>
 
         {/* Header */}
-        <div style={{ padding: "12px 20px 0", borderBottom: "1px solid #F3F4F6" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+        <div className="sheet-header">
+          <div className="sheet-title-row">
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: "#111827", margin: "0 0 2px" }}>
+              <h2 className="sheet-h2">
                 Summary of {theses.length} Results
               </h2>
-              {query && <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>for query: <span style={{ fontWeight: 700, color: "#006439" }}>"{query}"</span></p>}
+              {query && <p className="sheet-query">for query: <span style={{ fontWeight: 700, color: "#006439" }}>"{query}"</span></p>}
             </div>
-            <button onClick={onClose} style={{ background: "#F3F4F6", border: "none", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, color: "#6B7280", flexShrink: 0 }}>×</button>
+            <button onClick={onClose} className="sheet-close">×</button>
           </div>
-          <div style={{ paddingBottom: 14, paddingTop: 4 }}>
-            <span style={{ background: "#F0F8F4", color: "#006439", border: "1px solid rgba(0,100,57,0.2)", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
+          <div className="mode-pill-row">
+            <span className="mode-pill">
               📋 Extractive Summary · BM25 Top Results
             </span>
           </div>
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.78, marginBottom: 16 }}
+        <div className="sheet-body">
+          <p className="summary-text"
             dangerouslySetInnerHTML={{ __html: highlightKw(extractive) }} />
 
           {/* Citations */}
-          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "12px 14px", marginBottom: 16, border: "1px solid #E5E7EB" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Sources</div>
+          <div className="sources-box">
+            <div className="overline-label">Sources</div>
             {theses.slice(0, 4).map((t, i) => (
-              <div key={t.id} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                <span style={{ background: "#006439", color: "#fff", fontSize: 10, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
-                <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.4 }}>{t.title} ({t.year}) · {t.adviser}</span>
+              <div key={t.id} className="source-row">
+                <span className="source-num">{i + 1}</span>
+                <span className="source-text">{t.title} ({t.year}) · {t.adviser}</span>
               </div>
             ))}
           </div>
 
           {/* Keyword highlights */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>Key Terms</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div className="overline-label">Key Terms</div>
+            <div className="keywords-row">
               {keywords.map(kw => (
                 <span key={kw} className="keyword-highlight" style={{ fontSize: 12, fontWeight: 500, color: "#374151", borderRadius: 3, padding: "2px 4px" }}>{kw}</span>
               ))}
@@ -1271,15 +1179,15 @@ function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesis[]; qu
         </div>
 
         {/* Action bar */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 8 }}>
+        <div className="sheet-action">
           <button onClick={handleCopy}
-            style={{ flex: 1, padding: "12px", borderRadius: 8, background: copied ? "#006439" : "#fff", border: `1.5px solid ${copied ? "#006439" : "rgba(0,100,57,0.25)"}`, color: copied ? "#fff" : "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
+            className={`btn-copy${copied ? " btn-copy-done" : ""}`}>
             {copied ? "✓ Copied!" : "📋 Copy Summary"}
           </button>
-          <button style={{ flex: 1, padding: "12px", borderRadius: 8, border: "2px solid #23305B", background: "#fff", color: "#23305B", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button className="btn-export">
             📄 Export PDF
           </button>
-          <button onClick={onClose} style={{ padding: "12px 16px", borderRadius: 8, background: "none", border: "1.5px solid #E5E7EB", color: "#6B7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={onClose} className="btn-close">
             Close
           </button>
         </div>
@@ -1324,7 +1232,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div className="app-root">
       {screen === "login" && <LoginScreen onLogin={handleLogin} />}
 
       {screen === "staff-dashboard" && (
