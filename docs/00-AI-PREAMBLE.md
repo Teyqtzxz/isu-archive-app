@@ -172,6 +172,17 @@ Fake, must be replaced:
    with zero errors before you report done. **This project uses npm — there is no
    `pnpm-lock.yaml`, and you must not create one.** Dev server is on port
    **8443**, not 5173.
+9. **Never commit or push to `main`.** You are always on a named branch. Commit
+   there and let a human open and merge the pull request. `main` is the
+   finished version; your branch is a proposal. If you are unsure which branch
+   you are on, ask before committing anything.
+10. **Never run a destructive git command** — `reset --hard`, `clean -fd`,
+    `push --force`, `rebase` on someone else's branch, or `checkout .` — without
+    asking first. These throw away work that cannot be recovered. `git status`,
+    `git diff`, `git log` and `git restore <file>` are always safe.
+11. **Never commit a secret.** No `.env`, no service account JSON, no real API
+    key. Firebase's *web* config is safe to commit — every browser downloads it
+    anyway — but admin credentials are not.
 
 ## ISU colour tokens (`src/index.css`)
 
