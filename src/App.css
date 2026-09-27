@@ -785,27 +785,6 @@
   background: #fff;
 }
 
-.fab {
-  position: fixed;
-  bottom: 24px;
-  right: 20px;
-  background: var(--isu-green);
-  color: #fff;
-  border: none;
-  padding: 13px 18px;
-  border-radius: 24px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 20px rgba(0, 100, 57, 0.4);
-  z-index: 40;
-  transition: transform 0.15s;
-}
-.fab:hover { transform: translateY(-2px); }
-
 /* ─── Register form bits ───────────────────────────────────── */
 .steps-row { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
 .step-col { display: flex; align-items: center; gap: 6px; flex: 1; }

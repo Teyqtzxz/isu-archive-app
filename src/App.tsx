@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -132,47 +132,93 @@ function findMatchScore(queryTerm: string, docToken: string): number {
   if (queryTerm.length < 2) return 0;
   if (docToken === queryTerm) return 1;
   if (docToken.startsWith(queryTerm)) return 0.8;
-  if (docToken.includes(queryTerm)) return 0.6;
+  // A mid-token match is only trustworthy for longer terms. Without this guard
+  // "rate" matches generate/accurate/graduate/corporate, and a thesis stuffed
+  // with those words outranks the one that actually contains the term.
+  if (queryTerm.length >= 4 && docToken.includes(queryTerm)) return 0.6;
   return 0;
 }
 
-function bm25Score(query: string, doc: Thesis, avgDocLen: number, corpus: Thesis[]): { score: number; termScores: { term: string; score: number; field: string }[] } {
+function docTextOf(t: Thesis): string {
+  return `${t.title} ${t.abstract} ${t.keywords.join(" ")}`;
+}
+
+/** Pre-tokenised corpus. Built once per result set, not once per keystroke. */
+interface SearchIndex {
+  docTokens: string[][];
+  avgDocLen: number;
+  vocab: string[];
+  postings: Map<string, number[]>;
+}
+
+function buildIndex(theses: Thesis[]): SearchIndex {
+  const docTokens = theses.map(t => tokenize(docTextOf(t)));
+  const totalLen = docTokens.reduce((n, ts) => n + ts.length, 0);
+  const postings = new Map<string, number[]>();
+  docTokens.forEach((ts, i) => {
+    for (const tok of new Set(ts)) {
+      const list = postings.get(tok);
+      if (list) list.push(i);
+      else postings.set(tok, [i]);
+    }
+  });
+  return {
+    docTokens,
+    // Guard: an empty corpus must not produce NaN and poison every score.
+    avgDocLen: docTokens.length > 0 ? totalLen / docTokens.length : 1,
+    vocab: Array.from(postings.keys()),
+    postings,
+  };
+}
+
+/** Document frequency per query term, computed once per query. */
+function computeDocFreq(tokens: string[], index: SearchIndex): Map<string, number> {
+  const df = new Map<string, number>();
+  for (const term of tokens) {
+    if (df.has(term)) continue;
+    const seen = new Set<number>();
+    for (const v of index.vocab) {
+      if (findMatchScore(term, v) > 0) {
+        for (const i of index.postings.get(v)!) seen.add(i);
+      }
+    }
+    df.set(term, seen.size);
+  }
+  return df;
+}
+
+/** Which field produced the match, for the "Why this rank?" breakdown. */
+function bestFieldFor(t: Thesis, queryTerm: string): string {
+  if (tokenize(t.title).some(x => findMatchScore(queryTerm, x) > 0)) return "title";
+  if (tokenize(t.keywords.join(" ")).some(x => findMatchScore(queryTerm, x) > 0)) return "keyword";
+  return "abstract";
+}
+
+function bm25Score(query: string, thesis: Thesis, docIndex: number, index: SearchIndex, df: Map<string, number>): { score: number; termScores: { term: string; score: number; field: string }[] } {
   const k1 = 1.5, b = 0.75;
-  const tokens = tokenize(query);
-  const docText = `${doc.title} ${doc.abstract} ${doc.keywords.join(" ")}`;
-  const docTokens = tokenize(docText);
+  const N = index.docTokens.length;
+  const docTokens = index.docTokens[docIndex];
   const docLen = docTokens.length;
-  const termFreq: Record<string, number> = {};
-  docTokens.forEach(t => { termFreq[t] = (termFreq[t] || 0) + 1; });
-  const N = corpus.length;
   const termScores: { term: string; score: number; field: string }[] = [];
   let total = 0;
-  tokens.forEach(queryTerm => {
+  for (const queryTerm of tokenize(query)) {
+    const dfCount = df.get(queryTerm) ?? 0;
+    if (dfCount === 0) continue;
+
+    // Weighted term frequency: exact hits count 1.0, prefix 0.8, substring 0.6.
     let bestTf = 0;
-    let bestField = "abstract";
-    docTokens.forEach(dt => {
+    for (const dt of docTokens) {
       const m = findMatchScore(queryTerm, dt);
-      if (m > 0) {
-        bestTf += m;
-        const titleTokens = tokenize(doc.title);
-        const kwTokens = tokenize(doc.keywords.join(" "));
-        if (titleTokens.some(t => findMatchScore(queryTerm, t) > 0)) bestField = "title";
-        else if (kwTokens.some(t => findMatchScore(queryTerm, t) > 0)) bestField = "keyword";
-      }
-    });
-    if (bestTf === 0) return;
-    let dfCount = 0;
-    corpus.forEach(d => {
-      const dTokens = tokenize(`${d.title} ${d.abstract} ${d.keywords.join(" ")}`);
-      if (dTokens.some(dt => findMatchScore(queryTerm, dt) > 0)) dfCount++;
-    });
-    if (dfCount === 0) return;
+      if (m > 0) bestTf += m;
+    }
+    if (bestTf === 0) continue;
+
     const idf = Math.log((N - dfCount + 0.5) / (dfCount + 0.5) + 1);
-    const tfNorm = (bestTf * (k1 + 1)) / (bestTf + k1 * (1 - b + b * (docLen / avgDocLen)));
+    const tfNorm = (bestTf * (k1 + 1)) / (bestTf + k1 * (1 - b + b * (docLen / index.avgDocLen)));
     const s = idf * tfNorm;
-    termScores.push({ term: queryTerm, score: s, field: bestField });
+    termScores.push({ term: queryTerm, score: s, field: bestFieldFor(thesis, queryTerm) });
     total += s;
-  });
+  }
   return { score: total, termScores };
 }
 
@@ -347,10 +393,11 @@ function StaffDashboard({
   onSearch: () => void;
   onSignOut: () => void;
 }) {
+  const thisMonthPrefix = new Date().toISOString().slice(0, 7); // "2026-09"
   const stats = {
     total: theses.length,
     pending: theses.filter(t => t.status === "pending" || t.status === "needs_review").length,
-    thisMonth: theses.filter(t => t.dateAdded >= "2024-11").length,
+    thisMonth: theses.filter(t => t.dateAdded.startsWith(thisMonthPrefix)).length,
   };
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -890,16 +937,36 @@ function SearchScreen({
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const avgDocLen = theses.reduce((acc, t) => acc + tokenize(`${t.title} ${t.abstract} ${t.keywords.join(" ")}`).length, 0) / theses.length;
-
-  const results = (() => {
+  // Filters narrow the candidate set, then the index is built from what survives.
+  // N, doc-frequency and avgDocLen therefore all describe the same corpus — they
+  // used to disagree, because avgDocLen came from all theses while N came from
+  // the filtered ones.
+  const filtered = useMemo(() => {
     let f = theses;
     if (deptFilter) f = f.filter(t => t.department === deptFilter);
     if (yearFilter) f = f.filter(t => t.year === parseInt(yearFilter));
     if (statusFilter) f = f.filter(t => t.status === statusFilter);
-    if (!query.trim()) return f.map(t => ({ thesis: t, score: 0, termScores: [] as { term: string; score: number; field: string }[] }));
-    return f.map(t => ({ thesis: t, ...bm25Score(query, t, avgDocLen, f) })).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
-  })();
+    return f;
+  }, [theses, deptFilter, yearFilter, statusFilter]);
+
+  const index = useMemo(() => buildIndex(filtered), [filtered]);
+
+  const results = useMemo(() => {
+    const empty = [] as { term: string; score: number; field: string }[];
+
+    // No query: everything, newest first.
+    if (!query.trim()) {
+      return filtered
+        .map(t => ({ thesis: t, score: 0, termScores: empty }))
+        .sort((a, b) => b.thesis.dateAdded.localeCompare(a.thesis.dateAdded));
+    }
+
+    const df = computeDocFreq(tokenize(query), index);
+    return filtered
+      .map((t, i) => ({ thesis: t, ...bm25Score(query, t, i, index, df) }))
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score);
+  }, [filtered, index, query]);
 
   const maxScore = Math.max(...results.map(r => r.score), 0.01);
   const allDepts = Array.from(new Set(theses.map(t => t.department)));
@@ -986,7 +1053,7 @@ function SearchScreen({
           {selected.size > 0 && (
             <button onClick={() => onCombinedSummary(results.filter(r => selected.has(r.thesis.id)).map(r => r.thesis), query)}
               className="btn btn-primary" style={{ padding: "7px 12px", fontSize: 12 }}>
-              📋 Summary ({selected.size})
+              View Summary ({selected.size})
             </button>
           )}
         </div>
@@ -1088,14 +1155,6 @@ function SearchScreen({
           })}
         </div>
       </main>
-
-      {/* Floating FAB */}
-      {results.length >= 2 && (
-        <button onClick={() => onCombinedSummary(results.map(r => r.thesis).slice(0, 10), query)}
-          className="fab">
-          📋 Combined Summary ({Math.min(results.length, 10)})
-        </button>
-      )}
     </div>
   );
 }
