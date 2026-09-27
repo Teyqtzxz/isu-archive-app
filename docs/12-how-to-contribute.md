@@ -215,6 +215,33 @@ back: `git stash pop`.
 
 ---
 
+## Working with an AI that can edit your files
+
+If you use OpenCode, Claude Code or Cursor, the AI reads and writes the project
+directly. **Do not copy code out of a chat window** — you do not need to, and
+pasting by hand is the most common way a working file gets broken.
+
+Your loop becomes:
+
+1. Make sure you are on your own branch (step 2 above)
+2. Start the AI in the project folder
+3. Paste `00-AI-PREAMBLE.md` lines 13–221, then your step doc below it
+4. The AI edits the real files and runs `npm run build`
+5. It reports back: what changed, which files, how to verify
+6. **You** run that doc's Verification section yourself — do not trust the report
+7. Commit, push, open the PR
+
+Two things the AI is told not to do, because they would break this workflow:
+
+- **Never commit or push to `main`.** Rules 9 in the preamble. If the AI says it
+  committed to `main`, stop and check `git status`.
+- **Never run destructive git commands** without asking. Rule 10. If it proposes
+  `reset --hard` or `push --force`, say no and ask what it was trying to do.
+
+The AI commits to your branch. **Merging into `main` is a human job** — yours.
+
+---
+
 ## If you only remember five commands
 
 ```bash
