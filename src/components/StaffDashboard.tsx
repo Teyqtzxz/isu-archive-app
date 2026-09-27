@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Role, StaffTab, Thesis } from "../types";
+import { isPending } from "../types";
 import { ISUSeal, StatusBadge, DeptBadge } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 
@@ -21,7 +22,7 @@ export function StaffDashboard({
   const thisMonthPrefix = new Date().toISOString().slice(0, 7); // "2026-09"
   const stats = {
     total: theses.length,
-    pending: theses.filter(t => t.status === "pending" || t.status === "needs_review").length,
+    pending: theses.filter(isPending).length,
     thisMonth: theses.filter(t => t.dateAdded.startsWith(thisMonthPrefix)).length,
   };
 
@@ -189,4 +190,3 @@ export function StaffDashboard({
   );
 }
 
-// ─── Register Form (reusable) ─────────────────────────────────────────────────

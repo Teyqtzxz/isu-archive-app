@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
+import { STATUSES } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
-import { ISUSeal, StatusBadge, DeptBadge } from "./shared";
+import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS } from "./shared";
 
 export function SearchScreen({
   theses, role, initialQuery, onCombinedSummary, onBack,
@@ -107,10 +108,10 @@ export function SearchScreen({
               <option value="">All Years ▼</option>
               {allYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            {role === "staff" && ["archived", "pending", "needs_review"].map(s => (
+            {role === "staff" && STATUSES.map(s => (
               <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
                 className={`btn-pill${statusFilter === s ? " btn-pill-active" : ""}`}>
-                {s === "needs_review" ? "Needs Review" : s.charAt(0).toUpperCase() + s.slice(1)}
+                {STATUS_LABELS[s]}
               </button>
             ))}
             {hasActiveFilters && (

@@ -42,7 +42,7 @@ export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSucc
     onSuccess({
       id: Date.now().toString(), title: form.title, department: form.department,
       year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
-      status: "archived", dateAdded: new Date().toISOString().split("T")[0], driveLink: form.driveLink,
+      status: "ARCHIVED", dateAdded: new Date().toISOString().split("T")[0], driveLink: form.driveLink,
     });
   }
 
@@ -224,4 +224,3 @@ export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSucc
   );
 }
 
-// ─── Screen 6: Student Dashboard ──────────────────────────────────────────────

@@ -102,4 +102,3 @@ export function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
   );
 }
 
-// ─── Screen 2: Staff Dashboard ────────────────────────────────────────────────

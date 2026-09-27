@@ -68,46 +68,76 @@ export type Screen = "login" | "staff-dashboard" | "register" | "search" | "summ
 export type StaffTab = "dashboard" | "register" | "search" | "settings";
 export type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
 
-export function isPending(t: { status: ThesisStatus }): boolean {
+export function isPending(t: Pick<Thesis, "status">): boolean {
   return t.status === "NEEDS_REVIEW" || t.status === "DRAFT";
 }
 ```
 
-**The status enum is UPPERCASE.** Never write `"archived"` or `"pending"`.
+The `Thesis` interface above is the **target** schema. `registeredBy` and
+`registeredAt` are added in step 02; the version in `src/types.ts` today has
+`dateAdded` instead and will be changed then.
+
+### The status enum — three traps
+
+1. **`Thesis.status` is UPPERCASE.** The only legal values are `ARCHIVED`,
+   `NEEDS_REVIEW`, `DRAFT`. Never write `"archived"` or `"pending"`. Get the
+   values from `STATUSES`, never from a hand-written array literal.
+2. **`ExtractionState` is a different thing and stays lowercase.** It is
+   `"idle" | "extracting" | "success" | "needs_review"` and is UI workflow
+   state, not stored data. It merely shares a word with `NEEDS_REVIEW`.
+   Uppercasing it "for consistency" is a wrong cleanup.
+3. **Never build a status label inline.** Display text lives in
+   `STATUS_LABELS` in `src/components/shared.tsx`, and both the badge and the
+   search filter pills read it. The old code had `s.charAt(0).toUpperCase() +
+   s.slice(1)`, which turns `"ARCHIVED"` into `"ARCHIVED"` — all caps, in the
+   middle of the staff UI.
 
 ## Target file layout
 
 ```
 src/
-  types.ts            ← the types above
+  types.ts            ← the types above                          ✅ EXISTS
+  data.ts             ← SAMPLE_THESES, DEPARTMENTS, ADVISERS     ✅ EXISTS
+  search.ts           ← pure: tokenize, findMatchScore, docTextOf,
+                        SearchIndex, buildIndex, computeDocFreq,
+                        bestFieldFor, bm25Score                  ✅ EXISTS
+  App.tsx             ← screen state machine + routing only (87 lines) ✅ EXISTS
+  components/
+    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast   ✅ EXISTS
+    LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
+    SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx  ✅ EXIST
+  ─── not created yet ───
   firebase.ts         ← initApp, auth, db (config pasted from console)
-  data.ts             ← THE ONLY module that talks to Firestore
   seed.ts             ← one-off seed script
-  search.ts           ← pure: tokenize, findMatchScore, buildIndex,
-                         computeDocFreq, bestFieldFor, bm25Score, searchTheses
   summary.ts          ← pure: extractive summarisation
   extractPdf.ts       ← pure: Drive link parsing + pdf.js text extraction
-  App.tsx             ← screen state machine + routing only
-  components/
-    LoginScreen.tsx  StaffDashboard.tsx  RegisterForm.tsx
-    SearchScreen.tsx  StudentDashboard.tsx  SummaryPanel.tsx
-    ui.tsx            ← ISUSeal, StatusBadge, DeptBadge, Toast (shared)
   index.css           ← Tailwind + ISU tokens + safe-area + header vars
 ```
+
+**The split is already done.** `App.tsx` used to be 1333 lines holding
+everything. It is now 87 lines of state and routing, with each screen, the
+types, the data and the search engine in their own file. Do not redo this. If a
+step below tells you to "move code into `src/search.ts`", that file already
+exists — the work is to *add* to it, not to create it.
+
+`CombinedSummaryPanel.tsx` keeps its current name. A target layout of
+`SummaryPanel.tsx` was considered and rejected: renaming it now would collide
+with the file-ownership split in `10-group-work-split.md`, and the name is
+accurate.
 
 `search.ts`, `summary.ts` and `extractPdf.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
-## What is real vs fake in the current prototype
+## What is real vs fake in the current code
 
-Real, working — **do not rewrite, move at most**:
-- BM25 scoring: `tokenize()`, `bm25Score()`, `docTextOf()`
-- Corpus index: `buildIndex()`, `computeDocFreq()`, `bestFieldFor()`
+Real, working — **do not rewrite**:
+- BM25 scoring: `tokenize()`, `bm25Score()`, `docTextOf()` — in `src/search.ts`
+- Corpus index: `buildIndex()`, `computeDocFreq()`, `bestFieldFor()` — in `src/search.ts`
 - Fuzzy prefix/substring: `findMatchScore()` → `1.0` exact, `0.8` prefix,
   `0.6` substring (only for query terms of 4+ characters)
 - "Why this rank?" per-term breakdown
 - Relevance % normalised to the top score, capped at 97% by design
-- All six screens' UI
+- All six screens' UI, one file per screen in `src/components/`
 
 Three things in there are **deliberate and must survive a refactor** — each one
 was a bug that was fixed, and each is easy to "clean up" back into a bug:

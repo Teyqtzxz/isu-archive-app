@@ -17,14 +17,50 @@ alone.
 
 # Part 1 — Split `App.tsx` into modules
 
-## 1.1 Why this is not optional cleanup
+## ✅ DONE — 2026-09-27, commit `c5644d4`
 
-`src/App.tsx` is one ~1,270-line file containing six screens, the search engine,
+This part is **complete and merged into `main`. Do not redo it.** It was done as
+a single pure-move commit so the diff reads as a move and nothing else.
+
+What exists now:
+
+| File | Lines | Was |
+|------|-------|-----|
+| `src/App.tsx` | 87 | 1333 — now state and screen routing only |
+| `src/types.ts` | 19 | — |
+| `src/data.ts` | 108 | — |
+| `src/search.ts` | 103 | — |
+| `src/components/shared.tsx` | 58 | — |
+| `src/components/LoginScreen.tsx` | 105 | — |
+| `src/components/StaffDashboard.tsx` | 192 | — |
+| `src/components/RegisterForm.tsx` | 227 | — |
+| `src/components/StudentDashboard.tsx` | 134 | — |
+| `src/components/SearchScreen.tsx` | 244 | — |
+| `src/components/CombinedSummaryPanel.tsx` | 98 | — |
+
+Two deliberate differences from the target layout in §1.2:
+
+- The shared file is `shared.tsx`, not `ui.tsx`.
+- The summary screen is `CombinedSummaryPanel.tsx`, not `SummaryPanel.tsx`.
+  Renaming it would collide with the file-ownership split in
+  `10-group-work-split.md`, and the existing name is accurate.
+
+Start this file at **Part 2**.
+
+---
+
+## 1.1 Why this was not optional cleanup
+
+`src/App.tsx` was one 1,333-line file containing six screens, the search engine,
 the extraction mock and every component. If three people edit it concurrently you
-will get conflicts on every commit and lost work.
+get conflicts on every commit and lost work.
 
-Move code **verbatim**. Do not rename, restyle, "improve", or fix anything while
-moving — that makes the diff unreviewable. This commit should be a pure move.
+Code was moved **verbatim** — no rename, restyle, improvement or fix — and that
+was verified rather than assumed: a line-by-line comparison of the original
+against all 11 new files reports **1191 code lines in, 1191 out**, with none
+missing, none added, and none appearing more often than before. `tsc --noEmit`
+is clean, `npm run build` passes, the bundle is the same 265.31 kB, all 12
+modules resolve through Vite with no circular imports, and every screen renders.
 
 ## 1.2 Target layout
 

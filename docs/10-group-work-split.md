@@ -13,24 +13,24 @@
 
 ## 1. The one thing to do first, together
 
-`src/App.tsx` is a single ~1,270-line file containing six screens, the search
-engine and the extraction mock. Three people editing it concurrently means
-conflicts on every commit and lost work.
+The module split is **already done and merged** — commit `c5644d4`, a pure
+verbatim move of 1,191 code lines with no behaviour change. `src/App.tsx` went
+from 1,333 lines to 87. Do not redo it.
 
-Before anyone branches: split it into the module layout in `00-AI-PREAMBLE.md`.
-Move code **verbatim** — no renaming, no restyling, no fixes. One commit:
+Also already done, in the same sitting as the split:
+
+- The stray `pnpm-lock.yaml` was deleted; npm is the only package manager.
+- `npm run build` now runs `tsc --noEmit` first, so a type error fails the build.
+
+**Still to do together, before anyone branches:** migrate the status enum to
+uppercase (`02` §5). The call sites are spread across all three people's files,
+so it has to be one coordinated commit.
 
 ```
-refactor: split App.tsx into per-screen modules (no behaviour change)
+refactor: migrate thesis status enum to uppercase
 ```
 
-**In the same sitting:**
-
-- Migrate the status enum to uppercase (`02` §5). The call sites are spread across
-  all three people's files, so it has to be one coordinated commit.
-- Delete one of the two lockfiles (`08` §1).
-
-Target: 30 minutes, one screen, everyone present.
+Target: 10 minutes, one screen, everyone present. Then branch.
 
 ---
 
@@ -39,7 +39,7 @@ Target: 30 minutes, one screen, everyone present.
 After the split, each person only edits files they own.
 
 ### A — Data & Auth
-**Files:** `types.ts` `firebase.ts` `data.ts` `seed.ts` `firestore.rules`
+**Files:** `src/types.ts` `src/firebase.ts` `src/data.ts` `src/seed.ts` `firestore.rules`
 **Docs:** 02, 03, 04 §1–2
 
 Schema, seed, Google sign-in, role routing, session restore, sign out, security
@@ -47,7 +47,7 @@ rules, and the Firestore data layer. **A also owns the Firebase console** — on
 project, one owner, or the group ends up using the wrong one.
 
 ### B — Search & Intelligence
-**Files:** `search.ts` `summary.ts` `SearchScreen.tsx` `SummaryPanel.tsx`
+**Files:** `src/search.ts` `src/summary.ts` `components/SearchScreen.tsx` `components/CombinedSummaryPanel.tsx`
 **Docs:** 05, 07, plus writing the 20 seed theses
 
 BM25, the debounce, filters, "Why this rank?", and the extractive summary.
@@ -56,14 +56,16 @@ BM25, the debounce, filters, "Why this rank?", and the extractive summary.
 this whole track can be built and verified on day 1 against a plain array, before
 any backend exists. That is the biggest scheduling win in the project.
 
+Note the summary file is `CombinedSummaryPanel.tsx`, not `SummaryPanel.tsx`.
+
 ### C — PDF, UI & QA
-**Files:** `extractPdf.ts` `RegisterForm.tsx` `index.css`
+**Files:** `src/extractPdf.ts` `components/RegisterForm.tsx` `src/index.css` `src/App.css`
 **Docs:** 06, 04 §3–4, 08, 09
 
 pdf.js extraction, the safe-area header and ISU theme, deployment, and the final
 QA pass. Owning QA means nothing ships broken.
 
-**Shared:** `components/ui.tsx` (ISUSeal, StatusBadge, DeptBadge, Toast) — nobody
+**Shared:** `components/shared.tsx` (ISUSeal, StatusBadge, DeptBadge, Toast) — nobody
 edits it except C's safe-area additions, and only additively.
 
 ---

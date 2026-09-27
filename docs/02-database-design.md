@@ -125,28 +125,56 @@ rather than retyping them.
 
 ## 5. Migrate the prototype's status values
 
-The prototype uses lowercase values that do **not** match the schema: its
-`"pending"` means `DRAFT` here. Its badge maps are keyed on the lowercase strings,
-so leaving this unmigrated means unstyled status badges.
+## ✅ DONE — 2026-09-27
 
-Change these, in `src/App.tsx`:
+Shipped in the commit titled *"Refactor: migrate thesis status enum to
+uppercase, add PR guide"*. (`git log --oneline`. A commit cannot record its own
+hash, so it is named by subject — grep for it.)
+
+The **code** half of this section is complete and merged. Do not redo it.
+
+The prototype used lowercase values that did **not** match the schema: its
+`"pending"` means `DRAFT` here. Its badge maps were keyed on the lowercase
+strings, so leaving this unmigrated would have meant unstyled status badges.
+
+What was changed, in the post-split layout:
 
 | Location | From | To |
 |----------|------|-----|
-| `Thesis` status union (~line 18) | `"archived" \| "pending" \| "needs_review"` | import `ThesisStatus` from `./types` |
-| `SAMPLE_THESES` entries (~33, 45, 57, 69, 81, 105) | `"archived"` | `"ARCHIVED"` |
-| the one `"needs_review"` seed (~117) | `"needs_review"` | `"NEEDS_REVIEW"` |
-| badge class map (~196, 198) | `archived` / `needs_review` | `ARCHIVED` / `NEEDS_REVIEW` / `DRAFT` |
-| badge label map (~201, 203) | same | same |
-| `stats.pending` filter (~352) | `t.status === "pending" \|\| t.status === "needs_review"` | `isPending(t)` |
-| Status filter dropdown (~959, 962) | `["archived", "pending", "needs_review"]` | `STATUSES` from `./types` |
-| save call (~560) | `status: "archived"` hardcoded | pass status in as a parameter — see step 04 |
+| `src/types.ts` | `"archived" \| "pending" \| "needs_review"` | `STATUSES` const + `ThesisStatus` type |
+| `src/data.ts` — 6 seeds | `"archived"` | `"ARCHIVED"` |
+| `src/data.ts` — 1 seed | `"pending"` | `"DRAFT"` |
+| `src/data.ts` — 1 seed | `"needs_review"` | `"NEEDS_REVIEW"` |
+| `shared.tsx` — badge class map | `archived` / `pending` / `needs_review` | `ARCHIVED` / `DRAFT` / `NEEDS_REVIEW` |
+| `shared.tsx` — badge label map | two separate inline maps | one exported `STATUS_LABELS`, shared with the filter pills |
+| `StaffDashboard.tsx` — `stats.pending` | `t.status === "pending" \|\| t.status === "needs_review"` | `isPending(t)` from `./types` |
+| `SearchScreen.tsx` — status filter pills | hardcoded `["archived", "pending", "needs_review"]` | `STATUSES` from `./types` |
+| `RegisterForm.tsx` — save call | `status: "archived"` hardcoded | `status: "ARCHIVED"` (still hardcoded — see below) |
 
-Import `STATUSES`, `isPending` and `ThesisStatus` from `./types` rather than
-re-declaring them. Delete the local `Thesis` interface from `App.tsx`.
+`STATUSES`, `isPending` and `ThesisStatus` are imported from `../types` rather
+than re-declared. `src/types.ts` now holds the one `Thesis` interface.
 
-Do this as **one commit**, separate from feature work. It touches many lines and is
-much easier to review alone.
+### Two decisions worth knowing
+
+1. **The status filter pills used to build their own label** with
+   `s.charAt(0).toUpperCase() + s.slice(1)`. On `"ARCHIVED"` that yields
+   `"ARCHIVED"` — all caps, a visible regression. They now read `STATUS_LABELS`,
+   the same map the badge uses, so the two can never drift apart again.
+2. **`ExtractionState` was left lowercase.** It is `"idle" | "extracting" |
+   "success" | "needs_review"` and is UI workflow state, not stored data — a
+   different thing that happens to share a word with `NEEDS_REVIEW`. There is a
+   comment on it in `types.ts` saying so, because uppercasing it "for
+   consistency" is an obvious and wrong cleanup.
+
+### Still outstanding
+
+- **`RegisterForm` still hardcodes `"ARCHIVED"` on save.** The review step is
+  supposed to choose `ARCHIVED` on "Confirm & Save" and `NEEDS_REVIEW` on
+  "Save Manually". Passing the status in as a parameter is **step 04 work**, not
+  part of this migration.
+- **CSS class names were not renamed.** `DRAFT` still maps to `.status-pending`
+  in `App.css` so that no CSS changed. Only the enum keys moved. Person C may
+  rename the class in their styling pass; it is cosmetic.
 
 ---
 
@@ -243,12 +271,43 @@ then.
 
 ## 9. Verification
 
-- [ ] `npm run build` passes with zero TypeScript errors
-- [ ] `src/types.ts` exists and exports `STATUSES`, `ThesisStatus`, `Thesis`, `isPending`, `DEPARTMENTS`
-- [ ] `grep -n '"archived"\|"pending"\|"needs_review"' src/App.tsx` returns **nothing** (excluding `ExtractionState`, whose `needs_review` is a UI state, not a thesis status)
-- [ ] Every status badge still renders in its colour after the migration
-- [ ] The Status filter dropdown lists exactly `ARCHIVED`, `NEEDS_REVIEW`, `DRAFT`
+Done as of the enum migration (`02` §5):
+
+- [x] `npm run build` passes with zero TypeScript errors
+- [x] `src/types.ts` exports `STATUSES`, `ThesisStatus`, `Thesis` and `isPending`
+- [x] No lowercase status value survives anywhere in `src/`, and the only
+      remaining `needs_review` is inside `ExtractionState` — a UI workflow state,
+      not a thesis status
+
+  Check it yourself. **Note this must be case-sensitive** — PowerShell's
+  `-Pattern` is not, and a case-insensitive search reports `"ARCHIVED"` as a
+  hit and looks like a failure:
+
+  ```powershell
+  # Windows / PowerShell
+  Select-String -Path (Get-ChildItem src -Recurse -Include *.ts,*.tsx).FullName `
+    -Pattern '"archived"|"pending"|"needs_review"' -CaseSensitive
+  ```
+
+  ```bash
+  # macOS / Linux — grep is already case-sensitive
+  grep -rn '"archived"\|"pending"\|"needs_review"' src/
+  ```
+
+  Expected result: only the `ExtractionState` declaration in `src/types.ts` and
+  its four use sites in `RegisterForm.tsx`. Anything else is a bug.
+- [x] Every status badge still renders in its colour (the class map is keyed on
+      the uppercase values, and each badge still emits a `status-*` modifier)
+- [x] The staff status filter offers exactly three pills, labelled
+      `Archived`, `Needs Review`, `Draft` — one per `STATUSES` entry
+- [x] The "Pending Review" dashboard stat still counts 2, i.e. `isPending`
+      matches the same two theses the old string comparison did
+
+Still to check once this step's remaining work is done:
+
 - [ ] `src/seed.ts` compiles
+- [ ] `src/data.ts` exports `DEPARTMENTS` and `ADVISERS` (it holds them today;
+      step 03 may move them, so confirm before relying on the import)
 
 **Cannot be verified until step 03** (no Firebase project yet): that the seed
 actually writes 20 documents, and that `setMyRole` promotes your account.

@@ -35,6 +35,7 @@ rather than a crash — you would not notice until the demo.
 | 18 | Doc said the summary panel takes the top 5 visible results; the code had manual selection **and** a duplicate top-10 FAB | Kept manual selection, deleted the FAB, renamed to "View Summary (N)"; the alternative is documented with a 1-line revert | `01` Flow D, `04`, `07` §1 |
 | 19 | Doc told the group the prototype uses pnpm | pnpm was never installed; the lockfile was a stray artefact | `01` §1, `08` §1 |
 | 20 | Doc said the dev server is on port 5173 | It is 8443, set in `vite.config.ts` | `01` §1 |
+| 21 | `02` §5 and `04` Part 1 gave `src/App.tsx` line numbers (~18, ~33, ~196, ~352, ~959) for the enum migration and the module split — all stale the moment the split landed | Rewritten against the post-split file layout, and both sections marked done | `02` §5, `04` Part 1 |
 
 ## Code bugs found and fixed (not doc bugs)
 
@@ -49,6 +50,19 @@ Found by reviewing `src/App.tsx` and verified against the real sample data.
 | E | "This Month" dashboard stat was hardcoded to `>= "2024-11"` — permanently wrong | Computed from the current month |
 | F | `npm run build` was `vite build` only, so a type error could not fail the build | `tsc --noEmit && vite build` |
 | G | `vite.config.ts` used `__dirname` and an attribute-less JSON import — both break under Vite's native config loader | `import.meta.dirname`, `with { type: 'json' }` |
+| H | The status filter pills built their label with `s.charAt(0).toUpperCase() + s.slice(1)`. Harmless on `"archived"`, but on `"ARCHIVED"` it returns `"ARCHIVED"` — the migration alone would have put three all-caps buttons in the staff UI | Both the badge and the pills now read one exported `STATUS_LABELS` map, so they cannot drift |
+| I | Five `// ─── Section ───` divider comments survived the module split and pointed at the wrong file — `LoginScreen.tsx` was headed "Screen 2: Staff Dashboard" | Removed. Also dropped the two unused type imports the split introduced |
+
+**Note on H.** The migration was verified by rendering, not by assuming. All six
+screens were rendered to static markup and asserted: 6 `ARCHIVED` / 1 `DRAFT` /
+1 `NEEDS_REVIEW` in the seed data, `isPending` counting 2, every badge still
+carrying its colour class (`status-archived` / `status-pending` /
+`status-needs-review`) rather than a bare unstyled `status-badge`, all three
+filter pills labelled, and no raw enum value leaking into visible text. The
+staff dashboard's "Pending Review" stat still reads 2, exactly as it did before
+the rename, because `DRAFT` + `NEEDS_REVIEW` is the same pair of theses the old
+`"pending" || "needs_review"` filter matched. Ranking is untouched — the BM25
+harness still reports a max score delta of `0.000e+0`.
 
 **Behaviour preserved, and proved rather than assumed.** `05`'s ranking maths is
 unchanged. An old-vs-new harness over the 8 real sample theses confirmed:

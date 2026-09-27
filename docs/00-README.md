@@ -40,14 +40,15 @@ one at a time.
 | 01 | `01-system-architecture.md` | all | context; no build work |
 | 02 | `02-database-design.md` | A | types, schema, seed script, enum migration |
 | 03 | `03-backend-firebase.md` | A | Firebase, Google auth, roles, security rules |
-| 04 | `04-frontend.md` | A + C | **module split**, live data, theme, header |
-| 05 | `05-search-ranking.md` | B | move BM25 to `search.ts`, debounce, filters |
+| 04 | `04-frontend.md` | A + C | ~~module split~~ **done**, then live data, theme, header |
+| 05 | `05-search-ranking.md` | B | debounce + filters (`search.ts` already exists) |
 | 06 | `06-pdf-extraction.md` | C | pdf.js auto-extraction |
 | 07 | `07-combined-summary.md` | B | extractive summary |
 | 08 | `08-deployment.md` | C | build, deploy, authorize domain |
 | 09 | `09-testing-checklist.md` | C | full QA pass |
 | 10 | `10-group-work-split.md` | all | who owns what, merge order, risks |
 | 11 | `11-doc-errata.md` | — | what was corrected and why |
+| 12 | `12-how-to-contribute.md` | everyone | **read once if you have never used GitHub** |
 
 Steps 06 and 07 are independent — take whichever you prefer.
 
@@ -57,15 +58,15 @@ Steps 06 and 07 are independent — take whichever you prefer.
 
 The app is **not** a blank project. A Figma prototype is already built and working:
 
-- 6 screens as React components
-- Real BM25 with IDF/TF saturation
+- 6 screens as React components, one file per screen
+- Real BM25 with IDF/TF saturation, over a prebuilt corpus index
 - Real prefix + substring matching
 - Department / year / status filters
 - "Why this rank?" term-by-term breakdown
 
 What is still fake:
 
-- Data comes from a hardcoded `SAMPLE_THESES` array, not Firestore
+- Data comes from a hardcoded `SAMPLE_THESES` array in `src/data.ts`, not Firestore
 - Login has two role buttons, not Google sign-in
 - PDF extraction is a `setTimeout` and a `MOCK_ABSTRACT` string
 - The summary is one static template string
@@ -78,14 +79,15 @@ preamble, and it is the main thing that keeps the project on schedule.
 
 ## Progress tracker
 
-Verified against the code on 2026-09-26.
+Verified against the code on 2026-09-27.
 
 | Step | Owner | Status |
 |------|-------|--------|
 | 01 Architecture | all | ☑ done |
-| Split `App.tsx` into modules | all, together | ☐ |
-| Migrate status enum to uppercase | with the split | ☐ |
-| Delete one lockfile | with the split | ☐ |
+| Split `App.tsx` into modules | all, together | ☑ done — `c5644d4` |
+| Delete one lockfile | with the split | ☑ done — npm only |
+| Build runs `tsc --noEmit` | with the split | ☑ done |
+| Migrate status enum to uppercase | all, together | ☑ done — see `02` §5 |
 | 02 Schema + seed | A | ☐ |
 | 03 Auth + rules + authorized domains | A | ☐ |
 | 04 Live data | A | ☐ |

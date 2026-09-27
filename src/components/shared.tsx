@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 // Small presentational pieces used by more than one screen.
-import type { Screen, Thesis } from "../types";
+import { useEffect } from "react";
+import type { ThesisStatus } from "../types";
 
 export function ISUSeal({ size = 40 }: { size?: number }) {
   return (
@@ -16,20 +16,24 @@ export function ISUSeal({ size = 40 }: { size?: number }) {
   );
 }
 
-export function StatusBadge({ status }: { status: Thesis["status"] }) {
+/** Human-readable text for each status. Shared with the search filter pills so
+ *  the badge and the filter can never disagree. */
+export const STATUS_LABELS: Record<ThesisStatus, string> = {
+  ARCHIVED: "Archived",
+  NEEDS_REVIEW: "Needs Review",
+  DRAFT: "Draft",
+};
+
+export function StatusBadge({ status }: { status: ThesisStatus }) {
+  // CSS class names are left lowercase in App.css; only the enum keys changed.
   const cls = {
-    archived: "status-archived",
-    pending: "status-pending",
-    needs_review: "status-needs-review",
-  }[status];
-  const label = {
-    archived: "Archived",
-    pending: "Pending",
-    needs_review: "Needs Review",
+    ARCHIVED: "status-archived",
+    DRAFT: "status-pending",
+    NEEDS_REVIEW: "status-needs-review",
   }[status];
   return (
     <span className={`status-badge ${cls}`}>
-      {label}
+      {STATUS_LABELS[status]}
     </span>
   );
 }
@@ -55,4 +59,3 @@ export function Toast({ message, onClose }: { message: string; onClose: () => vo
   );
 }
 
-// ─── Screen 1: Login ──────────────────────────────────────────────────────────
