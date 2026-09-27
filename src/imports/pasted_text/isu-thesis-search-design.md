@@ -1,3 +1,34 @@
+# ⚠️ SUPERSEDED — do not build from this file
+
+This is the **original prompt that was pasted into Figma Make** to generate the
+prototype UI. It is kept for provenance only.
+
+**The buildable specification is in [`docs/`](../../../docs/), starting at
+[`docs/00-README.md`](../../../docs/00-README.md).** Where this file and `docs/`
+disagree, `docs/` wins.
+
+### Still authoritative here
+
+- The **ISU colour variables** in "FIGMA COLOR VARIABLES" below. These match
+  `src/index.css` and are the source of truth for the palette.
+
+### Superseded by `docs/`
+
+| This file says | The app does / `docs/` says |
+|---|---|
+| Floating "Combined Summary (N)" button, bottom-right | **Removed.** There is one button — "View Summary (N)" over manually ticked results (`docs/07` §1) |
+| Summary covers the "top 5 results" | Summarises the **ticked** results, in rank order |
+| Action bar: "Copy Summary", "Export as PDF", "Close" | **Close only** (`docs/07` §4) |
+| Header bar 64px | `--header-h` variable, 56px (`docs/04` §4.2) |
+| Search matches "title, author, keyword, year" | Searches **title + abstract + keywords** only. Adviser names are *not* searchable |
+| "Relevance: 94%" | Capped just under 100% by design (`docs/05` §4) |
+| Offline search index cached in IndexedDB | Not implemented. In-memory only (`docs/05` §6) |
+| PWA "Install App" prompt | Not implemented (`docs/08`) |
+
+The rest of this file is the original brief, unedited, below.
+
+---
+
 Design a high-fidelity mobile-first web app prototype for "ISU Thesis Archive Search" — the official thesis archive system for Isabela State University Echague Campus.
 BRAND IDENTITY (Official ISU Colors from Corporate Visual Identity Manual)
 Primary Colors:
