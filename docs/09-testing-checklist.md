@@ -1,6 +1,6 @@
 # 09 — Final Testing Checklist (QA)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** C · **Depends on:** all · **Last step**
 
 **Prompt to your AI:**

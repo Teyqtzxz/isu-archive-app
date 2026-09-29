@@ -1,6 +1,6 @@
 # 03 — Backend: Firebase Setup, Auth, Roles, Security Rules
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** A · **Depends on:** 02 · **Next:** 04
 
 **Prompt to your AI:**

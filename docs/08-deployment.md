@@ -1,6 +1,6 @@
 # 08 — Deployment, Git Workflow & PWA
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** C · **Depends on:** 03, 04, 06 · **Next:** 09
 
 **Prompt to your AI:**

@@ -1,6 +1,6 @@
 # 07 — Combined Summary (extractive, with citations)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
