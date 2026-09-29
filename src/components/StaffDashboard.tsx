@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Role, StaffTab, Thesis } from "../types";
-import { isPending } from "../types";
+import { isPending, registeredAtISO } from "../types";
 import { ISUSeal, StatusBadge, DeptBadge } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 
@@ -23,7 +23,7 @@ export function StaffDashboard({
   const stats = {
     total: theses.length,
     pending: theses.filter(isPending).length,
-    thisMonth: theses.filter(t => t.dateAdded.startsWith(thisMonthPrefix)).length,
+    thisMonth: theses.filter(t => registeredAtISO(t).startsWith(thisMonthPrefix)).length,
   };
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -152,7 +152,7 @@ export function StaffDashboard({
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <DeptBadge dept={t.department} small />
                     <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t.year}</span>
-                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>· {t.dateAdded}</span>
+                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>· {registeredAtISO(t).slice(0, 10)}</span>
                   </div>
                 </div>
               ))}
