@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Screen, ExtractionState, Thesis } from "../types";
-import { DEPARTMENTS, ADVISERS } from "../data";
+import { DEPARTMENTS } from "../types";
+import { ADVISERS } from "../data";
 import { DeptBadge } from "./shared";
 
 export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (thesis: Thesis) => void }) {
@@ -42,7 +43,11 @@ export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSucc
     onSuccess({
       id: Date.now().toString(), title: form.title, department: form.department,
       year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
-      status: "ARCHIVED", dateAdded: new Date().toISOString().split("T")[0], driveLink: form.driveLink,
+      // Status is still hardcoded here on purpose. Step 02 owns the schema;
+      // choosing ARCHIVED vs NEEDS_REVIEW per button is step 04 work, and the
+      // spec says status is always passed in, never hardcoded inside a save.
+      status: "ARCHIVED", registeredBy: "", registeredAt: new Date().toISOString(),
+      driveLink: form.driveLink,
     });
   }
 

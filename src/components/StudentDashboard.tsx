@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
+import { registeredAtISO } from "../types";
 import { ISUSeal, DeptBadge } from "./shared";
 
 export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; onSearch: (q: string) => void; onSignOut: () => void }) {
@@ -16,7 +17,9 @@ export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thes
 
   const quickFilters = ["Recent", "Agriculture", "Computer Science", "Forestry", "Biology", "Education"];
 
-  const recent = [...theses].sort((a, b) => b.dateAdded.localeCompare(a.dateAdded)).slice(0, 6);
+  const recent = [...theses]
+  .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a)))
+  .slice(0, 6);
 
   function handleSearch() {
     if (heroQuery.trim()) onSearch(heroQuery);

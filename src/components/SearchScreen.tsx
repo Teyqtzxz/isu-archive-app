@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
-import { STATUSES } from "../types";
+import { STATUSES, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS } from "./shared";
 
@@ -43,7 +43,7 @@ export function SearchScreen({
     if (!query.trim()) {
       return filtered
         .map(t => ({ thesis: t, score: 0, termScores: empty }))
-        .sort((a, b) => b.thesis.dateAdded.localeCompare(a.thesis.dateAdded));
+        .sort((a, b) => registeredAtISO(b.thesis).localeCompare(registeredAtISO(a.thesis)));
     }
 
     const df = computeDocFreq(tokenize(query), index);
