@@ -183,6 +183,10 @@ Fake, must be replaced:
 11. **Never commit a secret.** No `.env`, no service account JSON, no real API
     key. Firebase's *web* config is safe to commit — every browser downloads it
     anyway — but admin credentials are not.
+12. **Only edit the files this step doc names.** If a file outside the step's
+    scope needs changing, stop and ask first. Working on a file another member
+    owns is how the ownership split gets a merge conflict — that is the exact
+    failure the file layout was designed to prevent.
 
 ## ISU colour tokens (`src/index.css`)
 
