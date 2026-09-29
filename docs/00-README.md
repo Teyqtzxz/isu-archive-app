@@ -49,6 +49,7 @@ one at a time.
 | 10 | `10-group-work-split.md` | all | who owns what, merge order, risks |
 | 11 | `11-doc-errata.md` | — | what was corrected and why |
 | 12 | `12-how-to-contribute.md` | everyone | **read once if you have never used GitHub** |
+| 13 | `13-prompt-templates.md` | everyone | **copy-paste prompts for every step — start here** |
 
 Steps 06 and 07 are independent — take whichever you prefer.
 

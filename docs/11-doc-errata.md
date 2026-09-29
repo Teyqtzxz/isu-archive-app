@@ -36,6 +36,7 @@ rather than a crash — you would not notice until the demo.
 | 19 | Doc told the group the prototype uses pnpm | pnpm was never installed; the lockfile was a stray artefact | `01` §1, `08` §1 |
 | 20 | Doc said the dev server is on port 5173 | It is 8443, set in `vite.config.ts` | `01` §1 |
 | 21 | `02` §5 and `04` Part 1 gave `src/App.tsx` line numbers (~18, ~33, ~196, ~352, ~959) for the enum migration and the module split — all stale the moment the split landed | Rewritten against the post-split file layout, and both sections marked done | `02` §5, `04` Part 1 |
+| 22 | `07` and `09` pointed at `src/components/SummaryPanel.tsx`, which does not exist — the module split renamed it `CombinedSummaryPanel.tsx`. Worst of all, the QA check was `grep -n "copied" SummaryPanel.tsx` expecting no output: grep on a missing file writes to stderr and prints nothing to stdout, so **the check could never fail** | Corrected to the real filename in 4 places, and added the check nobody had: that `const extractive` (the hardcoded mock at `CombinedSummaryPanel.tsx:8`) is gone and `from "../summary"` now appears. Both new checks were run against current code and correctly report a match, confirming they can fail | `07` §prompt + §8, `09` §7 + auto block |
 
 ## Code bugs found and fixed (not doc bugs)
 
