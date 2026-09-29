@@ -1,13 +1,13 @@
 # 04 — Frontend: Module Split, Live Data, Theme, Responsive Header
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** A (data) + C (CSS) · **Depends on:** 03 · **Next:** 05
 
 **Prompt to your AI:**
-> *"Follow `00-AI-PREAMBLE.md` first, then implement this file in two parts.
-> Part 1: split `src/App.tsx` into the target module layout, moving code without
-> changing behaviour. Part 2: create `src/data.ts` to load theses from Firestore
-> and save new ones. Do not start step 05."*
+> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **Part 1 is
+> already done — the module split shipped in commit `c5644d4`; do not redo it.**
+> Implement Part 2 only: create `src/data.ts` to load theses from Firestore and
+> save new ones, then wire it into `App.tsx`. Do not start step 05."*
 
 This file is bigger than the others because it contains a **refactor that must
 happen before three people work in parallel.** Do Part 1 even if you are working

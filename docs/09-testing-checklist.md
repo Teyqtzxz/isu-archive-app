@@ -1,6 +1,6 @@
 # 09 — Final Testing Checklist (QA)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** C · **Depends on:** all · **Last step**
 
 **Prompt to your AI:**
@@ -99,7 +99,10 @@ matters most.
 
 ## 7. Combined summary
 
-- [ ] **[auto]** `grep -n "copied" src/components/SummaryPanel.tsx` returns nothing
+- [ ] **[auto]** `grep -n "const extractive" src/components/CombinedSummaryPanel.tsx`
+      returns nothing — the hardcoded mock summary is gone
+- [ ] **[auto]** `grep -n "copied" src/components/CombinedSummaryPanel.tsx` returns
+      nothing — the Copy button was removed with the old action bar
 - [ ] "View Summary (N)" appears only when N ≥ 1, and N matches the ticked count
 - [ ] Panel slides up on mobile, centred on desktop
 - [ ] Sentences are **real sentences from the top results**, and they change when
@@ -152,10 +155,23 @@ matters most.
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
 grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts   # expect: no output
-grep -n "copied" src/components/SummaryPanel.tsx      # expect: no output
+grep -n "const extractive" src/components/CombinedSummaryPanel.tsx   # expect: no output
+grep -n "copied" src/components/CombinedSummaryPanel.tsx             # expect: no output
 ls package-lock.json pnpm-lock.yaml 2>/dev/null        # expect: exactly one
 npm run build                                          # expect: 0 errors
 ```
+
+**On Windows PowerShell there is no `grep`.** Use Git Bash for that block, or
+translate each line:
+
+| Instead of | In PowerShell use |
+|---|---|
+| `grep -rn "foo" src/` | `Get-ChildItem src -Recurse -Include *.ts,*.tsx \| Select-String -Pattern 'foo'` |
+| `grep -n "foo" file.tsx` | `Select-String -Path file.tsx -Pattern 'foo'` |
+| `ls a b 2>/dev/null` | `Get-ChildItem a, b -ErrorAction SilentlyContinue \| Select-Object -ExpandProperty Name` |
+
+A *"grep is not recognized"* message is a shell problem, **not** a failed check.
+Read the exit behaviour before assuming the code is broken.
 
 ---
 

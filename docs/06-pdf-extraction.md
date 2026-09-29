@@ -1,6 +1,6 @@
 # 06 — PDF Auto-Extraction
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**

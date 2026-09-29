@@ -1,15 +1,15 @@
 # 05 — Search & Ranking (BM25, debounce, filters)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** B · **Depends on:** 04 · **Next:** 06 or 07
 
 **Prompt to your AI:**
-> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Move the existing
-> search code out of `App.tsx` into `src/search.ts` **without changing their
-> behaviour** — that means `tokenize`, `findMatchScore`, `buildIndex`,
-> `computeDocFreq`, `bestFieldFor` and `bm25Score`, all verbatim. Then add a
-> 300ms debounce and finish the filters and the 'Why this rank?' panel. Do not
-> change the scoring maths. Do not start step 06."*
+> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **`src/search.ts`
+> already exists with `tokenize`, `findMatchScore`, `buildIndex`,
+> `computeDocFreq`, `bestFieldFor` and `bm25Score` — leave every one of them
+> exactly as they are and do not change the scoring maths.** Add the 300ms
+> debounce, finish the filters and the 'Why this rank?' panel, and add the empty
+> states. Do not start step 06."*
 
 ---
 

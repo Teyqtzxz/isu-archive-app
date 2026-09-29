@@ -1,12 +1,13 @@
 # 02 — Database Design (Cloud Firestore)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** A · **Depends on:** 01 · **Next:** 03
 
 **Prompt to your AI:**
-> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Create the Firestore
-> schema, write `src/types.ts` and `src/seed.ts`, and migrate the prototype's status
-> values to the canonical uppercase enum. Do not start step 03."*
+> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Extend
+> `src/types.ts` to the target schema, create `src/seed.ts`, and write down the
+> Firestore schema. **Section 5 is already done — do not redo the status
+> migration.** Do not start step 03."*
 
 ---
 
@@ -16,14 +17,38 @@ Two collections, no subcollections, no relations beyond a user id reference.
 Nothing to run in the console yet — step 03 creates the project. You are writing
 the types and the seed script now so step 04 can wire them up.
 
-**Files to create:** `src/types.ts`, `src/seed.ts`
-**Files to modify:** `src/App.tsx` (status values only)
+**Files to create:** `src/seed.ts`
+**Files to modify:** `src/types.ts`
+
+`src/types.ts` **already exists** and already exports `STATUSES`, `ThesisStatus`,
+`Thesis` and `isPending`. **Extend it to the target schema in §2 — do not
+rewrite it from scratch**, or you will lose the `ExtractionState` lowercase
+warning comment and every existing import.
+
+Nothing in `src/App.tsx` needs changing. It is 87 lines of routing and state,
+and the status migration it used to be responsible for already landed.
 
 ---
 
 ## 2. `src/types.ts`
 
-Create it. These types are the contract for the whole app.
+Extend the file that is already there. These types are the contract for the whole
+app.
+
+**Keep as-is, do not touch:** `STATUSES`, `ThesisStatus`, `isPending`, and
+`ExtractionState` with its lowercase warning comment. All four are already
+shipped and already imported by six components.
+
+**To change:** add `registeredBy` and `registeredAt` to `Thesis`, and replace
+the current `dateAdded` field.
+
+**One decision for you:** this spec puts `DEPARTMENTS` in `src/types.ts`, but
+today it lives in `src/data.ts` and is imported by `RegisterForm.tsx`. Moving it
+touches three files and is not required for anything else in this step. Either
+move it and update all three imports, or leave it in `data.ts` and note the
+deviation here. **Whichever you pick, do not leave two `DEPARTMENTS`
+definitions** — two copies is how the filter values and the badge labels drift
+apart.
 
 ```typescript
 import type { Timestamp } from "firebase/firestore";

@@ -1,12 +1,12 @@
 # 07 — Combined Summary (extractive, with citations)
 
-**Status:** ☐ DONE
+**Status:** ☐ TODO
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Create
 > `src/summary.ts` with the extractive algorithm below, replace the hardcoded
-> summary string in `SummaryPanel.tsx`, implement the Close-only action bar, and
+> summary string in `CombinedSummaryPanel.tsx`, implement the Close-only action bar, and
 > make citation chips jump to their source result. Do not call any AI or API."*
 
 ---
@@ -248,7 +248,12 @@ Worth knowing before you demo, because a teacher may probe:
 - [ ] Ticking two results and opening the panel summarises those two — and only
       those two
 - [ ] The action bar has exactly one button — no Copy, no Export
-- [ ] `grep -n "copied" src/components/SummaryPanel.tsx` returns nothing
+- [ ] `grep -n "const extractive" src/components/CombinedSummaryPanel.tsx` returns
+      nothing — that hardcoded template literal is the mock this step replaces
+- [ ] `grep -n 'from "../summary"' src/components/CombinedSummaryPanel.tsx` finds
+      a match — the panel now calls the real algorithm
+- [ ] `grep -n "copied" src/components/CombinedSummaryPanel.tsx` returns nothing
+      (the Copy button and its state are removed)
 - [ ] No network request is made when the panel opens
 - [ ] `npm run build` passes
 
