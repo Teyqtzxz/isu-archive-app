@@ -94,18 +94,17 @@ matters most.
 - [ ] Empty query → all theses, newest first
 - [ ] "Relevance: XX%" shows, and the top result shows the highest percentage
       (it is capped just under 100% by design — that is intentional)
-- [ ] "Why this rank?" shows term-by-term math that sums to the displayed total
 - [ ] Department / Year / Status combine with the query and each other
 - [ ] Active filters show as removable chips; "Clear filters" resets everything
 - [ ] Students do not see the Status filter
 - [ ] Results change as you type, and stop updating once you pause
 
-## 6. Hover / tap preview
+## 6. Abstract preview
 
-- [ ] Hover on desktop / tap on mobile → floating abstract card (~320px)
-- [ ] Card shows the full abstract + "Open in Drive" (green outline)
+- [ ] Clicking (or tapping) a result title expands the full abstract under it
+- [ ] The preview shows "Open in Drive" (green outline)
 - [ ] "Open in Drive" opens in a new tab
-- [ ] Closes on click-outside and on ESC
+- [ ] Clicking the title again collapses it
 - [ ] "Open in Drive" on a seeded thesis whose link is still a placeholder does
       not crash the page (it just opens Drive's own not-found page)
 

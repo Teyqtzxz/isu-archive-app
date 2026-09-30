@@ -10,8 +10,10 @@ export function findMatchScore(queryTerm: string, docToken: string): number {
   if (docToken === queryTerm) return 1;
   if (docToken.startsWith(queryTerm)) return 0.8;
   // A mid-token match is only trustworthy for longer terms. Without this guard
-  // "rate" matches generate/accurate/graduate/corporate, and a thesis stuffed
-  // with those words outranks the one that actually contains the term.
+  // a 2–3 letter term matches inside almost every word — "ion" hits all 21 seed
+  // theses, "dr" hits "hydrological" — and a thesis stuffed with those words
+  // outranks the one that actually contains the term. Terms of 4+ letters still
+  // match mid-word on purpose: "rate" finds "demonstrated" (docs/05 §3).
   if (queryTerm.length >= 4 && docToken.includes(queryTerm)) return 0.6;
   return 0;
 }

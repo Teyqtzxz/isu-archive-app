@@ -1,15 +1,31 @@
 # 05 — Search & Ranking (BM25, debounce, filters)
 
-**Status:** ☐ TODO
+**Status:** ◐ BUILT — 2026-09-30, branch `person-b-search`, pending the §8
+checks by hand.
 **Owner:** B · **Depends on:** 04 · **Next:** 06 or 07
+
+### What shipped
+
+- 300ms debounce in `SearchScreen` (`query` for the input, `debouncedQuery`
+  for BM25). While a search is pending the count reads "Searching…".
+- Queries shorter than 2 characters count as "no query" (all theses, newest first).
+- `search.ts`: **no code change** (one comment corrected, see §3). A
+  before/after harness over the 21 seed theses and 14 queries confirmed
+  identical scores and ranking order.
+- **"Why this rank?" was removed** at the group lead's request (§4). The
+  relevance % badge stays.
+- Department options come from `DEPARTMENTS` (all ten, even with no theses);
+  staff start on their own department (prop from `App.tsx`), students on All.
+- Active filters show as removable chips; "Clear filters" resets all three.
+- "The archive is empty" and "No theses found" are separate states.
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **`src/search.ts`
 > already exists with `tokenize`, `findMatchScore`, `buildIndex`,
 > `computeDocFreq`, `bestFieldFor` and `bm25Score` — leave every one of them
 > exactly as they are and do not change the scoring maths.** Add the 300ms
-> debounce, finish the filters and the 'Why this rank?' panel, and add the empty
-> states. Do not start step 06."*
+> debounce, finish the filters, and add the empty states. There is no
+> 'Why this rank?' panel — it was removed. Do not start step 06."*
 
 ---
 
@@ -27,12 +43,12 @@ engine:
 | `docTextOf(t)` | ✅ works — the searchable text: title + abstract + keywords |
 | `buildIndex(theses)` | ✅ works — pre-tokenises the corpus and builds a postings map |
 | `computeDocFreq(tokens, index)` | ✅ works — document frequency per query term |
-| `bestFieldFor(t, term)` | ✅ works — title / keyword / abstract, for the breakdown panel |
+| `bestFieldFor(t, term)` | ✅ works — title / keyword / abstract (was for the removed breakdown panel; kept untouched) |
 | `bm25Score(query, thesis, docIndex, index, df)` | ✅ works — returns `{ score, termScores }` |
 | `SearchScreen` filters by department / year / status | ✅ works |
 | Empty query sorts newest-first | ✅ works |
 | "Relevance: XX%" badges | ✅ works |
-| "Why this rank?" per-term breakdown | ✅ works |
+| "Why this rank?" per-term breakdown | ❌ removed 2026-09-30 (§4) |
 
 It is already in `src/search.ts`. **Do not move, rewrite or "improve" it.** Your
 job is only the remaining gaps below. The one sanctioned change to `search.ts` is
@@ -97,16 +113,22 @@ three-character query term matches *any* word containing those three letters, an
 because term frequency is summed across every matching token, one thesis can
 outrank another for a term it does not contain.
 
-Measured against the 8 prototype theses, an unguarded `rate` matched:
+Measured against the 21 seed theses:
 
-| Query | Words it silently matched |
-|-------|--------------------------|
-| `rate` | `invertebrates`, `macroinvertebrate`, `macroinvertebrates`, `demonstrated`, `integrated` |
+| Query | With the guard | Without it |
+|-------|----------------|------------|
+| `ion` | 0 theses | **all 21** — it is inside almost every word |
+| `ate` | 0 theses | 18 |
+| `dr`  | prefix only (`drainage`…) | also `hydrological` |
 
-So a search for `rate` credited four separate theses — including two about
-crop-yield machine learning — for a word they never used. Worse, `dr` (two
-characters) substring-matched `hydrological`, which is why searching an adviser's
-name like `Dr. Maria Santos` used to return a hydrology thesis.
+`dr` substring-matching `hydrological` is why searching an adviser's name like
+`Dr. Maria Santos` used to return a hydrology thesis.
+
+**What the guard does not do:** a 4+ letter term still matches mid-word, by
+design — that is what makes `diver` find *Biodiversity*. So `rate` legitimately
+matches `demonstrated`, `integrated`, `generated` and surfaces ~10 theses, with
+or without the guard. An earlier version of this doc used `rate` as the test
+for the guard; it could never have passed. Use `ion` (§8).
 
 `startsWith` stays unguarded, so `Bio` → Biodiversity and `diver` → Biodiversity
 both still work. Only the mid-token match is restricted.
@@ -122,7 +144,7 @@ debugging it.
 
 Weighing fuzzy hits **inside** the scoring function, as `findMatchScore` does, is
 correct for two reasons: a fuzzy hit competes with an exact hit on the same
-scale, and the "Why this rank?" panel reports a real number instead of a
+scale, and any per-term figure reports a real number instead of a
 fabricated one. Keep it.
 
 ### Single-character guard
@@ -163,28 +185,18 @@ every score with `NaN`.
 
 ---
 
-## 4. Gap 3 — "Why this rank?" and the filters
+## 4. Gap 3 — the filters
 
-### The breakdown must show honest arithmetic
+### "Why this rank?" — removed
 
-Per query term, show IDF, TF, and the product, then the total:
+The per-term breakdown panel was **removed on 2026-09-30 at the group lead's
+request**. It had been built (IDF × TF = score per term, plus the total) and
+then taken out; `search.ts` is back to its original code. Results still show
+the relevance % badge. Do not re-add the panel unless the group decides to.
 
-```
-biodiversity   IDF 2.14 × TF 1.00 = 2.14
-river          IDF 3.01 × TF 1.00 = 3.01
-─────────────────────────────────────────
-Total: 5.15
-```
-
-Use the same numbers `bm25Score` computed. Do not recompute them for display —
-two implementations of the same formula will eventually disagree, and the panel
-becomes a thing that lies.
-
-Today `bm25Score` returns only the product per term (`{ term, score, field }`).
-So this is the **one allowed change to `search.ts`**: add `idf` and `tf`
-(`tfNorm`) to each `termScores` entry, from the variables already computed on
-the lines above the push. Additive only — `score` and every formula stay
-byte-identical, and the §8 "ranking identical" check must still pass.
+`bm25Score` still returns `termScores` and `bestFieldFor` is still exported —
+the rule "leave every search.ts function exactly as it is" wins over removing
+now-unused output.
 
 ### Filters
 
@@ -313,11 +325,10 @@ actually have something to match against.
 - [ ] Typing `diver` also surfaces it
 - [ ] A single-character query does not search
 - [ ] An empty query returns all theses, newest first
-- [ ] "Why this rank?" shows real term math that sums to the displayed total
 - [ ] The top result shows the **highest** relevance percentage. It reads ~97%,
       not 100% — that is deliberate, see §4
-- [ ] Searching `rate` does **not** surface the machine-learning or watershed
-      theses. If it does, the `length >= 4` guard in `findMatchScore` was lost
+- [ ] Searching `ion` returns **no results** ("No theses found"). If it returns
+      every thesis, the `length >= 4` guard in `findMatchScore` was lost
 - [ ] Department / Year / Status filters combine with the query and with each other
 - [ ] Active filters appear as removable chips; "Clear filters" resets everything
 - [ ] Staff see their own department preselected; students see "All Departments"

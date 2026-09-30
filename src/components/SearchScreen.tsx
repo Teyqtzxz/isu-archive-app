@@ -1,22 +1,35 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
-import { STATUSES, registeredAtISO } from "../types";
+import { DEPARTMENTS, STATUSES, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS, Icon } from "./shared";
 
 export function SearchScreen({
-  theses, role, initialQuery, onCombinedSummary, onBack, onSignOut,
+  theses, role, initialQuery, defaultDepartment = "", onCombinedSummary, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role; initialQuery?: string;
+  /** Staff start filtered to their own department (docs/05 §4). Students start on "All". */
+  defaultDepartment?: string;
   onCombinedSummary: (results: Thesis[], query: string) => void;
   onBack: () => void;
   onSignOut: () => void;
 }) {
   const [query, setQuery] = useState(initialQuery || "");
-  const [deptFilter, setDeptFilter] = useState("");
+  // The input shows `query` instantly; BM25 runs on `debouncedQuery`, 300ms
+  // after typing stops. The clearTimeout is what makes it a debounce rather
+  // than a delay — without it every keystroke would still run a search.
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery || "");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+  // A single character matches too much to be useful (findMatchScore ignores
+  // terms under 2 chars anyway), so it counts as "no query": show everything.
+  const searchQuery = debouncedQuery.trim().length >= 2 ? debouncedQuery.trim() : "";
+
+  const [deptFilter, setDeptFilter] = useState(role === "staff" ? defaultDepartment : "");
   const [yearFilter, setYearFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [expandedRank, setExpandedRank] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,26 +51,29 @@ export function SearchScreen({
   const index = useMemo(() => buildIndex(filtered), [filtered]);
 
   const results = useMemo(() => {
-    const empty = [] as { term: string; score: number; field: string }[];
-
     // No query: everything, newest first.
-    if (!query.trim()) {
+    if (!searchQuery) {
       return filtered
-        .map(t => ({ thesis: t, score: 0, termScores: empty }))
+        .map(t => ({ thesis: t, score: 0 }))
         .sort((a, b) => registeredAtISO(b.thesis).localeCompare(registeredAtISO(a.thesis)));
     }
 
-    const df = computeDocFreq(tokenize(query), index);
+    const df = computeDocFreq(tokenize(searchQuery), index);
     return filtered
-      .map((t, i) => ({ thesis: t, ...bm25Score(query, t, i, index, df) }))
+      .map((t, i) => ({ thesis: t, score: bm25Score(searchQuery, t, i, index, df).score }))
       .filter(r => r.score > 0)
       .sort((a, b) => b.score - a.score);
-  }, [filtered, index, query]);
+  }, [filtered, index, searchQuery]);
 
   const maxScore = Math.max(...results.map(r => r.score), 0.01);
-  const allDepts = Array.from(new Set(theses.map(t => t.department)));
   const allYears = Array.from(new Set(theses.map(t => t.year))).sort((a, b) => b - a);
   const hasActiveFilters = deptFilter || yearFilter || statusFilter;
+  const activeChips: { label: string; clear: () => void }[] = [
+    ...(deptFilter ? [{ label: deptFilter, clear: () => setDeptFilter("") }] : []),
+    ...(yearFilter ? [{ label: yearFilter, clear: () => setYearFilter("") }] : []),
+    ...(statusFilter ? [{ label: STATUS_LABELS[statusFilter as keyof typeof STATUS_LABELS], clear: () => setStatusFilter("") }] : []),
+  ];
+  const typing = query.trim() !== debouncedQuery.trim();
 
   return (
     <div className="app-root">
@@ -104,8 +120,8 @@ export function SearchScreen({
             <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
               aria-label="Filter by department"
               className={`select-pill${deptFilter ? " select-pill-active" : ""}`}>
-              <option value="">{role === "staff" ? "My Department" : "All Departments"}</option>
-              {allDepts.map(d => <option key={d} value={d}>{d}</option>)}
+              <option value="">All Departments</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}{role === "staff" && d === defaultDepartment ? " (mine)" : ""}</option>)}
             </select>
             <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
               aria-label="Filter by year"
@@ -130,6 +146,18 @@ export function SearchScreen({
             )}
           </div>
         </div>
+        {activeChips.length > 0 && (
+          <div className="container">
+            <div className="active-chips" aria-label="Active filters">
+              {activeChips.map(c => (
+                <span key={c.label} className="active-chip">
+                  {c.label}
+                  <button onClick={c.clear} aria-label={`Remove filter ${c.label}`}><Icon name="x" size={12} strokeWidth={2.5} /></button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -137,14 +165,16 @@ export function SearchScreen({
         {/* Header row */}
         <div className="results-head">
           <div className="results-count" aria-live="polite">
-            {query ? (
-              <>{results.length} result{results.length !== 1 ? "s" : ""} for <em>“{query}”</em></>
+            {typing ? (
+              <span className="results-typing">Searching…</span>
+            ) : searchQuery ? (
+              <>{results.length} result{results.length !== 1 ? "s" : ""} for <em>“{searchQuery}”</em></>
             ) : (
-              <>{results.length} theses</>
+              <>{results.length} {results.length === 1 ? "thesis" : "theses"}{hasActiveFilters ? " match the filters" : ", newest first"}</>
             )}
           </div>
           {selected.size > 0 && (
-            <button onClick={() => onCombinedSummary(results.filter(r => selected.has(r.thesis.id)).map(r => r.thesis), query)}
+            <button onClick={() => onCombinedSummary(results.filter(r => selected.has(r.thesis.id)).map(r => r.thesis), searchQuery)}
               className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}>
               <Icon name="layers" size={16} />
               View Summary ({selected.size})
@@ -152,18 +182,30 @@ export function SearchScreen({
           )}
         </div>
 
-        {results.length === 0 && (
+        {/* Two different empty states (docs/05 §5): no data at all vs no match. */}
+        {theses.length === 0 ? (
+          <div className="card empty-state" style={{ padding: "56px 20px" }}>
+            <div className="empty-state-icon"><Icon name="book" size={22} /></div>
+            <div className="empty-state-title">The archive is empty</div>
+            <div className="empty-state-text">No theses have been registered yet.</div>
+          </div>
+        ) : results.length === 0 && !typing && (
           <div className="card empty-state" style={{ padding: "56px 20px" }}>
             <div className="empty-state-icon"><Icon name="search" size={22} /></div>
             <div className="empty-state-title">No theses found</div>
             <div className="empty-state-text">Try different keywords, adjust filters, or check spelling.</div>
+            {hasActiveFilters && (
+              <button onClick={() => { setDeptFilter(""); setYearFilter(""); setStatusFilter(""); }}
+                className="btn btn-outline-green btn-sm" style={{ marginTop: 14 }}>
+                Clear filters
+              </button>
+            )}
           </div>
         )}
 
         <div className="results-list">
-          {results.map(({ thesis: t, score, termScores }) => {
-            const pct = query && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
-            const isExpanded = expandedRank === t.id;
+          {results.map(({ thesis: t, score }) => {
+            const pct = searchQuery && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
             const isSelected = selected.has(t.id);
             const showPreview = previewId === t.id;
 
@@ -194,51 +236,19 @@ export function SearchScreen({
                     <span className="result-meta">{t.year} · {t.adviser}</span>
                   </div>
 
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 28, marginBottom: query && termScores.length > 0 ? 10 : 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 28 }}>
                     {t.keywords.slice(0, 4).map(kw => (
                       <span key={kw} className="kw-mini">{kw}</span>
                     ))}
                   </div>
 
-                  {/* BM25 why this rank */}
-                  {query && termScores.length > 0 && (
-                    <div style={{ paddingLeft: 28 }}>
-                      <button onClick={() => setExpandedRank(isExpanded ? null : t.id)} className="why-btn" aria-expanded={isExpanded}>
-                        <Icon name="info" size={14} />
-                        Why this rank?
-                        <span style={{ display: "inline-flex", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-                          <Icon name="chevronDown" size={14} />
-                        </span>
-                      </button>
-                      {isExpanded && (
-                        <div className="animate-slide-up term-box">
-                          <div className="term-overline">BM25 term scores</div>
-                          {termScores.map(ts => (
-                            <div key={ts.term} className="term-row">
-                              <span className="term-name">{ts.term}</span>
-                              <div className="term-track">
-                                <div className="term-fill" style={{ width: `${Math.min(100, (ts.score / Math.max(...termScores.map(x => x.score))) * 100)}%` }} />
-                              </div>
-                              <span className="term-score">{ts.score.toFixed(2)}</span>
-                              <span className={`term-field term-field-${ts.field}`}>
-                                {ts.field}
-                              </span>
-                            </div>
-                          ))}
-                          <div className="term-foot">
-                            IDF × TF-normalized · BM25 k₁=1.5 b=0.75
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Inline abstract preview */}
                 {showPreview && (
                   <div className="animate-slide-up preview-box">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      <span className="term-overline" style={{ marginBottom: 0 }}>Abstract</span>
+                      <span className="overline-label" style={{ marginBottom: 0 }}>Abstract</span>
                       <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
                         <Icon name="external" size={13} />
                         Open in Drive

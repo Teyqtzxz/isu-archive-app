@@ -327,7 +327,10 @@ with no explanation, which is indistinguishable from a broken app.
 | "Confirm & Save" | `ARCHIVED` |
 | "Save Manually" | `NEEDS_REVIEW` |
 
-Pass it to `saveThesis()` from `data.ts`. Do not hardcode it in the save function.
+**Already done in step 04** — `RegisterForm.handleSave` picks the status from
+`extractState` and calls `onSave(thesis, status)`, which reaches `saveThesis()`.
+Do not touch it; this step only replaces the fake extraction. Keep the
+`extractState` values exactly as they are, since the status depends on them.
 
 ---
 

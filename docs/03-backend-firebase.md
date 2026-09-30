@@ -21,9 +21,8 @@ The sketches in §4–§5 are the design; the real files are the reference:
   signed-in user refreshing the page never sees the login screen flash.
 - `LoginScreen` maps Firebase error codes to plain messages; closing the popup
   is silent, a blocked popup says so.
-- **Sign-out from `SearchScreen` is not wired yet** — it is B's file and has no
-  `onSignOut` prop. Until B adds it, the search screen's Back button returns to
-  a dashboard that has Sign Out.
+- Sign-out from `SearchScreen` was added later, with the UI pass (PR #9): the
+  search header has a Sign Out button fed by the same `onSignOut` prop.
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Set up Firebase:
@@ -267,8 +266,7 @@ Remove the prototype's fake logout / `page.reload()` logic.
 `handleSignOut = () => signOutUser()` and passes it down as the `onSignOut` prop.
 Today `StaffDashboard` (which also hosts the Register tab) and
 `StudentDashboard` already take `onSignOut` — just change `handleSignOut` in
-`App.tsx`. `SearchScreen` has **no** `onSignOut` prop yet: ask B (`10` §2) to add
-one in their branch, then pass it from `App.tsx`. Do not edit `SearchScreen`,
+`App.tsx`. `SearchScreen` now takes `onSignOut` too (added in PR #9). Do not edit `SearchScreen`,
 `CombinedSummaryPanel` or `RegisterForm` yourself.
 
 Wire it at:

@@ -80,6 +80,12 @@ export function isPending(t: Pick<Thesis, "status">): boolean {
 export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string;
 
 export const DEPARTMENTS = [ /* the ten strings below */ ] as const;
+
+/** Stored role on users/{uid}. Uppercase; separate from the lowercase routing `Role`. */
+export type AccountRole = "STAFF" | "STUDENT";
+
+/** What the register form hands to saveThesis(): the server adds id, registeredBy, registeredAt. */
+export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
 ```
 
 This is what `src/types.ts` exports today (step 02 is merged). **Never compare or
@@ -109,32 +115,40 @@ like `"CAS"` — staff filters compare it against `Thesis.department`.
 ```
 src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
-  data.ts             ← SAMPLE_THESES, ADVISERS today; becomes the
-                        only Firestore module in steps 03–04     ✅ EXISTS
-  firebase.ts         ← app, auth, db — placeholder config until
-                        step 03 pastes the real one              ✅ EXISTS
-  seed.ts             ← one-off seed script, 21 theses           ✅ EXISTS
-  index.css           ← Tailwind + ISU tokens; step 04 adds
-                        safe-area + header vars                  ✅ EXISTS
+  data.ts             ← the ONLY Firestore module: sign-in, user profile,
+                        live theses, saveThesis, updateThesisStatus,
+                        plus the ADVISERS option list            ✅ EXISTS
+  firebase.ts         ← app, auth, db — real config for project
+                        isu-archive-9253b (committed on purpose) ✅ EXISTS
+  seed.ts             ← one-off seed script, 21 theses; skips
+                        existing titles; removeDuplicateTheses() ✅ EXISTS
+  index.css           ← Tailwind + design tokens (ISU colours,
+                        greys, radii, shadows) + safe-area vars  ✅ EXISTS
+  App.css             ← all component styles, read the tokens    ✅ EXISTS
   search.ts           ← pure: tokenize, findMatchScore, docTextOf,
                         SearchIndex, buildIndex, computeDocFreq,
                         bestFieldFor, bm25Score                  ✅ EXISTS
-  App.tsx             ← screen state machine + routing only (87 lines) ✅ EXISTS
+  App.tsx             ← auth listener, live-data subscription, screen
+                        routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
-    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast   ✅ EXISTS
+    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast,
+                        STATUS_LABELS, Icon, initialsOf          ✅ EXISTS
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx  ✅ EXIST
   ─── not created yet ───
   summary.ts          ← pure: extractive summarisation (step 07)
   extractPdf.ts       ← pure: Drive API download + pdf.js text extraction (step 06)
-  firestore.rules     ← project root, not src/ (step 03)
+
+firestore.rules       ← project root, not src/ — ISU-only, role immutable,
+                        theses writes staff-only; pasted into the console ✅ EXISTS
 ```
 
 File ownership (who may edit what) is in `10-group-work-split.md` §2.
 
 **The split is already done.** `App.tsx` used to be 1333 lines holding
-everything. It is now 87 lines of state and routing, with each screen, the
-types, the data and the search engine in their own file. Do not redo this. If a
+everything. It now holds only state, the auth and data wiring, and routing —
+each screen, the types, the data layer and the search engine are in their own
+files. Do not redo this. If a
 step below tells you to "move code into `src/search.ts`", that file already
 exists — the work is to *add* to it, not to create it.
 
@@ -153,8 +167,14 @@ Real, working — **do not rewrite**:
 - Corpus index: `buildIndex()`, `computeDocFreq()`, `bestFieldFor()` — in `src/search.ts`
 - Fuzzy prefix/substring: `findMatchScore()` → `1.0` exact, `0.8` prefix,
   `0.6` substring (only for query terms of 4+ characters)
-- "Why this rank?" per-term breakdown
 - Relevance % normalised to the top score, capped at 97% by design
+- 300ms search debounce, department/year/status filters with removable chips
+  (step 05)
+- Google sign-in (ISU accounts only), role routing, session restore, sign-out,
+  and `firestore.rules` (step 03)
+- Live Firestore data, save with status, "Mark as Archived", staff department
+  (step 04)
+- The theme, responsive header and icon set (step 04 Parts 3–4)
 - All six screens' UI, one file per screen in `src/components/`
 
 Three things in there are **deliberate and must survive a refactor** — each one
@@ -163,15 +183,14 @@ was a bug that was fixed, and each is easy to "clean up" back into a bug:
 | Rule | Why it exists |
 |------|---------------|
 | `bm25Score(query, thesis, docIndex, index, df)` takes an **index**, not a corpus | The corpus-taking version re-tokenised every document once per document per keystroke — quadratic. 461 ms → 6.3 ms at 200 theses. |
-| `queryTerm.length >= 4` before a substring match | Without it, `rate` matched `invertebrates`, `demonstrated` and `integrated`, and `dr` matched `hydrological`. |
+| `queryTerm.length >= 4` before a substring match | Without it, 2–3 letter terms match inside almost every word: `ion` hits all 21 seed theses and `dr` matched `hydrological`. (4+ letter terms like `rate` still match mid-word by design.) |
 | `avgDocLen` falls back to `1` on an empty corpus | Otherwise an empty archive yields `NaN`, and `NaN > 0` is false, so every result silently disappears. |
 
 Fake, must be replaced:
-- `SAMPLE_THESES`, `DEPARTMENTS`, `ADVISERS` constants → Firestore
-- `LoginScreen` role buttons → Google sign-in
 - `RegisterForm` `setTimeout` + `MOCK_ABSTRACT` + `Math.random() > 0.3` → pdf.js
-- `CombinedSummaryPanel` static template string → extractive algorithm
-- `src/firebase.ts` `REPLACE_ME` config values → the real config (step 03)
+  (step 06). Saving is already real — only the PDF reading is fake.
+- `CombinedSummaryPanel` static template string, and its Copy / Export buttons
+  → extractive algorithm with Close only (step 07)
 
 ## Rules
 
@@ -235,8 +254,9 @@ Never change these. They are from the ISU Corporate Visual Identity Manual.
 }
 ```
 
-The header height and `.main-content` padding must both read `--header-h`. Never
-hardcode a pixel height in two places.
+The header reads `--header-h` and is `position: sticky` in normal flow, so
+content always starts below it and no page needs a matching top padding. Never
+hardcode a header height anywhere else. Full token list: `src/index.css`.
 
 ## Departments (exact strings — used as filter values, must match everywhere)
 
