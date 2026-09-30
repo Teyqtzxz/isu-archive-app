@@ -57,20 +57,18 @@ Steps 06 and 07 are independent — take whichever you prefer.
 
 ## What already exists
 
-The app is **not** a blank project. A Figma prototype is already built and working:
+The app is **not** a blank project. Working today:
 
-- 6 screens as React components, one file per screen
-- Real BM25 with IDF/TF saturation, over a prebuilt corpus index
-- Real prefix + substring matching
-- Department / year / status filters
-- "Why this rank?" term-by-term breakdown
+- 6 screens as React components, one file per screen, with the ISU theme
+- Google sign-in (ISU accounts only), STAFF / STUDENT roles, security rules
+- Live Firestore data; staff register theses and mark them archived
+- Real BM25 over a prebuilt corpus index, prefix + substring matching, 300ms
+  debounce, department / year / status filters
 
 What is still fake:
 
-- Data comes from a hardcoded `SAMPLE_THESES` array in `src/data.ts`, not Firestore
-- Login has two role buttons, not Google sign-in
-- PDF extraction is a `setTimeout` and a `MOCK_ABSTRACT` string
-- The summary is one static template string
+- PDF extraction is a `setTimeout` and a `MOCK_ABSTRACT` string (step 06)
+- The summary is one static template string (step 07)
 
 **Do not rebuild the working parts.** Replace the data sources and the fake
 behaviour. This rule appears in `01-system-architecture.md` §5 and in the
@@ -92,8 +90,8 @@ Verified against the code on 2026-09-30.
 | 02 Schema + seed | A | ☑ done — PR #4 (`b774d97`); build fixed by adding placeholder `src/firebase.ts` |
 | 03 Auth + rules + authorized domains | A | ☑ done — verified 2026-09-30 (sign-in, roles, 5 Playground rows) |
 | 04 Live data | A | ☑ done — verified 2026-09-30 |
-| 04 Theme + safe-area | C | ◐ built on `person-c-ui` — needs device checks |
-| 05 Debounce + filters | B | ☐ (seed to 20 already done — 21 theses in `src/seed.ts`) |
+| 04 Theme + safe-area | C | ☑ merged — PR #9. Real-phone check still worth doing |
+| 05 Debounce + filters | B | ◐ built on `person-b-search` — needs §8 checks by hand |
 | 06 pdf.js extraction | C | ☐ |
 | 07 Extractive summary | B | ☐ |
 | 08 Deployed | C | ☐ |
@@ -103,21 +101,23 @@ Verified against the code on 2026-09-30.
 
 ## Feature tracker
 
-- ☐ Sign in with an ISU Google account (`@isu.edu.ph` only)
-- ☐ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
-- ☐ Sign out from every screen
-- ☐ Staff registers a thesis by pasting a Google Drive link
+- ☑ Sign in with an ISU Google account (`@isu.edu.ph` only)
+- ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
+- ☑ Sign out from every screen
+- ☑ Staff registers a thesis by pasting a Google Drive link
 - ☐ System reads the PDF (first pages, see `06` §4) → auto-fills Abstract + Keywords
-- ☐ Fallback to manual entry if the PDF cannot be read
-- ☐ Staff reviews → Confirm & Save → stored in Firestore
-- ☐ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
-- ☐ Search: BM25, prefix + substring, 300ms debounce
-- ☐ "Why this rank?" term-by-term breakdown
-- ☐ Filters: Department / Year / Status
-- ☐ Hover/tap a result → abstract preview → "Open in Drive"
-- ☐ Combined summary of top results, extractive, with `[n]` citations
-- ☐ Responsive headers with safe-area handling
-- ☐ Security: only STAFF can write; students read-only
+- ◐ Fallback to manual entry if the PDF cannot be read — the manual path and
+  "Save Manually" work; real failure detection comes with step 06
+- ☑ Staff reviews → Confirm & Save → stored in Firestore
+- ☑ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
+- ◐ Search: BM25, prefix + substring (☑), 300ms debounce (step 05, in review)
+- ~~"Why this rank?" term-by-term breakdown~~ — removed 2026-09-30 (group decision)
+- ◐ Filters: Department / Year / Status (☑); all ten departments + removable
+  chips (step 05, in review)
+- ☑ Click a result title → abstract preview → "Open in Drive"
+- ☐ Combined summary of ticked results, extractive, with `[n]` citations
+- ☑ Responsive headers with safe-area handling
+- ☑ Security: only STAFF can write; students read-only; ISU accounts only
 - ☐ Deployed on Firebase Hosting with HTTPS
 
 ---

@@ -91,7 +91,9 @@ account is `STAFF` (`03` §8).
 
 ---
 
-### Step 03 - Firebase, auth, roles
+### Step 03 - Firebase, auth, roles — ✅ DONE (PR #7)
+
+Kept for reference; nothing left to send.
 
 | | |
 |---|---|
@@ -125,7 +127,9 @@ needs B's `onSignOut` prop — `03` §6).
 
 ---
 
-### Step 04 - Frontend
+### Step 04 - Frontend — ✅ DONE (PR #8 live data, PR #9 theme + header)
+
+Kept for reference; nothing left to send.
 
 | | |
 |---|---|
@@ -162,16 +166,16 @@ A and C work simultaneously here. Their files do not overlap, so no conflict.
 **Block 3:**
 
 > Implement only what `05-search-ranking.md` specifies. `src/search.ts` already
-> exists and is correct - the only allowed change is adding `idf` and `tf` to
-> `termScores` (§4). Do not start step 06.
+> exists and is correct - do not change it. There is no "Why this rank?" panel
+> (removed). Do not start step 06.
 
-**What the AI produces:** the 300ms debounce, filter chips, "Why this rank?"
-with IDF × TF, and empty states.
+**What the AI produces:** the 300ms debounce, filter chips, and empty states.
 
 **Verify:** §8 of the doc — it is a long checklist. Two checks matter most:
 
-- Searching `rate` must **not** surface the machine-learning or watershed
-  theses. If it does, the `length >= 4` guard was lost.
+- Searching `ion` must return **no results**. If it returns every thesis, the
+  `length >= 4` guard was lost. (`rate` is not a valid test — as a 4-letter term
+  it matches `demonstrated` etc. on purpose; see `05` §3.)
 - Relevance reads **~97%, not 100%**. That is deliberate.
 
 **Coordinate:** A needs an `onSignOut` prop on `SearchScreen` for step 03 —

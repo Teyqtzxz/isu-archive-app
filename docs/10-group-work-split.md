@@ -23,8 +23,9 @@ Also already done, in the same sitting as the split:
 - `npm run build` now runs `tsc --noEmit` first, so a type error fails the build.
 
 - The status enum was migrated to uppercase (`02` §5) in one coordinated commit.
-- Step 02 (schema + 21-thesis seed) is merged, and `src/firebase.ts` exists with
-  placeholder config so the build passes.
+- Step 02 (schema + 21-thesis seed), step 03 (sign-in, roles, rules), step 04
+  (live data, theme, header) are merged. `src/firebase.ts` holds the real
+  config for project `isu-archive-9253b`.
 
 Nothing is left to do together. Branch and start your track.
 
@@ -59,7 +60,7 @@ wrong one. That includes creating the Drive API key for C (`06` §0).
 **Files:** see the table
 **Docs:** 05, 07 (the 21 seed theses are already written, in A's `seed.ts`)
 
-BM25, the debounce, filters, "Why this rank?", and the extractive summary.
+BM25, the debounce, filters, and the extractive summary.
 
 `search.ts` and `summary.ts` are **pure functions with no Firebase import**, so
 this whole track can be built and verified on day 1 against a plain array, before
@@ -106,7 +107,7 @@ The dependency graph is the point: **A unblocks B and C on day 2.**
 | Day | A | B | C |
 |-----|---|---|---|
 | 1 | Read 03, create Firebase project, paste config into `firebase.ts`, create the Drive API key for C | Read 05, add debounce; verify fuzzy match | Read 06, run the **Drive API spike** (`06` §0), `npm i pdfjs-dist` |
-| 2 | Google sign-in, `AccountRole` → `types.ts`, role routing, session restore | Filters + "Why this rank?" (`idf`/`tf`) | `extractPdf.ts`; test against **real** ISU thesis PDFs |
+| 2 | Google sign-in, `AccountRole` → `types.ts`, role routing, session restore | Filters + empty states | `extractPdf.ts`; test against **real** ISU thesis PDFs |
 | 3 | Security rules + Playground test; promote staff; run the seed | Start `summary.ts` | `RegisterForm` wired to extraction (save still mocked) |
 | 4 | `data.ts` live data + `saveThesis` + "Mark as Archived" | Finish summary panel + citations | Safe-area CSS + theme; wire the real save |
 | 5 | 🔀 **INTEGRATION — all three, one screen** 🔀 | | |

@@ -35,8 +35,8 @@ the types and the seed script now so step 04 can wire them up.
 rewrite it from scratch**, or you will lose the `ExtractionState` lowercase
 warning comment and every existing import.
 
-Nothing in `src/App.tsx` needs changing. It is 87 lines of routing and state,
-and the status migration it used to be responsible for already landed.
+Nothing in `src/App.tsx` needed changing for this step (at the time it was 87
+lines of routing and state; steps 03–04 later added the auth and data wiring).
 
 ---
 

@@ -3,7 +3,8 @@
 **Status:** Part 2 (live data) ☑ DONE — 2026-09-30, verified by hand: live
 load, department filter, save as ARCHIVED / NEEDS_REVIEW, Mark as Archived,
 realtime update from the console, student view. Parts 3–4 (theme, header — C)
-◐ BUILT on branch `person-c-ui`, pending the §6 layout checks on real devices.
+☑ DONE — merged in PR #9. A check on a real phone with a notch is still worth
+doing before the demo.
 
 ### How the shipped Parts 3–4 differ from the sketches below
 
@@ -380,4 +381,4 @@ Only if time allows. See `08-deployment.md` §4.
 
 ---
 
-**Next:** `05-search-ranking.md` — debounce, filters, and the "Why this rank?" panel.
+**Next:** `05-search-ranking.md` — debounce, filters and empty states.
