@@ -1047,7 +1047,8 @@ select.input {
 .results-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; min-height: 34px; }
 .results-count { font-size: 14px; font-weight: 600; color: var(--gray-700); }
 .results-count em { font-style: normal; color: var(--isu-green); }
-.results-list { display: flex; flex-direction: column; gap: 12px; }
+.results-list { display: flex; flex-direction: column; gap: 12px; transition: opacity 0.12s; }
+.results-list--stale { opacity: 0.4; pointer-events: none; }
 
 .result-card {
   background: var(--surface);
