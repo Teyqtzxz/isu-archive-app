@@ -18,8 +18,9 @@ From the Search screen, **"View Summary (N)"** opens a panel that:
 1. Takes the theses the user **ticked**, in rank order
 2. Reads their abstracts
 3. Produces **3–4 sentences** covering the common themes
-4. Tags each with a citation chip `[1] [2] …` where the number is the visible
-   rank
+4. Tags each with a citation chip `[n]` where `n` is that thesis's **visible
+   rank** in the result list — tick results #2 and #5 and the chips read `[2]`
+   and `[5]`, not `[1]` and `[2]`
 5. Highlights the query keywords in `--isu-yellow-light`
 
 No AI, no API, no server. It must work offline from the abstracts already in
@@ -35,7 +36,12 @@ code was kept:
 - Every result row has a **checkbox**
 - **"View Summary (N)"** appears only once N ≥ 1, where N is the number of
   **ticked** rows
-- The panel summarises exactly those N theses — no automatic top-5
+- The panel summarises exactly those N theses — no automatic top-5, and no
+  hidden cap: tick 7 and all 7 are used
+- N counts only ticked results **still visible** under the current filters.
+  Today `SearchScreen` shows `selected.size`, which still counts a ticked result
+  after a filter hides it — so the button can say 3 while the panel gets 2.
+  Count `results.filter(r => selected.has(r.thesis.id)).length` instead
 
 The prototype also had a *second*, floating "Combined Summary" button that took
 the top 10 and appeared whenever 2+ results existed. Two buttons, two different
@@ -44,8 +50,8 @@ were about to press. That one was deleted.
 
 **If your group prefers the automatic version**, it is a small change: drop the
 checkbox state, and in `SearchScreen` call
-`onCombinedSummary(results.slice(0, 5).map((r) => r.thesis), query)`. Everything
-else in this file is unaffected. Do that *before* you build the panel, not after.
+`onCombinedSummary(results.slice(0, 5).map((r, i) => ({ thesis: r.thesis, rank: i + 1 })), query)`.
+Everything else in this file is unaffected. Do that *before* you build the panel, not after.
 
 ---
 
@@ -55,8 +61,15 @@ else in this file is unaffected. Do that *before* you build the panel, not after
 
 - shows a hardcoded string that says the same thing regardless of the results ❌
 - has a `highlightKw()` helper — ✅ keep
-- builds citation chips from the `theses` indices — ✅ keep
+- builds citation chips from the `theses` indices — keep the chip styling, but
+  number them from `sourceIndex` (the visible rank), not the array index
 - has a `copied` state and a Copy button — ❌ the design says **Close only**
+
+**The payload changes shape.** `onCombinedSummary` now carries
+`RankedThesis[]` instead of `Thesis[]`, so the `summaryData` type in `App.tsx`
+changes too. `App.tsx` is A's file (`10` §2): ask A to change the one type
+(`theses: Thesis[]` → `theses: RankedThesis[]`) in their branch, or agree that
+you make that one-line change in yours. Do not refactor anything else there.
 
 Replace the string, delete the Copy/Export buttons and the `copied` state
 (including the `setTimeout(() => setCopied(false), 2000)` that exists only to
@@ -75,7 +88,14 @@ import type { Thesis } from "./types";
 
 export interface SummarySentence {
   text: string;
-  sourceIndex: number;   // 1-based = the [n] shown on the result card
+  sourceIndex: number;   // the thesis's visible rank = the [n] on its result card
+}
+
+/** A ticked result and the rank it was shown at. SearchScreen builds these —
+ *  the rank is `index in results + 1`, NOT the position among ticked rows. */
+export interface RankedThesis {
+  thesis: Thesis;
+  rank: number;
 }
 
 /* Splitting on every ". " shreds real thesis prose: "Dr. Maria Santos" becomes
@@ -134,21 +154,22 @@ function scoreSentence(
   return score;
 }
 
-/** results must already be in rank order; only the first 5 are used. */
+/** Every ticked result is used — the user chose them. Order does not matter;
+ *  output is put back into rank order at the end. */
 export function summarise(
-  results: Thesis[],
+  results: RankedThesis[],
   query: string,
   maxSentences = 4,
 ): SummarySentence[] {
-  const top = results.slice(0, 5);
+  const top = [...results].sort((a, b) => a.rank - b.rank);
   const terms = tokenize(query);
 
   const candidates: (SummarySentence & { score: number })[] = [];
-  top.forEach((thesis, idx) => {
+  top.forEach(({ thesis, rank }) => {
     splitSentences(thesis.abstract).forEach((s, sIdx) => {
       candidates.push({
         text: s,
-        sourceIndex: idx + 1,
+        sourceIndex: rank,
         score: scoreSentence(s, terms, sIdx === 0),
       });
     });
@@ -158,9 +179,9 @@ export function summarise(
   //     top results in rank order so the panel is never empty.
   if (terms.length === 0 || !candidates.some((c) => c.score > 0)) {
     return top
-      .map((t, idx) => {
-        const first = splitSentences(t.abstract)[0];
-        return first ? { text: first, sourceIndex: idx + 1 } : null;
+      .map(({ thesis, rank }) => {
+        const first = splitSentences(thesis.abstract)[0];
+        return first ? { text: first, sourceIndex: rank } : null;
       })
       .filter((x): x is SummarySentence => x !== null)
       .slice(0, maxSentences);
@@ -195,8 +216,8 @@ summary follow the same sequence the user just scrolled past.
 
 - Label is `View Summary (N)` where N is the number of **ticked** results
 - Show it only when N ≥ 1
-- N must match the results the panel will actually use, otherwise the citations
-  `[1]…[N]` point at cards that are not there
+- N must match the results the panel will actually use — count ticked results
+  that are still visible, and pass exactly those, each with its rank
 - There is exactly **one** summary button. The prototype's second floating
   "Combined Summary" button was removed as a duplicate — see §1
 
@@ -239,7 +260,11 @@ Worth knowing before you demo, because a teacher may probe:
 - [ ] Every sentence is traceable to an abstract you can find in the results
 - [ ] Adviser names survive splitting — a summary sentence containing
       "Dr. …" or "Fig. …" is not truncated to "…" or "3"
-- [ ] Citation chips `[1] [2] …` are present and correspond to visible rank
+- [ ] Citation chips correspond to visible rank: tick results #2 and #5 and the
+      chips read `[2]` and `[5]`
+- [ ] Ticking 7 results summarises from all 7 (no silent top-5 cap)
+- [ ] Tick 3, then apply a filter that hides one: the button reads
+      `View Summary (2)`
 - [ ] Tapping a chip closes the panel and scrolls to that result
 - [ ] Query words are highlighted in yellow
 - [ ] An empty or non-matching query falls back gracefully instead of showing

@@ -5,9 +5,52 @@
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Install pdfjs-dist,
-> create `src/extractPdf.ts` using the code below, and wire it into `RegisterForm`,
+> create `src/extractPdf.ts` using the code below (download through the Google
+> Drive API, never a direct Drive URL), and wire it into `RegisterForm`,
 > replacing the existing setTimeout mock. Preserve the three processing states.
 > Do not start step 07."*
+
+---
+
+## 0. Before any code — the Drive API key (manual, ~10 minutes)
+
+**Why the Drive API.** A browser may only download a file from another site if
+that site allows it (CORS). Google Drive's ordinary download links
+(`drive.google.com/uc?…`, `drive.usercontent.google.com/download?…`) do not, so a
+direct `fetch` from `isu-thesis-archive.web.app` is blocked and auto-fill would
+fail on every thesis. The **Drive API v3** endpoint is designed to be called from
+web pages and does allow it. It is **free** — no billing account, no per-request
+charge, only generous rate limits that one-at-a-time registration never
+approaches.
+
+**Setup — A does this (A owns the Firebase / Google Cloud project, `10` §3):**
+
+1. https://console.cloud.google.com → select the `isu-thesis-archive` project
+   (Firebase created it)
+2. **APIs & Services → Library → Google Drive API → Enable**
+3. **APIs & Services → Credentials → Create credentials → API key**
+4. Edit the key:
+   - **Application restrictions → Websites**, add
+     `http://localhost:8443/*`, `https://isu-thesis-archive.web.app/*`,
+     `https://isu-thesis-archive.firebaseapp.com/*`
+   - **API restrictions → Restrict key → Google Drive API** only
+5. Give the key to C. It goes into `src/extractPdf.ts` as `DRIVE_API_KEY` and is
+   committed — restricted to your domains and to downloads of files that are
+   already public, so it is as safe to commit as the Firebase web config
+   (preamble rule 11).
+
+**Day-1 spike — do this before building anything else in this step.** In the
+browser devtools console on `http://localhost:8443`, with a real ISU thesis PDF
+shared as "Anyone with the link → Viewer":
+
+```js
+const r = await fetch("https://www.googleapis.com/drive/v3/files/<FILE_ID>?alt=media&key=<KEY>");
+console.log(r.status, r.headers.get("content-type"));   // expect 200 application/pdf
+```
+
+If this prints 200 you are clear. If it is blocked or 403s, stop and tell the
+group before writing `extractPdf.ts` — manual entry remains the fallback, but
+the demo plan changes.
 
 ---
 
@@ -15,8 +58,8 @@
 
 Staff paste a Google Drive share link and click Submit. The app then:
 
-1. Downloads the PDF **in the browser** — no server
-2. Reads text from the **first 4 pages only**
+1. Downloads the PDF **in the browser** through the Google Drive API — no server
+2. Reads text from the **first pages only** (`MAX_PAGES`, §4)
 3. Finds the `ABSTRACT` section and the `KEYWORDS` line with regex
 4. Fills the form so staff can review, edit, and confirm
 
@@ -50,7 +93,7 @@ setTimeout(() => {
 ```
 
 That is a 70% chance of success **at random**. Delete the whole `setTimeout` block
-and replace it with §6 below. `grep -n "MOCK_ABSTRACT\|Math.random" src/` must
+and replace it with §5 below. `grep -n "MOCK_ABSTRACT\|Math.random" src/` must
 return nothing when you are done.
 
 ---
@@ -60,6 +103,8 @@ return nothing when you are done.
 ```bash
 npm install pdfjs-dist
 ```
+
+This dependency is pre-approved for this step (preamble rule 6).
 
 ### The worker is required
 
@@ -89,13 +134,24 @@ import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url";
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
-const MAX_PAGES = 4;
+/** Browser key from §0. Restricted to our domains and the Drive API; safe to commit. */
+const DRIVE_API_KEY = "REPLACE_WITH_KEY_FROM_A";
+
+/** Theses often put the abstract after the title page, approval sheet and
+ *  acknowledgements, so 4 pages can miss it. Tune against real ISU PDFs (§8). */
+const MAX_PAGES = 8;
 
 /** Accepts /file/d/{id}/view · /file/d/{id} · ?id={id} · /open?id={id} */
-export function driveLinkToFileUrl(link: string): string | null {
+export function driveFileId(link: string): string | null {
   const m = link.match(/(?:file\/d\/|[?&]id=)([-\w]{25,})/);
-  if (!m) return null;
-  return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download`;
+  return m ? m[1] : null;
+}
+
+/** The Drive API download URL — the only Drive endpoint that allows browser CORS. */
+export function driveLinkToFileUrl(link: string): string | null {
+  const id = driveFileId(link);
+  if (!id) return null;
+  return `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${DRIVE_API_KEY}`;
 }
 
 /** Reject bad links before spending a PDF download on them. */
@@ -123,14 +179,18 @@ async function readPdfText(driveLink: string): Promise<string> {
   const fileUrl = driveLinkToFileUrl(driveLink);
   if (!fileUrl) throw new Error("Invalid Google Drive link");
 
-  // Fetch first so we can detect Drive's HTML interstitial with a clear message
-  // instead of an InvalidPDFException from pdf.js.
-  const res = await fetch(fileUrl, { redirect: "follow" });
+  // Fetch first so a sharing problem becomes a clear message instead of an
+  // InvalidPDFException from pdf.js.
+  const res = await fetch(fileUrl);
+  if (res.status === 403 || res.status === 404) {
+    throw new Error(
+      "Could not open that file. Make sure it is shared as 'Anyone with the link → Viewer'.",
+    );
+  }
+  if (!res.ok) throw new Error(`Google Drive returned an error (${res.status}). Try again.`);
   const type = res.headers.get("content-type") ?? "";
   if (!type.includes("pdf")) {
-    throw new Error(
-      "Google returned a warning page instead of the PDF. Check the file is shared as 'Anyone with the link'.",
-    );
+    throw new Error("That Drive file is not a PDF.");
   }
 
   const pdf = await pdfjsLib.getDocument({ data: await res.arrayBuffer() }).promise;
@@ -157,8 +217,10 @@ export function extractAbstractAndKeywords(
 
   // --- Abstract: after the heading, stop at the next section heading.
   // Length-bounded (40–3000 chars) so a missing terminator cannot run away.
+  // Terminators must START A LINE: with /i, a bare \bBACKGROUND\b also matches
+  // "against a background of…" mid-abstract and cuts the abstract short.
   const abstractMatch = flat.match(
-    /\bABSTRACT\b\s*[:.\-\u2013\u2014]?\s*([\s\S]{40,3000}?)(?=\b(?:KEY\s?WORDS?|INTRODUCTI?ON|CHAPTER\s+1|BACKGROUND)\b)/i,
+    /\bABSTRACT\b\s*[:.\-\u2013\u2014]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
   );
   const abstract = abstractMatch?.[1]?.replace(/\s+/g, " ").trim() ?? "";
 
@@ -201,7 +263,13 @@ export async function extractFromDrive(
 }
 ```
 
-### Four things in there that are easy to get wrong
+### Five things in there that are easy to get wrong
+
+**Anchor the abstract terminators to a line start.** The `/i` flag is needed for
+headings typed as "Keywords" or "Introduction", but it also lets an unanchored
+`BACKGROUND` or `INTRODUCTION` match ordinary words inside the abstract. The
+`\n\s*` in the lookahead restricts them to headings. This relies on line breaks
+being preserved — the next point.
 
 **Preserve line breaks.** `content.items.map(i => i.str).join(" ")` flattens every
 line, and the keyword pattern is line-bounded. With no newlines there is no such
@@ -273,15 +341,20 @@ Pass it to `saveThesis()` from `data.ts`. Do not hardcode it in the save functio
 
 ---
 
-## 7. CORS and the large-file interstitial
+## 7. Sharing, CORS and large files
 
-`getDocument` fetches from Google Drive in the browser, which works for files
-shared as **"Anyone with the link → Viewer"**. Restricted or commenter-only links
-403 from the browser and there is no way around it without the Drive API.
+The download goes through the Drive API (§0), which allows browser requests.
+It only works for files shared as **"Anyone with the link → Viewer"**: a
+restricted file returns 403 and §4 reports it as a sharing problem. Reading
+private files would need each staff member to grant Drive access via OAuth — out
+of scope; ask Research staff to share the PDFs.
 
-For files above ~100 MB, or ones Google chooses to virus-scan, Drive returns an
-**HTML warning page** rather than the PDF. The `content-type` check in §4 catches
-this and reports it as a sharing problem.
+Do **not** switch back to `drive.google.com/uc?…` or
+`drive.usercontent.google.com/download?…`. Those send no CORS headers; the
+browser blocks them no matter how the file is shared.
+
+Very large files (≈100 MB+) that Google cannot virus-scan may be refused by the
+API. Thesis PDFs are far smaller; if one hits this, manual entry covers it.
 
 If extraction fails for any reason, the `needs_review` state handles it. Rehearse
 that path in your demo too — it is part of the design, and "what happens when the
@@ -292,9 +365,12 @@ the app.
 
 ## 8. Verification
 
-Test against **real PDFs**, not ones you imagine. Take 3–4 actual thesis PDFs
-shared as "Anyone with the link", and paste the extracted text into a scratch
-script to inspect it before trusting it in the form.
+Test against **real PDFs**, not ones you imagine. Take 3–4 actual ISU thesis
+PDFs shared as "Anyone with the link", and paste the extracted text into a
+scratch script to inspect it before trusting it in the form. Note on which page
+each abstract actually starts, and adjust `MAX_PAGES` if 8 is not enough.
+
+- [ ] The §0 day-1 spike printed `200 application/pdf` from `localhost:8443`
 
 - [ ] A real text-based thesis PDF → PROCESSING → READY TO REVIEW
 - [ ] Abstract and keywords come from the actual PDF text
@@ -304,6 +380,10 @@ script to inspect it before trusting it in the form.
 - [ ] "Confirm & Save" writes a document with `status: "ARCHIVED"`
 - [ ] A scanned/image-only PDF → NEEDS MANUAL ENTRY, empty fields, "Save Manually" works
 - [ ] "Save Manually" writes a document with `status: "NEEDS_REVIEW"`
+- [ ] An abstract containing the word "background" or "introduction" mid-text is
+      **not** cut short
+- [ ] A file shared as "Restricted" shows the "Anyone with the link" message
+- [ ] `grep -rn "drive.usercontent" src/` returns nothing
 - [ ] A garbage link shows a specific error message and does not crash
 - [ ] A non-Drive URL is rejected before any download starts
 - [ ] `grep -rn "MOCK_ABSTRACT\|Math.random" src/` returns nothing

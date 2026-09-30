@@ -27,8 +27,9 @@ seconds and catch the regressions that are easiest to reintroduce.
       (an `auth/unauthorized-domain` error means `08-deployment.md` §4b is missing)
 - [ ] You can switch between two accounts using a normal window and an incognito
       window — Google reuses the last signed-in account otherwise
-- [ ] Sign Out works from: Staff Dashboard · Register · Search · Summary panel ·
-      Student Dashboard
+- [ ] Sign Out works from: Staff Dashboard (every tab, incl. Register) · Search ·
+      Student Dashboard. The Summary panel is a modal over Search — Close, then
+      Sign Out from Search
 - [ ] Sign Out on mobile is reachable via the avatar dropdown
 
 ## 2. Roles and security
@@ -41,6 +42,8 @@ matters most.
 - [ ] Student updates own `users/{uid}` doc, `role` unchanged → **allowed**
 - [ ] Student updates own doc to `role: "STAFF"` → **denied**
 - [ ] No account can create a new user doc already born as `STAFF`
+- [ ] A non-ISU Google account reading `theses` → **denied** (the rules enforce
+      the domain, not just the login screen — `03` §7)
 - [ ] STUDENT never sees the Register form or the staff tabs
 - [ ] STAFF sees Dashboard / Register / Search / Settings + their department badge
 - [ ] Student default filter is "All Departments"; staff default is their department
@@ -51,17 +54,26 @@ matters most.
 - [ ] Pending Review = `NEEDS_REVIEW` + `DRAFT`, via the `isPending` helper
 - [ ] **Registering via "Save Manually" makes the Pending Review count go up by 1**
       — this proves status is passed in rather than hardcoded
-- [ ] Recent Theses lists only the staff member's department
+- [ ] Recent Theses lists only the staff member's department, and the badge
+      shows that department (not a hardcoded "CAS")
 - [ ] Badges: ARCHIVED green · NEEDS REVIEW yellow · DRAFT gray
 - [ ] **Every** status badge renders — an unstyled badge means an enum mismatch
-- [ ] NEEDS REVIEW rows sort to the top
+- [ ] Rows are newest first — a just-saved thesis appears at the top at once
+- [ ] "Mark as Archived" on a NEEDS REVIEW row turns it ARCHIVED and Pending
+      Review drops by 1
 - [ ] An empty database shows an empty state, not a crash
 
 ## 4. Register thesis (PDF auto-fill)
 
 - [ ] **[auto]** `grep -rn "MOCK_ABSTRACT\|Math.random" src/` returns nothing
+- [ ] **[auto]** `grep -rn "drive.usercontent" src/` returns nothing — downloads go
+      through the Drive API
 - [ ] Submit is disabled until a link is entered
-- [ ] Real text-based PDF → PROCESSING → READY TO REVIEW
+- [ ] Real text-based PDF → PROCESSING → READY TO REVIEW, on localhost **and**
+      on the deployed URL (the Drive API key must allow both — `06` §0)
+- [ ] A file shared as "Restricted" → NEEDS MANUAL ENTRY with the "Anyone with
+      the link" message
+- [ ] An abstract containing the word "background" mid-text is not cut short
 - [ ] Abstract and keywords come from the actual PDF
 - [ ] **Keyword chips contain only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF using `KEY WORDS:` with a space parses correctly
@@ -94,8 +106,8 @@ matters most.
 - [ ] Card shows the full abstract + "Open in Drive" (green outline)
 - [ ] "Open in Drive" opens in a new tab
 - [ ] Closes on click-outside and on ESC
-- [ ] A dead Drive link shows "Link unavailable — contact Research Department"
-      rather than a broken preview
+- [ ] "Open in Drive" on a seeded thesis whose link is still a placeholder does
+      not crash the page (it just opens Drive's own not-found page)
 
 ## 7. Combined summary
 
@@ -108,7 +120,8 @@ matters most.
 - [ ] Sentences are **real sentences from the top results**, and they change when
       the query changes
 - [ ] Every sentence is traceable to an abstract in the results
-- [ ] Citation chips `[1] [2] …` correspond to visible rank
+- [ ] Citation chips correspond to visible rank — tick #2 and #5, chips read
+      `[2]` and `[5]`
 - [ ] Tapping a chip closes the panel and scrolls to that result
 - [ ] Query words are highlighted in ISU yellow
 - [ ] Action bar has **Close only**
@@ -133,7 +146,8 @@ matters most.
 - [ ] Empty database → sensible empty dashboard, no crash
 - [ ] Dead Drive link → clear message
 - [ ] Firestore unreachable → a visible error banner, not a blank app
-- [ ] **An empty list and a failed load look identical — make sure they do not**
+- [ ] An empty archive and a failed load look **different** — empty shows the
+      empty state, failed shows the error banner
 
 ## 10. Repository and deployed version
 
@@ -155,6 +169,8 @@ matters most.
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
 grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts   # expect: no output
+grep -rn "drive.usercontent" src/                   # expect: no output
+grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
 grep -n "const extractive" src/components/CombinedSummaryPanel.tsx   # expect: no output
 grep -n "copied" src/components/CombinedSummaryPanel.tsx             # expect: no output
 ls package-lock.json pnpm-lock.yaml 2>/dev/null        # expect: exactly one

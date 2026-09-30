@@ -59,11 +59,14 @@ git commit -m "feat(search): add 300ms debounce to SearchScreen"
 git push -u origin person-b-search
 ```
 
-**Rebase onto `main` daily.** No branch should live longer than 24 hours.
+**Merge `main` into your branch daily** — never rebase:
 
 ```bash
-git fetch origin && git rebase origin/main
+git pull origin main
 ```
+
+Rebasing a branch you have already pushed rewrites its history, and the next
+push then needs `--force`, which preamble rule 10 forbids. Merging never does.
 
 Merge in this order, because later merges are easier:
 
@@ -77,7 +80,7 @@ Keep the docs inside the repo so nothing is lost — **this is already done**:
 
 ```
 isu-archive-app/
-  docs/          ← these 13 files, including 00-AI-PREAMBLE.md
+  docs/          ← these 15 files, including 00-AI-PREAMBLE.md
   src/
   firestore.rules
 ```
@@ -94,8 +97,8 @@ open.
 npm run build
 ```
 
-This must pass with **zero** TypeScript errors before you deploy. A build that
-"succeeds with warnings" will break on Firebase's stricter runtime.
+This must pass with **zero** TypeScript errors before you deploy. (Warnings are
+fine — Firebase Hosting just serves the static files in `dist/`.)
 
 Preview it locally before deploying:
 
@@ -135,6 +138,11 @@ Then:
 ```bash
 npm run build && firebase deploy --only hosting
 ```
+
+**Security rules.** A pastes `firestore.rules` into the console (`03` §7) — that
+stays the method, so C's deploy never touches rules. When A changes
+`firestore.rules` in git, A pastes it again. The file in git and the console must
+always match; if they differ, the console is what is live.
 
 Redeploy any time you finish a feature.
 
@@ -231,7 +239,10 @@ BM25 is client-side, so search works from the cache with no further changes.
 ## 7. Custom domain (polish, only if ISU provides one)
 
 Firebase Hosting → **Add custom domain** → verify ownership with a TXT record →
-add two A records (`151.101.1.195`, `151.101.65.195`). No code changes. If the
+add the DNS records the console shows you (they are project-specific; do not
+copy IPs from a tutorial). Then add the domain to the Firebase **Authorized
+domains** (§4b) and to the Drive API key's website restrictions (`06` §0). No
+code changes. If the
 campus does not provide a domain, skip this entirely.
 
 ---
@@ -246,7 +257,10 @@ campus does not provide a domain, skip this entirely.
 - [ ] **Sign-in works on the deployed URL** — not just localhost
 - [ ] Search, register and summary all work on the deployed URL
 - [ ] HTTPS padlock shows, with no mixed-content warnings in the console
-- [ ] Refreshing a deep route does not 404
+- [ ] Refreshing the page while signed in returns you to your dashboard (the app
+      has no URL routes, so this is session restore, not a 404 check)
+- [ ] PDF auto-fill works on the deployed URL (the Drive API key allows the
+      `.web.app` domain — `06` §0)
 - [ ] A fresh `git clone` → install → build succeeds
 - [ ] If PWA: the browser offers "Install app", and airplane mode still shows a
       usable search

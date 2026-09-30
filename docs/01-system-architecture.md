@@ -32,6 +32,7 @@ Echague Campus. Two types of users:
 | Auth | **Firebase Auth (Google)** | Free, no server, ISU Google accounts |
 | Database | **Cloud Firestore** | Free tier, real-time updates |
 | Hosting | **Firebase Hosting** | Free, HTTPS, one-command deploy |
+| PDF download | **Google Drive API v3** + API key | Free; the one endpoint Drive lets a browser fetch from (CORS) |
 | PDF reading | **pdf.js** (in the browser) | Reads PDFs client-side, zero backend |
 | Search | **BM25** (client-side, in-memory) | Instant, explainable, no server |
 | Summary | **Extractive** (client-side) | Sentence scoring, no AI/API cost |
@@ -91,7 +92,7 @@ Sign in with Google
 ```
 Staff Dashboard → "Register New Thesis"
    → paste Google Drive link → Submit
-   → pdf.js downloads PDF (first 4 pages) → regex finds Abstract + Keywords
+   → Drive API downloads the PDF → pdf.js reads the first pages → regex finds Abstract + Keywords
    → state = READY TO REVIEW (editable form)   OR
      state = NEEDS MANUAL ENTRY (fallback)
    → staff reviews → Confirm & Save
@@ -132,15 +133,16 @@ and fake behaviour.**
 | "Why this rank?" breakdown | inside `SearchScreen` | ✅ done |
 | Department/year/status filters | `SearchScreen` | ✅ done |
 | Register processing states | `RegisterForm` (`extractState`) | ⚠️ driven by a **random** `setTimeout` |
-| SAMPLE data | `SAMPLE_THESES`, `DEPARTMENTS`, `ADVISERS` | ❌ → Firestore (step 02) |
+| SAMPLE data | `SAMPLE_THESES`, `ADVISERS` in `data.ts` | ❌ → Firestore (step 04). `DEPARTMENTS` is real and lives in `types.ts` |
 | Login | `LoginScreen` role buttons | ❌ → Google sign-in (step 03) |
 | PDF extraction | `MOCK_ABSTRACT` + `Math.random() > 0.3` | ❌ → pdf.js (step 06) |
 | Summary | one static template string | ❌ → extractive algorithm (step 07) |
 | 300ms debounce | — | ❌ missing (step 05) |
-| Status values | lowercase `archived` / `pending` / `needs_review` | ❌ → canonical enum (step 02) |
+| Status values | uppercase `STATUSES` enum in `types.ts` | ✅ migrated (`02` §5) |
+| Schema | `registeredBy` / `registeredAt` + `registeredAtISO()`, 21-thesis `seed.ts` | ✅ done (step 02) |
+| PDF download | direct Drive fetch in the old spec | ❌ → Google Drive API with an API key (step 06) — the direct fetch is blocked by CORS |
 
-Everything still in `App.tsx` must be split into modules before three people work
-in parallel — see `04-frontend.md` Part 1.
+The `App.tsx` module split is done (commit `c5644d4`) — see `04-frontend.md` Part 1.
 
 **Rule of thumb:** never rebuild the UI. Only replace data sources and fake
 behavior with real ones.
@@ -197,15 +199,15 @@ The dev server runs on **port 8443**, not 5173 (set in `vite.config.ts`):
 - **Offline-ready (optional):** cache thesis list in IndexedDB/localStorage so
   search still works offline.
 - **Security:** Firestore rules must enforce **STAFF writes only**; students read-only.
-- **Recoverable PDFs:** only first 4 pages processed; graceful fallback to manual entry.
+- **Recoverable PDFs:** only the first pages are processed (`06` §4); graceful fallback to manual entry.
 
 ---
 
 ## 8. Verification
 
 - [ ] You can explain the architecture to your teacher in one minute
-- [ ] `isu-archive-app` exists and `npm run dev` shows the Login screen
-- [ ] The first Git commit exists
+- [x] `isu-archive-app` exists and `npm run dev` shows the Login screen
+- [x] The first Git commit exists
 
 ## Connect to next files
 

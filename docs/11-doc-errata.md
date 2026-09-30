@@ -89,9 +89,9 @@ The old code only appeared to match because `dr` hit `hydrological`.
 | Create the Firebase project, obtain the real `firebaseConfig` | A |
 | Add authorized domains | A |
 | Promote test accounts to `STAFF` | A |
-| Confirm whether Drive CORS blocks you in practice | C |
+| Run the Drive API spike (`06` §0) — confirms the download works from the browser | A (key) + C (test) |
 | Create 2+ Google accounts to test STAFF vs STUDENT (one per browser profile) | all |
-| Write ~20 seed theses, not 8 | B |
+| ~~Write ~20 seed theses, not 8~~ — done, 21 in `src/seed.ts` | — |
 | Run the QA pass on the deployed URL | C |
 | Present it | all |
 
@@ -103,6 +103,37 @@ The old code only appeared to match because `dr` hit `hydrological`.
 - **Load failure vs empty data.** Every screen assumes Firestore is reachable. A
   permission error and a genuinely empty archive currently look identical. The
   spec handles this (`04` §2.3, `09` §9) — make sure it is actually implemented.
+
+---
+
+## Second pass — 2026-09-30 (after step 02 merged)
+
+Step 02 landed in PR #4 but the docs were not updated with it, and a full
+re-read against the code found spec code that would fail if followed literally.
+Four decisions were made with the group lead: **download PDFs through the
+Google Drive API**, **commit `src/firebase.ts`**, **merge, never rebase**, and
+**A owns `App.tsx`, `LoginScreen` and both dashboards**.
+
+| # | Was wrong | Now | Where |
+|---|-----------|-----|-------|
+| 25 | `npm run build` failed: `seed.ts` imports `./firebase`, which did not exist | Placeholder `src/firebase.ts` (`REPLACE_ME` config) added; step 03 fills it in | `src/firebase.ts`, `03` §3 |
+| 26 | Preamble still said `types.ts` has `dateAdded`, `seed.ts`/`index.css`/`firebase.ts` "not created yet", `DEPARTMENTS` in `data.ts`, and listed the done status migration as fake — pasted into every prompt, inviting the AI to redo step 02 | Rewritten to the current code; `registeredAtISO()` and `DEPARTMENTS` added to the canonical types | `00-AI-PREAMBLE` |
+| 27 | `12` and `13` said copy preamble "lines 13–221", but the END marker had moved to line 236 — the copy silently dropped the Departments list and the task section | "Everything between the BEGIN and END markers" — no line numbers | `12`, `13` |
+| 28 | Direct Drive download (`drive.usercontent.google.com`) sends no CORS headers, so the browser blocks it and auto-fill would fail on every thesis | Download through the Drive API v3 with a free, domain-restricted API key; setup + a day-1 spike | `06` §0, §4, §7; `00`, `01`, `10` |
+| 29 | Abstract regex terminators were unanchored under `/i`, so "against a background of…" inside an abstract cut it short (reproduced) | Terminators must start a line; `CHAPTER I`/`ONE` and `TABLE OF CONTENTS` added; `MAX_PAGES` 4 → 8 because abstracts often sit past page 4 | `06` §4 |
+| 30 | `subscribeToTheses` sorted with `(b.registeredAt ?? 0).valueOf() - …` — `Timestamp.valueOf()` returns a string, so every comparison was `NaN` | Sort through `registeredAtISO()`; read with `serverTimestamps: "estimate"` so a just-saved thesis sorts first | `04` §2.2 |
+| 31 | Staff department examples used `"CAS"`, which matches no `DEPARTMENTS` value — every staff dashboard and default filter would be empty | `users.department` must be one of `DEPARTMENTS`; staff badge reads it | `00`, `02` §3, `03` §8, `04` §2.3 |
+| 32 | `03` imported `AccountRole` from `./types`; it is declared in `seed.ts` | Step 03 moves it into `types.ts` | `03` §4 |
+| 33 | `03` §8 promoted staff with client-side `setMyRole()`, which the §7 rules correctly deny; the seed would also be denied until someone is staff | Promote in the console; explicit sign-in → promote → seed order | `02` §6, `03` §8 |
+| 34 | The `@isu.edu.ph` check was client-side only — any Google account could read theses through the SDK | Rules require a verified ISU email; 5th Playground row | `03` §7, §9; `09` §2 |
+| 35 | `summarise()` silently used only the first 5 ticked theses, and cited position-among-ticked instead of visible rank | All ticked theses used; `RankedThesis` carries the visible rank into the chip; N counts only still-visible ticks | `07` §1, §3 |
+| 36 | "Why this rank?" must show IDF × TF, but `bm25Score` returns only the product while the doc forbade touching it | One additive exception: `idf`/`tf` fields on `termScores` | `05` §4 |
+| 37 | Nothing produced `DRAFT` and nothing could move `NEEDS_REVIEW` → `ARCHIVED` | `DRAFT` reserved; `updateThesisStatus` + "Mark as Archived" | `02` §4, `04` §2.2 |
+| 38 | Config: `10` said keep `firebaseConfig` out of git, `03`/`00` said commit it; `12` banned "a real apiKey" | Commit it; web config and restricted browser keys are not secrets | `10` §3, `12` |
+| 39 | Git: `08`/`10` said rebase daily, which needs `push --force` — banned by preamble rule 10 | `git pull origin main` daily; never rebase a pushed branch | `08` §2, `10` §5, `12` |
+| 40 | Ownership: `10` and `12` disagreed (`firebase.json`), and `App.tsx`, `LoginScreen` and both dashboards had no owner although steps 03–04 edit them | One table in `10` §2; A owns those four; `12` points to it | `10` §2, `12` |
+| 41 | Sign-out required on five screens, but Register is a tab of the staff dashboard, the summary is a modal, and `SearchScreen` has no `onSignOut` prop | Three screens; B adds the prop on request | `03` §6, `09` §1, `13` |
+| 42 | Stale leftovers: `05` "move the code into `search.ts`", `05` `dateAdded` sample, `04` `ui.tsx`/`SummaryPanel` layout, `10`/`12` `☐ DONE`, `13` "Verify §8" for `07`, `08` "13 files", `08` hardcoded custom-domain IPs, `08` "warnings break Firebase", `09` NEEDS REVIEW-first sort vs newest-first | Each corrected in place | `04`, `05`, `08`, `09`, `10`, `12`, `13` |
 
 ---
 
