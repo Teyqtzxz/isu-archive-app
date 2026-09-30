@@ -11,7 +11,7 @@ import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { SearchScreen } from "./components/SearchScreen";
 import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
-import { ISUSeal, Toast } from "./components/shared";
+import { ISUSeal, Icon, Toast } from "./components/shared";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
@@ -119,7 +119,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div className="app-root" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="splash" role="status" aria-label="Loading">
         <div className="animate-fade-in"><ISUSeal size={56} /></div>
       </div>
     );
@@ -128,12 +128,11 @@ export default function App() {
   return (
     <div className="app-root">
       {role && (dataError || !thesesLoaded) && (
-        <div role={dataError ? "alert" : "status"} style={{
-          padding: "8px 16px", fontSize: 13, textAlign: "center",
-          background: dataError ? "var(--isu-red-light)" : "var(--isu-green-light)",
-          color: dataError ? "var(--isu-red)" : "var(--isu-green)",
-        }}>
-          {dataError ?? "Loading the thesis archive…"}
+        <div role={dataError ? "alert" : "status"}
+          className={`data-banner ${dataError ? "data-banner--error" : "data-banner--loading"}`}>
+          {dataError
+            ? <><Icon name="alert" size={16} />{dataError}</>
+            : <><span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.2)", borderTopColor: "var(--isu-green)" }} />Loading the thesis archive…</>}
         </div>
       )}
 
@@ -153,7 +152,7 @@ export default function App() {
       )}
 
       {screen === "student-dashboard" && (
-        <StudentDashboard theses={theses} onSearch={goSearch} onSignOut={handleSignOut} />
+        <StudentDashboard theses={theses} account={account} onSearch={goSearch} onSignOut={handleSignOut} />
       )}
 
       {screen === "search" && role && (
@@ -163,6 +162,7 @@ export default function App() {
           initialQuery={searchInitialQuery}
           onCombinedSummary={handleCombinedSummary}
           onBack={() => setScreen(role === "staff" ? "staff-dashboard" : "student-dashboard")}
+          onSignOut={handleSignOut}
         />
       )}
 

@@ -3,7 +3,26 @@
 **Status:** Part 2 (live data) ☑ DONE — 2026-09-30, verified by hand: live
 load, department filter, save as ARCHIVED / NEEDS_REVIEW, Mark as Archived,
 realtime update from the console, student view. Parts 3–4 (theme, header — C)
-☐ TODO.
+◐ BUILT on branch `person-c-ui`, pending the §6 layout checks on real devices.
+
+### How the shipped Parts 3–4 differ from the sketches below
+
+- **Tokens** live in `src/index.css`: the six ISU colours unchanged, plus a
+  neutral grey scale, radii, shadows, focus ring, `--container` and `--gutter`,
+  and the `--header-*` safe-area variables with `--header-h` at 56/60/64px.
+- **The header is `position: sticky`, in normal flow**, not fixed. Content can
+  therefore never sit under it at any breakpoint, and there is no
+  `.main-content` top padding to keep in sync — one fewer place for the
+  "hardcoded in two places" bug §4.2 warns about. Side padding and the notch
+  inset still come from `--header-left/right/top`.
+- Sign Out is a visible header button at ≥768px (`.header-signout`) and in the
+  avatar menu below that — on the staff dashboard, student dashboard **and**
+  the search screen (the step 03 gap is closed).
+- Emoji icons were replaced by one stroke-icon set (`Icon` in `shared.tsx`).
+- Status badges follow `09` §3: ARCHIVED green, NEEDS REVIEW yellow, DRAFT gray.
+- The summary panel is a bottom sheet on phones and a centred 640px dialog from
+  768px, and closes on Esc.
+- The page title comes from `.figma/make/site.json` (`title`).
 **Owner:** A (data) + C (CSS) · **Depends on:** 03 · **Next:** 05
 
 ### How the shipped Part 2 differs from the sketches below

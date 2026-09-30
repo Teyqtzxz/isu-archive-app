@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
 import { DEPARTMENTS } from "../types";
 import { ADVISERS } from "../data";
-import { DeptBadge } from "./shared";
+import { DeptBadge, Icon } from "./shared";
 
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
@@ -84,7 +84,8 @@ export function RegisterForm({ onBack, onSave }: {
       {/* Form card */}
       {(extractState === "idle" || extractState === "extracting") && (
         <div className="card card-pad-xl card-accent card-mb">
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 16 }}>Thesis Details</h2>
+          <h2 className="form-title">Register a thesis</h2>
+          <p className="form-sub">Paste the Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
 
           {/* Drive link */}
           <div className="field-mb">
@@ -100,7 +101,10 @@ export function RegisterForm({ onBack, onSave }: {
               <button onClick={() => { if (navigator.clipboard) navigator.clipboard.readText().then(t => setForm(p => ({ ...p, driveLink: t }))).catch(() => {}); }}
                 disabled={extractState === "extracting"}
                 className="paste-btn"
-                title="Paste from clipboard">📋</button>
+                title="Paste from clipboard">
+                <Icon name="file" size={16} />
+                Paste
+              </button>
             </div>
             <p className="hint">Paste the "Anyone with the link" share URL from Google Drive</p>
           </div>
@@ -112,11 +116,11 @@ export function RegisterForm({ onBack, onSave }: {
           </div>
 
           {/* Dept + Year */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div className="form-grid-2">
             <div>
               <label className="field-label">Department <span className="field-req">*</span></label>
               <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} disabled={extractState === "extracting"}
-                className="input" style={{ color: form.department ? "#111827" : "#9CA3AF", appearance: "none" }}>
+                className="input" style={{ color: form.department ? undefined : "var(--text-subtle)", appearance: "none" }}>
                 <option value="">Select dept.</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
@@ -134,15 +138,16 @@ export function RegisterForm({ onBack, onSave }: {
           <div>
             <label className="field-label">Adviser <span className="field-req">*</span></label>
             <select value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))} disabled={extractState === "extracting"}
-              className="input" style={{ color: form.adviser ? "#111827" : "#9CA3AF", appearance: "none" }}>
+              className="input" style={{ color: form.adviser ? undefined : "var(--text-subtle)", appearance: "none" }}>
               <option value="">Select adviser</option>
               {ADVISERS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
 
           {error && (
-            <div className="error-box">
-              ⚠️ {error}
+            <div className="error-box" role="alert">
+              <Icon name="alert" size={16} />
+              {error}
             </div>
           )}
         </div>
@@ -153,7 +158,7 @@ export function RegisterForm({ onBack, onSave }: {
         <div className="animate-fade-in extract-panel">
           <div className="spin-ring">
             <div className="animate-spin spin-ring-inner" />
-            <div className="spin-core">📄</div>
+            <div className="spin-core"><Icon name="file" size={18} /></div>
           </div>
           <div className="extract-title">Reading PDF and filling in details...</div>
           <div className="extract-sub">pdf.js · Scanning pages 1–4 · Regex: Abstract/Keywords</div>
@@ -171,7 +176,7 @@ export function RegisterForm({ onBack, onSave }: {
             <div className={`status-icon ${extractState === "success" ? "status-icon-success" : "status-icon-review"}`}>
               {extractState === "success"
                 ? <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                : <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01" stroke="#7a6500" strokeWidth="2" strokeLinecap="round" /></svg>
+                : <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
               }
             </div>
             <div>
@@ -186,10 +191,10 @@ export function RegisterForm({ onBack, onSave }: {
 
           {/* Thesis summary */}
           <div className="review-card">
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#111827", lineHeight: 1.45, margin: "0 0 8px" }}>{form.title}</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <p className="review-title">{form.title}</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <DeptBadge dept={form.department} small />
-              <span style={{ fontSize: 11, color: "#9CA3AF" }}>{form.year} · {form.adviser}</span>
+              <span className="result-meta">{form.year} · {form.adviser}</span>
             </div>
           </div>
 
@@ -205,19 +210,21 @@ export function RegisterForm({ onBack, onSave }: {
 
           {/* Keywords chips */}
           <div className="review-card">
-            <label className="field-label" style={{ marginBottom: 10 }}>Keywords (Chips Input)</label>
+            <label className="field-label" style={{ marginBottom: 10 }}>Keywords</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
               {keywords.map(kw => (
                 <span key={kw} className="kw-chip">
                   {kw}
-                  <button onClick={() => setKeywords(p => p.filter(k => k !== kw))} className="kw-chip-x">×</button>
+                  <button onClick={() => setKeywords(p => p.filter(k => k !== kw))} className="kw-chip-x" aria-label={`Remove keyword ${kw}`}>
+                    <Icon name="x" size={12} strokeWidth={2.5} />
+                  </button>
                 </span>
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <input value={newKw} onChange={e => setNewKw(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }}
-                placeholder="Add keyword, press Enter..." className="input" style={{ padding: "8px 12px", fontSize: 12 }} />
+                placeholder="Add a keyword and press Enter" className="input" style={{ padding: "8px 12px", fontSize: 13 }} />
               <button onClick={() => { if (newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }} className="chip-add">
                 + Add
               </button>
@@ -226,7 +233,8 @@ export function RegisterForm({ onBack, onSave }: {
 
           {saveError && (
             <div className="error-box" role="alert">
-              ⚠️ {saveError}
+              <Icon name="alert" size={16} />
+              {saveError}
             </div>
           )}
 
@@ -240,8 +248,8 @@ export function RegisterForm({ onBack, onSave }: {
       {/* Submit button */}
       {extractState === "idle" && (
         <button onClick={handleSubmit} className="btn-submit">
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Submit
+          <Icon name="file" size={18} />
+          Read PDF & continue
         </button>
       )}
     </div>

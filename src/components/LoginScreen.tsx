@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { signInWithGoogle } from "../data";
-import { ISUSeal } from "./shared";
+import { ISUSeal, Icon } from "./shared";
 
 /** Turn a sign-in failure into something a user can act on. */
 function signInErrorMessage(e: unknown): string | null {
@@ -59,7 +59,7 @@ export function LoginScreen() {
         </div>
 
         <h1 className="login-h1">
-          ISU Thesis Archive
+          Thesis Archive
         </h1>
         <p className="login-sub-title">
           Isabela State University
@@ -72,18 +72,18 @@ export function LoginScreen() {
 
         {/* Info pill */}
         <div className="info-pill">
+          <Icon name="info" size={16} />
           <p>
-            🔍 Search & browse the archive · Research staff can also register theses
+            Search and read the university's thesis archive. Research Department
+            staff can also register new theses.
           </p>
         </div>
 
         {error && (
-          <p role="alert" style={{
-            margin: "0 0 14px", padding: "10px 12px", borderRadius: 8, fontSize: 13, lineHeight: 1.4,
-            background: "var(--isu-red-light)", color: "var(--isu-red)", border: "1px solid rgba(205,32,43,0.25)",
-          }}>
-            {error}
-          </p>
+          <div role="alert" className="login-error">
+            <Icon name="alert" size={16} />
+            <span>{error}</span>
+          </div>
         )}
 
         {/* Google sign-in */}
@@ -94,7 +94,7 @@ export function LoginScreen() {
         >
           {busy ? (
             <>
-              <div className="animate-spin" style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.15)", borderTopColor: "#006439" }} />
+              <div className="animate-spin" style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.15)", borderTopColor: "var(--isu-green)" }} />
               <span>Signing in...</span>
             </>
           ) : (
@@ -111,12 +111,12 @@ export function LoginScreen() {
         </button>
 
         <p className="login-foot">
-          Secure login with your @isu.edu.ph account
+          Use your @isu.edu.ph Google account. Personal accounts are not accepted.
         </p>
       </div>
 
       <div className="site-foot">
-        <p>© 2025 Isabela State University · Echague Campus</p>
+        <p>© {new Date().getFullYear()} Isabela State University · Echague Campus · Research Department</p>
       </div>
     </div>
   );

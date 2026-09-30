@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Thesis } from "../types";
 import { tokenize } from "../search";
+import { Icon } from "./shared";
 
 export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesis[]; query: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -8,6 +9,13 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
   const extractive = `Several theses archived at ISU Echague Campus address research related to ${query || "key thematic areas"} in Isabela Province [1][2]. These studies collectively highlight interdisciplinary approaches combining field surveys, computational modeling, and community-based methodologies [3]. Findings consistently emphasize sustainable resource management and data-driven policy frameworks [1][4]. Taken together, they contribute substantially to the regional knowledge base and provide practical recommendations for local government units and research institutions [2][3].`;
 
   const keywords = Array.from(new Set(theses.flatMap(t => t.keywords))).slice(0, 8);
+
+  // Escape closes the panel, like any dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   function highlightKw(text: string) {
     if (!query) return text;
@@ -28,7 +36,7 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
   return (
     <div className="modal-overlay">
       <div onClick={onClose} className="modal-backdrop" />
-      <div className="animate-slide-up-modal modal-sheet">
+      <div className="animate-slide-up-modal modal-sheet" role="dialog" aria-modal="true" aria-labelledby="summary-title">
         {/* Handle */}
         <div className="sheet-handle-row">
           <div className="sheet-handle" />
@@ -38,16 +46,17 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
         <div className="sheet-header">
           <div className="sheet-title-row">
             <div>
-              <h2 className="sheet-h2">
+              <h2 className="sheet-h2" id="summary-title">
                 Summary of {theses.length} Results
               </h2>
-              {query && <p className="sheet-query">for query: <span style={{ fontWeight: 700, color: "#006439" }}>"{query}"</span></p>}
+              {query && <p className="sheet-query">for <strong>“{query}”</strong></p>}
             </div>
-            <button onClick={onClose} className="sheet-close">×</button>
+            <button onClick={onClose} className="sheet-close" aria-label="Close summary"><Icon name="x" size={16} /></button>
           </div>
           <div className="mode-pill-row">
             <span className="mode-pill">
-              📋 Extractive Summary · BM25 Top Results
+              <Icon name="file" size={13} />
+              Extractive summary · selected results
             </span>
           </div>
         </div>
@@ -73,7 +82,7 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
             <div className="overline-label">Key Terms</div>
             <div className="keywords-row">
               {keywords.map(kw => (
-                <span key={kw} className="keyword-highlight" style={{ fontSize: 12, fontWeight: 500, color: "#374151", borderRadius: 3, padding: "2px 4px" }}>{kw}</span>
+                <span key={kw} className="key-term">{kw}</span>
               ))}
             </div>
           </div>
@@ -83,10 +92,12 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
         <div className="sheet-action">
           <button onClick={handleCopy}
             className={`btn-copy${copied ? " btn-copy-done" : ""}`}>
-            {copied ? "✓ Copied!" : "📋 Copy Summary"}
+            <Icon name={copied ? "check" : "file"} size={15} />
+            {copied ? "Copied" : "Copy summary"}
           </button>
           <button className="btn-export">
-            📄 Export PDF
+            <Icon name="external" size={15} />
+            Export PDF
           </button>
           <button onClick={onClose} className="btn-close">
             Close
