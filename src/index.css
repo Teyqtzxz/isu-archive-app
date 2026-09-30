@@ -1,18 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
-html,
-body,
-#root {
-  height: 100%;
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-* {
-  -webkit-font-smoothing: antialiased;
-}
+/* ============================================================
+   Global tokens. Component styles live in App.css and read these.
+   ============================================================ */
 
 :root {
+  /* ISU Corporate Visual Identity — never change these values (docs/00). */
   --isu-green: #006439;
   --isu-green-light: #F0F8F4;
   --isu-green-mid: #004d2b;
@@ -22,9 +16,57 @@ body,
   --isu-red-light: #FDEDEA;
   --isu-blue: #23305B;
   --isu-blue-light: #E8EBF2;
-  --shadow-card: 0 2px 8px rgba(0, 100, 57, 0.08);
-  --shadow-hover: 0 4px 16px rgba(0, 100, 57, 0.14);
+
+  /* Derived tints, for text on light fills where the brand hue is too bright. */
+  --isu-yellow-ink: #6B5800;
+  --isu-red-ink: #A01820;
+
+  /* Neutrals — one scale, used everywhere instead of ad-hoc greys. */
+  --gray-25: #FBFCFB;
+  --gray-50: #F6F8F7;
+  --gray-100: #EEF1EF;
+  --gray-200: #E3E8E5;
+  --gray-300: #CDD5D0;
+  --gray-400: #9AA5A0;
+  --gray-500: #6B7571;
+  --gray-600: #4A5450;
+  --gray-700: #333B38;
+  --gray-900: #151A18;
+
+  --surface: #FFFFFF;
+  --page-bg: var(--gray-50);
+  --border: var(--gray-200);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-500);
+  --text-subtle: var(--gray-400);
+
+  /* Shape and depth. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --shadow-xs: 0 1px 2px rgba(21, 26, 24, 0.05);
+  --shadow-sm: 0 1px 3px rgba(21, 26, 24, 0.08), 0 1px 2px rgba(21, 26, 24, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(21, 26, 24, 0.10), 0 2px 4px -2px rgba(21, 26, 24, 0.05);
+  --shadow-lg: 0 20px 40px -12px rgba(21, 26, 24, 0.22);
+  --focus-ring: 0 0 0 3px rgba(0, 100, 57, 0.28);
+
+  /* Layout. */
+  --container: 1120px;
+  --gutter: 16px;
+
+  /* Safe-area + header (docs/04 §4.2). The header height lives in ONE
+     variable; the header and anything offset by it read the same value. */
+  --header-top: env(safe-area-inset-top, 0px);
+  --header-bottom: env(safe-area-inset-bottom, 0px);
+  --header-left: env(safe-area-inset-left, 0px);
+  --header-right: env(safe-area-inset-right, 0px);
+  --header-h: 56px;
 }
+
+@media (min-width: 640px)  { :root { --header-h: 60px; --gutter: 24px; } }
+@media (min-width: 1024px) { :root { --header-h: 64px; --gutter: 32px; } }
+@media (min-width: 1366px) { :root { --container: 1200px; } }
 
 @theme inline {
   --color-isu-green: var(--isu-green);
@@ -38,46 +80,73 @@ body,
   --color-isu-blue-light: var(--isu-blue-light);
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,100,57,0.2); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,100,57,0.4); }
-
-/* Smooth scroll */
-html { scroll-behavior: smooth; }
-
-/* Abstract preview animation */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+html,
+body,
+#root {
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--page-bg);
 }
 
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard focus is always visible; mouse clicks do not leave rings behind. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection { background: rgba(0, 100, 57, 0.18); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); background-clip: padding-box; }
+
+html { scroll-behavior: smooth; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
 @keyframes slideUpModal {
   from { opacity: 0; transform: translateY(100%); }
   to { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .animate-slide-up { animation: slideUp 0.2s ease-out; }
 .animate-fade-in { animation: fadeIn 0.25s ease-out; }
 .animate-spin { animation: spin 0.8s linear infinite; }
 .animate-slide-up-modal { animation: slideUpModal 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
-
-/* Toast */
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 .animate-toast { animation: toastIn 0.25s ease-out; }
+@media (min-width: 768px) {
+  .animate-slide-up-modal { animation: popIn 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
+}
 
-/* Keyword chip highlight */
-.keyword-highlight { background: #F7D000; border-radius: 2px; padding: 0 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* Keyword highlight in the combined summary (docs/07 §4). */
+.keyword-highlight { background: var(--isu-yellow-light); box-shadow: inset 0 -2px 0 var(--isu-yellow); border-radius: 2px; padding: 0 2px; color: inherit; }

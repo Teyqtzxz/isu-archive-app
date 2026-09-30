@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
 import { registeredAtISO } from "../types";
-import { ISUSeal, DeptBadge } from "./shared";
+import { ISUSeal, DeptBadge, Icon, initialsOf } from "./shared";
 
-export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thesis[]; onSearch: (q: string) => void; onSignOut: () => void }) {
+export function StudentDashboard({ theses, account, onSearch, onSignOut }: {
+  theses: Thesis[];
+  account: { displayName: string; email: string };
+  onSearch: (q: string) => void;
+  onSignOut: () => void;
+}) {
   const [heroQuery, setHeroQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -11,15 +16,18 @@ export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thes
   useEffect(() => {
     if (!menuOpen) return;
     const close = () => setMenuOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
     document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
   }, [menuOpen]);
 
   const quickFilters = ["Recent", "Agriculture", "Computer Science", "Forestry", "Biology", "Education"];
+  const name = account.displayName || account.email;
 
   const recent = [...theses]
-  .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a)))
-  .slice(0, 6);
+    .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a)))
+    .slice(0, 6);
 
   function handleSearch() {
     if (heroQuery.trim()) onSearch(heroQuery);
@@ -30,25 +38,31 @@ export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thes
       {/* Header */}
       <header className="site-header">
         <div className="header-inner">
-          <ISUSeal size={34} />
+          <ISUSeal size={36} />
           <div className="header-brand">
             <div className="header-title">ISU Thesis Archive</div>
-            <div className="header-sub">Echague Campus</div>
+            <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
+          <button onClick={onSignOut} className="header-signout">
+            <Icon name="logout" size={16} />
+            Sign Out
+          </button>
           <div className="avatar-wrap">
-            <div
+            <button
               onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
-              role="button"
-              tabIndex={0}
-              title="Account"
-              className="avatar avatar-student">JD</div>
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Account menu"
+              className="avatar avatar-student">{initialsOf(account.displayName, account.email)}</button>
             {menuOpen && (
-              <div className="dropdown">
+              <div className="dropdown" role="menu">
                 <div className="dropdown-header">
-                  <div className="dropdown-name">Juan Dela Cruz</div>
-                  <div className="dropdown-sub">Student</div>
+                  <div className="dropdown-name">{name}</div>
+                  <div className="dropdown-sub">{account.email}</div>
+                  <div className="dropdown-sub">Student · read-only access</div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
+                <button role="menuitem" onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
+                  <Icon name="logout" size={16} />
                   Sign Out
                 </button>
               </div>
@@ -57,37 +71,34 @@ export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thes
         </div>
       </header>
 
-      <main className="app-shell" style={{ padding: 0 }}>
+      <main style={{ flex: 1 }}>
         {/* Hero search section */}
-        <div className="hero-section">
-          <h1 className="hero-h1">
-            Discover ISU Research
-          </h1>
+        <section className="hero-section">
+          <h1 className="hero-h1">Discover ISU Research</h1>
           <p className="hero-sub">
-            Browse all archived theses from all departments and years
+            Search archived theses from every department and year, ranked by relevance.
           </p>
 
-          {/* Big search input */}
-          <div className="search-box">
-            <svg className="search-icon" width="20" height="20" fill="none" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="7" stroke="rgba(0,100,57,0.5)" strokeWidth="2.5" />
-              <path d="M20 20l-3-3" stroke="rgba(0,100,57,0.5)" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
-            <input
-              ref={inputRef}
-              value={heroQuery}
-              onChange={e => setHeroQuery(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
-              placeholder="Search for thesis topics, authors, keywords, departments..."
-              className="search-input-lg"
-            />
+          <div className="hero-search">
+            <div className="search-box">
+              <span className="search-icon"><Icon name="search" size={20} /></span>
+              <input
+                ref={inputRef}
+                value={heroQuery}
+                onChange={e => setHeroQuery(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                placeholder="Search by topic, keyword or title…"
+                aria-label="Search theses"
+                className="search-input-lg"
+              />
+            </div>
+            <button onClick={handleSearch} className="btn btn-yellow search-btn-lg">
+              Search
+            </button>
           </div>
-          <button onClick={handleSearch} className="btn btn-yellow search-btn-lg">
-            Search Theses
-          </button>
-        </div>
+        </section>
 
-        <div style={{ padding: "20px 16px 32px" }}>
+        <div className="container" style={{ paddingTop: 24, paddingBottom: 40 }}>
           {/* Quick filter chips */}
           <div className="chip-row">
             <div className="chip-row-inner">
@@ -100,36 +111,45 @@ export function StudentDashboard({ theses, onSearch, onSignOut }: { theses: Thes
             </div>
           </div>
 
-          {/* Recent theses carousel */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Recent Theses</h2>
-              <button onClick={() => onSearch("")} className="why-btn">View all →</button>
+          {/* Recent theses */}
+          <section>
+            <div className="section-head">
+              <h2 className="section-title">Recently added</h2>
+              <button onClick={() => onSearch("")} className="link-btn">
+                View all
+                <Icon name="arrowRight" size={14} />
+              </button>
             </div>
-            <div style={{ overflowX: "auto", marginRight: -16, paddingRight: 16 }}>
-              <div style={{ display: "flex", gap: 12, width: "max-content" }}>
+            {recent.length === 0 ? (
+              <div className="card empty-state">
+                <div className="empty-state-icon"><Icon name="book" size={22} /></div>
+                <div className="empty-state-title">No theses yet</div>
+                <div className="empty-state-text">Archived theses will appear here.</div>
+              </div>
+            ) : (
+              <div className="recent-grid">
                 {recent.map(t => (
-                  <div key={t.id} className="carousel-card">
-                    <p className="clamp-3" style={{ fontSize: 12, fontWeight: 600, color: "#23305B", lineHeight: 1.45, margin: "0 0 10px" }}>{t.title}</p>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <article key={t.id} className="carousel-card">
+                    <p className="carousel-title clamp-3">{t.title}</p>
+                    <div className="carousel-meta">
                       <DeptBadge dept={t.department} small />
-                      <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t.year}</span>
+                      <span>{t.year}</span>
                     </div>
                     <button onClick={() => onSearch(t.title.split(" ").slice(0, 4).join(" "))}
-                      className="btn btn-outline-green"
-                      style={{ marginTop: 12, width: "100%", padding: "7px", borderRadius: 6, fontSize: 12 }}>
-                      Open →
+                      className="btn btn-outline-green btn-sm" style={{ width: "100%", padding: "8px" }}>
+                      View details
+                      <Icon name="arrowRight" size={14} />
                     </button>
-                  </div>
+                  </article>
                 ))}
               </div>
-            </div>
-          </div>
+            )}
+          </section>
 
           {/* Footer */}
-          <div style={{ marginTop: 36, textAlign: "center", padding: "0 16px" }}>
-            <p style={{ fontSize: 12, color: "#9CA3AF" }}>Need help? Contact the Research Department at <span style={{ color: "#006439", fontWeight: 500 }}>research@isu.edu.ph</span></p>
-          </div>
+          <p className="page-foot">
+            Need help? Contact the Research Department at <strong>research@isu.edu.ph</strong>
+          </p>
         </div>
       </main>
     </div>
