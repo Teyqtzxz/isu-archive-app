@@ -91,7 +91,7 @@ Verified against the code on 2026-09-30.
 | Migrate status enum to uppercase | all, together | ☑ done — see `02` §5 |
 | 02 Schema + seed | A | ☑ done — PR #4 (`b774d97`); build fixed by adding placeholder `src/firebase.ts` |
 | 03 Auth + rules + authorized domains | A | ☑ done — verified 2026-09-30 (sign-in, roles, 5 Playground rows) |
-| 04 Live data | A | ☐ |
+| 04 Live data | A | ☑ done — verified 2026-09-30 |
 | 04 Theme + safe-area | C | ☐ |
 | 05 Debounce + filters | B | ☐ (seed to 20 already done — 21 theses in `src/seed.ts`) |
 | 06 pdf.js extraction | C | ☐ |

@@ -1,7 +1,26 @@
 # 04 — Frontend: Module Split, Live Data, Theme, Responsive Header
 
-**Status:** ☐ TODO
+**Status:** Part 2 (live data) ☑ DONE — 2026-09-30, verified by hand: live
+load, department filter, save as ARCHIVED / NEEDS_REVIEW, Mark as Archived,
+realtime update from the console, student view. Parts 3–4 (theme, header — C)
+☐ TODO.
 **Owner:** A (data) + C (CSS) · **Depends on:** 03 · **Next:** 05
+
+### How the shipped Part 2 differs from the sketches below
+
+- `saveThesis(t: NewThesis, status)` — `NewThesis` is a named type in
+  `types.ts`. `deleteThesis` was not added: nothing calls it yet.
+- `App.tsx` shows a thin banner: "Loading the thesis archive…" until the first
+  snapshot, and a red error if the listener fails — so loading, failure and an
+  empty archive all look different.
+- `RegisterForm` (C's file) got the one change this step needs: it calls
+  `onSave(thesis, status)` with `ARCHIVED` for "Confirm & Save" and
+  `NEEDS_REVIEW` for "Save Manually", shows save errors, and disables the button
+  while saving. The PDF mock is untouched — that is step 06.
+- "Mark as Archived" appears on every pending row (`isPending`: NEEDS_REVIEW
+  and DRAFT) in the staff dashboard.
+- The staff dashboard filters to the signed-in user's department; with no
+  department set it shows everything, and says so.
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **Part 1 is
