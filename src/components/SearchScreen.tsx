@@ -203,7 +203,9 @@ export function SearchScreen({
           </div>
         )}
 
-        <div className="results-list">
+        {/* While the debounce is pending the list still holds the previous query's
+            results; fade it so it is not mistaken for the answer to what is typed. */}
+        <div className={`results-list${typing ? " results-list--stale" : ""}`} aria-busy={typing}>
           {results.map(({ thesis: t, score }) => {
             const pct = searchQuery && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
             const isSelected = selected.has(t.id);
