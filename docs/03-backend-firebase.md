@@ -348,9 +348,16 @@ in the browser under the rules, and the rules forbid changing `role` — which i
 exactly the protection you want. It is only useful against the emulator.
 
 **Seeding order.** `seedTheses()` writes to `theses`, which requires `STAFF`.
-So: sign in → promote yourself in the console → sign out and back in → then run
-the seed from the devtools console of the running app. Run it before promoting
-and every write is denied.
+So: sign in → promote yourself in the console → sign out and back in → then,
+on the dev server (`npm run dev`), in the browser devtools console:
+
+```js
+const m = await import("/src/seed.ts"); await m.seedTheses();   // → 21
+```
+
+`seed.ts` is not part of the app bundle, so this `import()` is how you load it —
+typing `seedTheses()` on its own fails. Run it **once**; each call adds another
+21 documents. Run it before promoting and every write is denied.
 
 **You will need at least two accounts** to test roles properly. Google sign-in
 uses one account per browser profile, so use a normal window for one account and

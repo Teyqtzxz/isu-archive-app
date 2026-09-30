@@ -1,7 +1,12 @@
 // One-off seed script. Not imported by the app — nothing in src/ references
-// this file, and App.tsx must never do so. Run it manually from the Firebase
-// console-ish path in doc 03 §8, or call seedTheses() from a temporary
-// devtools session, then delete this file if you prefer it out of the repo.
+// this file, and App.tsx must never do so, so it is not in the bundle and
+// seedTheses() is not reachable as a global. To run it (docs/03 §8), on the dev
+// server, signed in as an account already promoted to STAFF, in the browser
+// devtools console:
+//
+//   const m = await import("/src/seed.ts"); await m.seedTheses();
+//
+// Run it once — every call adds another 21 documents.
 //
 // It writes documents the way the app will, using the same shapes and the same
 // server clock, so the seeded archive ranks identically to a real one.
@@ -295,11 +300,13 @@ export async function seedTheses(): Promise<number> {
 export type AccountRole = "STAFF" | "STUDENT";
 
 /**
- * Promote a user to staff, or correct their department.
+ * Set a user's role and department.
  *
- * There is no admin UI by design, and firestore.rules forbids a user from
- * changing their own role. This helper is the sanctioned exception and it only
- * works from a trusted caller — read the uid from Authentication -> Users.
+ * NOT a way to promote real accounts. This runs in the browser, under
+ * firestore.rules, and the rules forbid changing `role` — so once the rules are
+ * published this call is denied, which is the protection working. Promote staff
+ * in the Firebase console instead (docs/03 §8). Kept for the Rules Playground
+ * and the emulator. `department` must be one of DEPARTMENTS, or "".
  */
 export async function setMyRole(
   uid: string,
