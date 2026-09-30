@@ -160,6 +160,7 @@ export default function App() {
           theses={theses}
           role={role}
           initialQuery={searchInitialQuery}
+          defaultDepartment={account.department}
           onCombinedSummary={handleCombinedSummary}
           onBack={() => setScreen(role === "staff" ? "staff-dashboard" : "student-dashboard")}
           onSignOut={handleSignOut}
