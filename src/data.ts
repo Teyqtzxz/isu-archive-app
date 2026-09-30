@@ -1,5 +1,6 @@
-// Hardcoded sample data. Replaced by Firestore in steps 02/03 —
-// this is the only module that should ever hold fake data.
+// Data layer. Today it holds the prototype's hardcoded sample data; in steps
+// 03–04 it becomes the only module that imports firebase/firestore, and
+// SAMPLE_THESES goes away. This file stays.
 import type { Thesis } from "./types";
 
 export const SAMPLE_THESES: Thesis[] = [
@@ -101,9 +102,8 @@ export const SAMPLE_THESES: Thesis[] = [
   },
 ];
 
-// DEPARTMENTS moved to ../types — it is a filter-value constant, not sample
-// data, and step 04 deletes this module. Importing it from types.ts keeps the
-// filter values alive when the sample data goes.
+// DEPARTMENTS lives in ../types — it is a filter-value constant, not sample
+// data, so it must survive when step 04 removes SAMPLE_THESES from here.
 
 export const ADVISERS = ["Dr. Maria Santos", "Engr. Jose Reyes", "Dr. Anna Cruz", "Dr. Roberto Dela Cruz", "Engr. Liza Pagulayan", "Dr. Carmen Villanueva", "Dr. Paulo Mendoza", "Prof. Elena Bulan"];
 

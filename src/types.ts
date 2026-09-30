@@ -57,8 +57,9 @@ export function isPending(t: Pick<Thesis, "status">): boolean {
 /**
  * The ten departments, as exact strings. They are used as filter values and as
  * badge labels, so the two can never drift: read them from here, never retype
- * them. Lives in types.ts (not data.ts) so data.ts can be deleted outright when
- * Firestore takes over in step 04 without taking the filter values with it.
+ * them. Lives in types.ts (not data.ts) because data.ts turns into the
+ * Firestore layer in step 04 and its sample data is removed; the filter values
+ * must not go with it. users.department must also be one of these.
  */
 export const DEPARTMENTS = [
   "Biology", "Agriculture", "Computer Science", "Forestry",
