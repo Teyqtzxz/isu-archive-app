@@ -80,7 +80,7 @@ preamble, and it is the main thing that keeps the project on schedule.
 
 ## Progress tracker
 
-Verified against the code on 2026-09-27.
+Verified against the code on 2026-09-30.
 
 | Step | Owner | Status |
 |------|-------|--------|
@@ -89,11 +89,11 @@ Verified against the code on 2026-09-27.
 | Delete one lockfile | with the split | ☑ done — npm only |
 | Build runs `tsc --noEmit` | with the split | ☑ done |
 | Migrate status enum to uppercase | all, together | ☑ done — see `02` §5 |
-| 02 Schema + seed | A | ☐ |
+| 02 Schema + seed | A | ☑ done — PR #4 (`b774d97`); build fixed by adding placeholder `src/firebase.ts` |
 | 03 Auth + rules + authorized domains | A | ☐ |
 | 04 Live data | A | ☐ |
 | 04 Theme + safe-area | C | ☐ |
-| 05 Debounce + filters + seed to 20 | B | ☐ |
+| 05 Debounce + filters | B | ☐ (seed to 20 already done — 21 theses in `src/seed.ts`) |
 | 06 pdf.js extraction | C | ☐ |
 | 07 Extractive summary | B | ☐ |
 | 08 Deployed | C | ☐ |
@@ -107,10 +107,10 @@ Verified against the code on 2026-09-27.
 - ☐ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☐ Sign out from every screen
 - ☐ Staff registers a thesis by pasting a Google Drive link
-- ☐ System reads the PDF (first 4 pages) → auto-fills Abstract + Keywords
+- ☐ System reads the PDF (first pages, see `06` §4) → auto-fills Abstract + Keywords
 - ☐ Fallback to manual entry if the PDF cannot be read
 - ☐ Staff reviews → Confirm & Save → stored in Firestore
-- ☐ Statuses: DRAFT → NEEDS_REVIEW → ARCHIVED
+- ☐ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
 - ☐ Search: BM25, prefix + substring, 300ms debounce
 - ☐ "Why this rank?" term-by-term breakdown
 - ☐ Filters: Department / Year / Status
@@ -130,7 +130,7 @@ Verified against the code on 2026-09-27.
 | Stack | React 19 + Vite 8 + TypeScript + Tailwind 4 |
 | Backend | Firebase Auth + Cloud Firestore + Hosting — **no custom server** |
 | Search | BM25, in-browser, in-memory |
-| PDF | pdf.js, in-browser, first 4 pages |
+| PDF | Downloaded via the Google Drive API (free, API key), read by pdf.js in-browser |
 | Summary | Extractive, in-browser, no AI |
 | Storage | PDFs stay in Google Drive; the app stores only the share link |
 

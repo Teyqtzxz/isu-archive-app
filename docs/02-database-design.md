@@ -1,13 +1,23 @@
 # 02 — Database Design (Cloud Firestore)
 
-**Status:** ☐ TODO
+**Status:** ☑ DONE — 2026-09-30, merged in PR #4 (`b774d97`). Read for reference; do not redo.
 **Owner:** A · **Depends on:** 01 · **Next:** 03
 
 **Prompt to your AI:**
-> *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Extend
-> `src/types.ts` to the target schema, create `src/seed.ts`, and write down the
-> Firestore schema. **Section 5 is already done — do not redo the status
-> migration.** Do not start step 03."*
+> *(Historical — this step is done.)* "Follow `00-AI-PREAMBLE.md` first, then
+> implement this file. Extend `src/types.ts` to the target schema, create
+> `src/seed.ts`, and write down the Firestore schema. **Section 5 is already
+> done — do not redo the status migration.** Do not start step 03."
+
+### What shipped
+
+- `Thesis` has `registeredBy` / `registeredAt`; `dateAdded` is gone.
+- `registeredAtISO()` was added to `types.ts` (beyond this spec): the only
+  correct way to sort or compare `registeredAt`, which is a three-way union.
+- `DEPARTMENTS` moved from `data.ts` to `types.ts`; there is one copy.
+- `src/seed.ts` holds 21 theses across all ten departments and all three statuses.
+- `src/firebase.ts` was added afterwards with placeholder config, because
+  `seed.ts` imports it and `npm run build` failed without it.
 
 ---
 
@@ -39,16 +49,12 @@ app.
 `ExtractionState` with its lowercase warning comment. All four are already
 shipped and already imported by six components.
 
-**To change:** add `registeredBy` and `registeredAt` to `Thesis`, and replace
-the current `dateAdded` field.
+**Changed (done):** `registeredBy` and `registeredAt` were added to `Thesis`,
+replacing the old `dateAdded` field.
 
-**One decision for you:** this spec puts `DEPARTMENTS` in `src/types.ts`, but
-today it lives in `src/data.ts` and is imported by `RegisterForm.tsx`. Moving it
-touches three files and is not required for anything else in this step. Either
-move it and update all three imports, or leave it in `data.ts` and note the
-deviation here. **Whichever you pick, do not leave two `DEPARTMENTS`
-definitions** — two copies is how the filter values and the badge labels drift
-apart.
+**Decided:** `DEPARTMENTS` moved to `src/types.ts` and `RegisterForm.tsx` imports
+it from there. There is exactly one definition — two copies is how the filter
+values and the badge labels drift apart.
 
 ```typescript
 import type { Timestamp } from "firebase/firestore";
@@ -106,12 +112,13 @@ One document per signed-in user, keyed by Firebase Auth UID.
 | `email` | string | `staff.cas@isu.edu.ph` | full Google email |
 | `displayName` | string | `"Maria Santos"` | from Google profile |
 | `role` | string | `"STAFF"` | `"STAFF"` or `"STUDENT"` |
-| `department` | string | `"CAS"` | staff only |
+| `department` | string | `"Computer Science"` | staff only. **Must be one of `DEPARTMENTS`** (or `""`) — the staff dashboard and the default search filter compare it to `Thesis.department`, so a college code like `"CAS"` matches nothing and every staff view comes up empty |
 | `createdAt` | timestamp | — | first-created date |
 
 On first login the app creates this document with `role: "STUDENT"`. An account
-is **never** created as staff. Promotion happens by editing the document from the
-console or with the helper below.
+is **never** created as staff. Promotion happens by editing the document **in the
+Firebase console** — see `03` §8. The client-side `setMyRole()` helper is denied
+by the security rules once they are published, by design.
 
 ---
 
@@ -126,10 +133,11 @@ console or with the helper below.
 | `year` | number | `2024` | academic year |
 | `adviser` | string | `"Dr. Maria Santos"` | |
 | `driveLink` | string | `https://drive.google.com/...` | the share link staff pasted |
-| `driveFileId` | string | `"1ABC..."` | parsed from `driveLink` |
-| `status` | string | `"ARCHIVED"` | one of `STATUSES` || `registeredBy` | string | `"uid_of_staff"` | who saved it |
+| `driveFileId` | string | `"1ABC..."` | parsed from `driveLink`. Added to `Thesis` in step 06, not before |
+| `status` | string | `"ARCHIVED"` | one of `STATUSES` |
+| `registeredBy` | string | `"uid_of_staff"` | who saved it |
 | `registeredAt` | timestamp | — | when saved |
-| `extractedAt` | timestamp | — | when the PDF was read |
+| `extractedAt` | timestamp | — | when the PDF was read. Optional; step 06 |
 
 ### Status flow
 
@@ -138,9 +146,9 @@ Firestore**. The status is decided by which button the staff member pressed:
 
 | Status | Set when |
 |--------|----------|
-| `ARCHIVED` | PDF read successfully, staff pressed "Confirm & Save" |
+| `ARCHIVED` | PDF read successfully, staff pressed "Confirm & Save" — or staff pressed "Mark as Archived" on a `NEEDS_REVIEW` row (`04` §2.2) |
 | `NEEDS_REVIEW` | staff pressed "Save Manually" (PDF unreadable or scanned) |
-| `DRAFT` | staff saved a partial record |
+| `DRAFT` | **reserved.** No button produces it yet; it exists in seed data so the badge, filter and `isPending()` stay exercised. Do not invent a "Save Draft" button unless the group decides to |
 
 `department`, `year` and `status` are used as filter values, so their strings
 must be identical everywhere. Always read them from `DEPARTMENTS` / `STATUSES`
@@ -205,22 +213,27 @@ than re-declared. `src/types.ts` now holds the one `Thesis` interface.
 
 ## 6. `src/seed.ts`
 
+## ✅ DONE — the real file is `src/seed.ts` (21 theses). Read it, not this sketch.
+
+The sketch below is the shape it follows. An earlier version of this snippet
+put `driveFileId: ""` in each record; that field is not on `Thesis` until step
+06, so it did not compile, and the real file correctly leaves it out.
+
 ```typescript
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Thesis, ThesisStatus } from "./types";
 
-/** The prototype's 8 sample theses, converted to the real schema. */
 const THESES_TO_SEED: Array<Omit<Thesis, "id" | "registeredAt">> = [
   {
     title: "Biodiversity Assessment of Macro-invertebrates in Cagayan River Tributaries",
-    abstract: "…copy the real abstract from the prototype's SAMPLE_THESES…",
+    abstract: "…the real abstract…",
     keywords: ["biodiversity", "macroinvertebrates", "Cagayan River", "water quality"],
     department: "Biology", year: 2024, adviser: "Dr. Maria Santos",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED", registeredBy: "", driveFileId: "",
+    status: "ARCHIVED", registeredBy: "",
   },
-  // …7 more, same shape
+  // …20 more, same shape
 ];
 
 export async function seedTheses(): Promise<number> {
@@ -247,9 +260,12 @@ export async function setMyRole(
 }
 ```
 
-Replace the placeholder abstracts with the real text from the prototype's
-`SAMPLE_THESES`, and add **more than 8** — aim for 20. Eight records makes the
-search look unconvincing and there is little to rank against.
+**Running it** (step 03, after rules are published): `seedTheses()` writes to
+`theses`, which the rules allow only for `STAFF`. So the order is: sign in once
+→ promote your own account to `STAFF` in the console (`03` §8) → then run the
+seed. Run before that, every write is denied. `setMyRole()` is likewise denied
+by the rules and is kept only for the Rules Playground / emulator; promote real
+accounts in the console.
 
 Use `serverTimestamp()`, not `new Date()`, so every document shares the server's
 clock. "This Month" counts and newest-first sorting are only correct if client
@@ -330,12 +346,12 @@ Done as of the enum migration (`02` §5):
 
 Still to check once this step's remaining work is done:
 
-- [ ] `src/seed.ts` compiles
-- [ ] `src/data.ts` exports `DEPARTMENTS` and `ADVISERS` (it holds them today;
-      step 03 may move them, so confirm before relying on the import)
+- [x] `src/seed.ts` compiles (after `src/firebase.ts` was added)
+- [x] `DEPARTMENTS` is exported from `src/types.ts` only; `ADVISERS` stays in
+      `src/data.ts` until step 04 replaces the sample data
 
 **Cannot be verified until step 03** (no Firebase project yet): that the seed
-actually writes 20 documents, and that `setMyRole` promotes your account.
+actually writes 21 documents once your account is `STAFF`.
 
 ---
 

@@ -35,13 +35,17 @@ of the top results.
 - PDF reading (pdf.js) runs in the browser
 - Summarisation (extractive) runs in the browser
 - Firebase provides **identity and data storage only**
+- The Google Drive API (free, API key, called from the browser) is used for one
+  thing only: downloading a shared thesis PDF so pdf.js can read it
 
-Never introduce a server, an API route, an AI/LLM call, or a paid service.
+Never introduce a server, an API route, an AI/LLM call, or a paid service. The
+Drive API download in step 06 is the one sanctioned external call.
 
 ## Stack
 
 React 19 · Vite 8 · TypeScript 5.7 (strict) · Tailwind CSS v4 · Firebase Auth
-(Google) + Cloud Firestore + Hosting · pdf.js (`pdfjs-dist`) · `oxfmt`
+(Google) + Cloud Firestore + Hosting · Google Drive API v3 (PDF download) ·
+pdf.js (`pdfjs-dist`) · `oxfmt`
 
 ## Canonical types (`src/types.ts`)
 
@@ -71,11 +75,19 @@ export type ExtractionState = "idle" | "extracting" | "success" | "needs_review"
 export function isPending(t: Pick<Thesis, "status">): boolean {
   return t.status === "NEEDS_REVIEW" || t.status === "DRAFT";
 }
+
+/** registeredAt as a sortable ISO string, whatever shape it arrived in. null → "" (sorts last). */
+export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string;
+
+export const DEPARTMENTS = [ /* the ten strings below */ ] as const;
 ```
 
-The `Thesis` interface above is the **target** schema. `registeredBy` and
-`registeredAt` are added in step 02; the version in `src/types.ts` today has
-`dateAdded` instead and will be changed then.
+This is what `src/types.ts` exports today (step 02 is merged). **Never compare or
+subtract `registeredAt` directly** — it is a three-way union. Sort and compare
+through `registeredAtISO()`.
+
+`users.department` must be one of `DEPARTMENTS` (or `""`), never a college code
+like `"CAS"` — staff filters compare it against `Thesis.department`.
 
 ### The status enum — three traps
 
@@ -96,8 +108,14 @@ The `Thesis` interface above is the **target** schema. `registeredBy` and
 
 ```
 src/
-  types.ts            ← the types above                          ✅ EXISTS
-  data.ts             ← SAMPLE_THESES, DEPARTMENTS, ADVISERS     ✅ EXISTS
+  types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
+  data.ts             ← SAMPLE_THESES, ADVISERS today; becomes the
+                        only Firestore module in steps 03–04     ✅ EXISTS
+  firebase.ts         ← app, auth, db — placeholder config until
+                        step 03 pastes the real one              ✅ EXISTS
+  seed.ts             ← one-off seed script, 21 theses           ✅ EXISTS
+  index.css           ← Tailwind + ISU tokens; step 04 adds
+                        safe-area + header vars                  ✅ EXISTS
   search.ts           ← pure: tokenize, findMatchScore, docTextOf,
                         SearchIndex, buildIndex, computeDocFreq,
                         bestFieldFor, bm25Score                  ✅ EXISTS
@@ -107,12 +125,12 @@ src/
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx  ✅ EXIST
   ─── not created yet ───
-  firebase.ts         ← initApp, auth, db (config pasted from console)
-  seed.ts             ← one-off seed script
-  summary.ts          ← pure: extractive summarisation
-  extractPdf.ts       ← pure: Drive link parsing + pdf.js text extraction
-  index.css           ← Tailwind + ISU tokens + safe-area + header vars
+  summary.ts          ← pure: extractive summarisation (step 07)
+  extractPdf.ts       ← pure: Drive API download + pdf.js text extraction (step 06)
+  firestore.rules     ← project root, not src/ (step 03)
 ```
+
+File ownership (who may edit what) is in `10-group-work-split.md` §2.
 
 **The split is already done.** `App.tsx` used to be 1333 lines holding
 everything. It is now 87 lines of state and routing, with each screen, the
@@ -153,7 +171,7 @@ Fake, must be replaced:
 - `LoginScreen` role buttons → Google sign-in
 - `RegisterForm` `setTimeout` + `MOCK_ABSTRACT` + `Math.random() > 0.3` → pdf.js
 - `CombinedSummaryPanel` static template string → extractive algorithm
-- The lowercase status union → the canonical enum above
+- `src/firebase.ts` `REPLACE_ME` config values → the real config (step 03)
 
 ## Rules
 
@@ -181,8 +199,10 @@ Fake, must be replaced:
     asking first. These throw away work that cannot be recovered. `git status`,
     `git diff`, `git log` and `git restore <file>` are always safe.
 11. **Never commit a secret.** No `.env`, no service account JSON, no real API
-    key. Firebase's *web* config is safe to commit — every browser downloads it
-    anyway — but admin credentials are not.
+    key. Firebase's *web* config (`src/firebase.ts`) and the domain-restricted
+    Drive browser key (`src/extractPdf.ts`) are safe to commit and **are**
+    committed — every browser downloads them anyway. Admin and service-account
+    credentials are not.
 12. **Only edit the files this step doc names.** If a file outside the step's
     scope needs changing, stop and ask first. Working on a file another member
     owns is how the ownership split gets a merge conflict — that is the exact

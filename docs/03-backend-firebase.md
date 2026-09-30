@@ -5,7 +5,8 @@
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Set up Firebase:
-> config file, real Google sign-in with the `@isu.edu.ph` check, role routing,
+> replace the `REPLACE_ME` values in `src/firebase.ts` with the config I give you,
+> move `AccountRole` into `src/types.ts`, real Google sign-in with the `@isu.edu.ph` check, role routing,
 > session restore, sign out on every screen. Write the security rules file to
 > `firestore.rules` — do not paste anything into the console. Do not start step 04."*
 
@@ -42,15 +43,16 @@ is not on the list until you add it, and the symptom is
 
 ## 2. Install
 
-```bash
-npm install firebase
-```
+**Already done** — `firebase` is in `package.json` and installed. Do not install
+it again. `npm ci` on a fresh clone is enough.
 
 ---
 
 ## 3. `src/firebase.ts`
 
-Create it, with your pasted config:
+**The file already exists** with placeholder `REPLACE_ME` values (added so the
+build could typecheck `seed.ts`). Replace the placeholders with your pasted
+config; the rest of the file is already as below:
 
 ```typescript
 import { initializeApp } from "firebase/app";
@@ -71,7 +73,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 ```
 
-Commit this file. The apiKey is public, so this is safe.
+Commit this file. The apiKey is public, so this is safe — and it must be
+committed, or a fresh clone cannot build or run. The group decided this; do not
+move it to `.env`.
 
 ---
 
@@ -89,6 +93,8 @@ import { auth, db } from "./firebase";
 import type { AccountRole } from "./types";
 
 const ISU_DOMAIN = "@isu.edu.ph";
+export const isIsuEmail = (email: string | null | undefined) =>
+  !!email && email.toLowerCase().endsWith(ISU_DOMAIN);
 
 /** Resolve the account to a role, creating a STUDENT profile on first login. */
 export async function getRoleForUser(uid: string): Promise<AccountRole> {
@@ -111,7 +117,7 @@ export async function signInWithGoogle(): Promise<AccountRole> {
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
 
-  if (!user.email?.toLowerCase().endsWith(ISU_DOMAIN)) {
+  if (!isIsuEmail(user.email)) {
     await signOut(auth);
     throw new Error("Please sign in with your ISU Google account (@isu.edu.ph).");
   }
@@ -129,6 +135,11 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 ```
+
+**`AccountRole` must move to `src/types.ts` first.** Today it is declared in
+`src/seed.ts`, so the import above fails. Move the declaration (with its comment)
+into `types.ts` and change `seed.ts` to `import type { AccountRole } from
+"./types"`. A owns all three files, so this is one commit.
 
 `prompt: "select_account"` matters for testing: without it Google silently reuses
 the last signed-in account, so switching between your staff and student test
@@ -188,13 +199,17 @@ devices.
 ```typescript
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase";
-import { getRoleForUser } from "./data";
+import { getRoleForUser, isIsuEmail, signOutUser } from "./data";
 
 useEffect(() => {
   const unsub = onAuthStateChanged(auth, async (user) => {
     if (!user) {
       setRole(null);
       setScreen("login");
+      return;
+    }
+    if (!isIsuEmail(user.email)) {   // a restored non-ISU session
+      await signOutUser();            // fires this callback again with null
       return;
     }
     try {
@@ -226,12 +241,22 @@ be confirmed, show the read-only view. Never default to staff.
 
 Remove the prototype's fake logout / `page.reload()` logic.
 
+**How to wire it without editing other people's files.** `App.tsx` owns the one
+`handleSignOut = () => signOutUser()` and passes it down as the `onSignOut` prop.
+Today `StaffDashboard` (which also hosts the Register tab) and
+`StudentDashboard` already take `onSignOut` — just change `handleSignOut` in
+`App.tsx`. `SearchScreen` has **no** `onSignOut` prop yet: ask B (`10` §2) to add
+one in their branch, then pass it from `App.tsx`. Do not edit `SearchScreen`,
+`CombinedSummaryPanel` or `RegisterForm` yourself.
+
 Wire it at:
 
 - **Mobile (< 768px):** avatar tap → dropdown → "Sign Out"
 - **Tablet/desktop (≥ 768px):** the visible "Sign Out" button in the header
-- **Staff dashboard, register screen, search screen, summary panel, student
-  dashboard** — all five
+- **Staff dashboard (every tab, including Register), student dashboard, search
+  screen** — the three full screens. The summary panel is a modal over the
+  search screen: Close returns to it, and Sign Out is there. It does not need
+  its own button.
 
 ---
 
@@ -246,8 +271,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Signed in AND an ISU account. The @isu.edu.ph check in data.ts is only
+    // UX: anyone can call Firestore directly with a personal Google account,
+    // so the rules must enforce the domain too.
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@isu[.]edu[.]ph$');
     }
 
     function isStaff() {
@@ -256,14 +286,14 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn();   // needed for isStaff(); exposes emails to ISU accounts only
 
       // Create only your own profile, and only as a STUDENT.
-      allow create: if request.auth.uid == uid
+      allow create: if signedIn() && request.auth.uid == uid
                     && request.resource.data.role == 'STUDENT';
 
       // Update your own profile, but the role may never change.
-      allow update: if request.auth.uid == uid
+      allow update: if signedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
 
       allow delete: if false;
@@ -294,7 +324,8 @@ cannot create a document that is already staff.
 
 ### What these rules guarantee
 
-- Nothing is readable without signing in.
+- Nothing is readable without signing in **with a verified `@isu.edu.ph`
+  account** — a personal Gmail is denied even when it calls Firestore directly.
 - Students can search and view abstracts, and nothing else.
 - Only `STAFF` can register, edit or delete a thesis.
 - A user can edit their own name and department, never their own role.
@@ -303,14 +334,23 @@ cannot create a document that is already staff.
 
 ## 8. Making someone STAFF
 
-There is no admin UI. To promote a tester, from the console or via `setMyRole()`
-in `src/seed.ts`:
+There is no admin UI. **Promote in the Firebase console** — the console uses
+admin access and bypasses the rules:
 
-```typescript
-await setMyRole("<their uid>", "STAFF", "CAS");
-```
+1. The person signs in once, so `users/{uid}` exists as `STUDENT`
+2. Firestore → Data → `users` → their uid document
+3. Edit `role` → `STAFF`, and set `department` to one of the exact
+   `DEPARTMENTS` strings, e.g. `Computer Science` (never a college code like
+   `CAS` — it matches no thesis, so their dashboard shows nothing)
 
-You can read a uid from Authentication → Users.
+`setMyRole()` in `src/seed.ts` does **not** work once §7 is published: it runs
+in the browser under the rules, and the rules forbid changing `role` — which is
+exactly the protection you want. It is only useful against the emulator.
+
+**Seeding order.** `seedTheses()` writes to `theses`, which requires `STAFF`.
+So: sign in → promote yourself in the console → sign out and back in → then run
+the seed from the devtools console of the running app. Run it before promoting
+and every write is denied.
 
 **You will need at least two accounts** to test roles properly. Google sign-in
 uses one account per browser profile, so use a normal window for one account and
@@ -330,17 +370,22 @@ the first two:
 | Staff writes to `theses` | **allowed** |
 | Student updates own doc, `role` unchanged | **allowed** |
 | Student updates own doc, `role: "STAFF"` | **denied** |
+| Non-ISU account (e.g. `@gmail.com`) reads `theses` | **denied** |
 
-Row 4 is the one that proves the escalation hole is closed.
+Row 4 proves the escalation hole is closed. Row 5 proves the domain is enforced
+by the rules, not just by the login screen. (In the Playground, set the
+authenticated token's `email` and `email_verified` fields.)
 
 Then in the app:
 
 - [ ] `npm run build` passes
 - [ ] Login screen shows one Google button, no role picker
 - [ ] Signing in with a non-ISU account is rejected with a visible message
+- [ ] `AccountRole` is declared once, in `src/types.ts`
 - [ ] Signing in with an ISU account lands on the correct dashboard for the role
 - [ ] Refreshing the page keeps you signed in
-- [ ] Sign Out works from all five screens, including the mobile avatar dropdown
+- [ ] Sign Out works from the staff dashboard (all tabs), student dashboard and
+      search screen, including the mobile avatar dropdown
 - [ ] `users` collection contains your uid
 - [ ] No `alert()` and no `page.reload()` left in the auth code
 

@@ -6,12 +6,11 @@
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **Part 1 is
 > already done — the module split shipped in commit `c5644d4`; do not redo it.**
-> Implement Part 2 only: create `src/data.ts` to load theses from Firestore and
-> save new ones, then wire it into `App.tsx`. Do not start step 05."*
+> Implement Part 2 only: extend the existing `src/data.ts` (it already has the
+> step 03 auth functions) to load theses from Firestore and save new ones, then
+> wire it into `App.tsx`. Do not start step 05."*
 
-This file is bigger than the others because it contains a **refactor that must
-happen before three people work in parallel.** Do Part 1 even if you are working
-alone.
+Part 1 below is kept as a record of the module split. It is done.
 
 ---
 
@@ -62,46 +61,24 @@ missing, none added, and none appearing more often than before. `tsc --noEmit`
 is clean, `npm run build` passes, the bundle is the same 265.31 kB, all 12
 modules resolve through Vite with no circular imports, and every screen renders.
 
-## 1.2 Target layout
+## 1.2 Layout as it is now
 
 ```
 src/
-  types.ts            ← create (step 02)
-  firebase.ts         ← create (step 03)
-  data.ts             ← create (§3.2 below)
-  seed.ts             ← create (step 02)
-  search.ts           ← create (step 05)
-  summary.ts          ← create (step 07)
-  extractPdf.ts       ← create (step 06)
-  App.tsx             ← screen state machine + routing ONLY
+  types.ts  firebase.ts  data.ts  seed.ts  search.ts     ← exist
+  summary.ts (step 07)  extractPdf.ts (step 06)            ← not yet
+  App.tsx             ← screen state + routing ONLY
   components/
     LoginScreen.tsx  StaffDashboard.tsx  RegisterForm.tsx
-    SearchScreen.tsx  StudentDashboard.tsx  SummaryPanel.tsx
-    ui.tsx            ← ISUSeal, StatusBadge, DeptBadge, Toast
+    SearchScreen.tsx  StudentDashboard.tsx  CombinedSummaryPanel.tsx
+    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast, STATUS_LABELS
 ```
 
-Move each existing component to its own file. `App.tsx` keeps the `Screen` state
-machine, the auth effect, the `theses` state, the toast, and the navigation map.
+`App.tsx` renders screens with `{screen === "…" && <… />}` blocks, and the Register
+form is a tab inside `StaffDashboard`, not its own screen. Keep that.
 
-```typescript
-switch (screen) {
-  case "login":            return <LoginScreen onSignedIn={…} />;
-  case "staff-dashboard":  return <StaffDashboard … />;
-  case "register":         return <RegisterForm … />;
-  case "search":           return <SearchScreen … />;
-  case "summary":          return <SummaryPanel … />;
-  case "student-dashboard":return <StudentDashboard … />;
-}
-```
-
-`ui.tsx` is **shared — nobody edits it** except C's safe-area additions. It is the
-one file that is allowed to be touched by more than one person, and only additively.
-
-## 1.3 Commit it separately
-
-```
-refactor: split App.tsx into per-screen modules (no behaviour change)
-```
+`shared.tsx` is **shared — nobody edits it** except C's safe-area additions, and
+only additively. Ownership of every other file is in `10` §2.
 
 ---
 
@@ -140,10 +117,10 @@ keeps the search and summary modules pure and testable.
 
 ```typescript
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp,
+  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import type { Thesis, ThesisStatus } from "./types";
+import { registeredAtISO, type Thesis, type ThesisStatus } from "./types";
 
 /** Realtime. Every open dashboard updates the moment staff save a thesis. */
 export function subscribeToTheses(
@@ -155,8 +132,10 @@ export function subscribeToTheses(
     (snap) => {
       onData(
         snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Thesis)
-          .sort((a, b) => (b.registeredAt ?? 0).valueOf() - (a.registeredAt ?? 0).valueOf()),
+          // "estimate": a just-saved doc's serverTimestamp() is still pending
+          // locally; without this it reads as null and sorts to the bottom.
+          .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }) as Thesis)
+          .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a))),
       );
     },
     (err) => onError?.(err),
@@ -177,10 +156,25 @@ export async function saveThesis(
   return ref.id;
 }
 
+/** The "Mark as Archived" action on a NEEDS_REVIEW row. */
+export async function updateThesisStatus(id: string, status: ThesisStatus): Promise<void> {
+  await updateDoc(doc(db, "theses", id), { status });
+}
+
 export async function deleteThesis(id: string): Promise<void> {
   await deleteDoc(doc(db, "theses", id));
 }
 ```
+
+**Never sort on `registeredAt` directly.** An earlier version of this snippet
+did `(b.registeredAt ?? 0).valueOf() - …`. A Firestore `Timestamp.valueOf()`
+returns a *string*, so the subtraction is `NaN` and the list comes out in
+arbitrary order. `registeredAtISO()` handles all three shapes.
+
+**Status review.** A `NEEDS_REVIEW` row in the staff dashboard table gets one
+small "Mark as Archived" button (A owns `StaffDashboard`) that calls
+`updateThesisStatus(id, "ARCHIVED")`. Without it a manually entered thesis can
+never leave "Pending Review". The rules already allow staff updates.
 
 ## 2.3 Wire it into `App.tsx`
 
@@ -211,6 +205,13 @@ show a user who cannot sign in.
 Students and staff both subscribe to the same collection. Staff additionally
 filter by their own department in the UI — a client-side filter, not a different
 query.
+
+**Where the staff department comes from.** Extend `getRoleForUser` (step 03) to
+return `{ role, department }` from `users/{uid}`, keep `department` in `App.tsx`
+state, and pass it to `StaffDashboard` and `SearchScreen`. It is one of the exact
+`DEPARTMENTS` strings (`02` §3). Replace the hardcoded "CAS Department Staff"
+badge in `StaffDashboard` with it. Remove `SAMPLE_THESES` from `App.tsx`'s
+initial state — start with `[]`.
 
 ---
 
@@ -322,14 +323,18 @@ Only if time allows. See `08-deployment.md` §4.
 ## 6. Verification
 
 - [ ] `npm run build` passes
-- [ ] The split commit changed **no** behaviour — search results, ranking and every
-      screen look identical before and after
-- [ ] No screen component remains inside `App.tsx`
+- [x] The split commit changed **no** behaviour — search results, ranking and every
+      screen look identical before and after (Part 1, done)
+- [x] No screen component remains inside `App.tsx` (Part 1, done)
 - [ ] `grep -rn "firebase/firestore" src/components/` returns nothing
 - [ ] Add a document in the Firestore console → it appears in the UI without a refresh
 - [ ] Registering a thesis writes a document and shows a toast
 - [ ] "Pending Review" goes up by 1 after a **Save Manually** (proves status is
       passed in, not hardcoded)
+- [ ] "Mark as Archived" on that row brings it back down by 1
+- [ ] A newly saved thesis appears at the **top** of the list immediately, not
+      the bottom (proves the `serverTimestamps: "estimate"` sort)
+- [ ] The staff badge shows the signed-in user's department, not "CAS"
 - [ ] At 375×667 with a 48px top inset the header logo and title are fully visible
 - [ ] At 768px the Sign Out button is visible; below 768px it is not
 - [ ] At 1024px the content does not sit under the header

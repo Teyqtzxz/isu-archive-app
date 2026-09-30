@@ -13,9 +13,12 @@
 
 ---
 
-## 1. What already works — move it, do not rewrite it
+## 1. What already works — already in `src/search.ts`, do not rewrite it
 
-The prototype's `App.tsx` already contains a real, correct search engine:
+## ✅ DONE — the move into `src/search.ts` shipped with the module split (`c5644d4`)
+
+`src/search.ts` and `SearchScreen.tsx` already contain a real, correct search
+engine:
 
 | Function | Status |
 |----------|--------|
@@ -31,9 +34,9 @@ The prototype's `App.tsx` already contains a real, correct search engine:
 | "Relevance: XX%" badges | ✅ works |
 | "Why this rank?" per-term breakdown | ✅ works |
 
-Your job is to **move this code into `src/search.ts` unchanged**, then close the
-two remaining gaps. Moving code that works is a mechanical task — resist every
-urge to improve it while you are in there.
+It is already in `src/search.ts`. **Do not move, rewrite or "improve" it.** Your
+job is only the remaining gaps below. The one sanctioned change to `search.ts` is
+the additive `idf`/`tf` fields in §4.
 
 ### Note the signatures
 
@@ -126,8 +129,12 @@ fabricated one. Keep it.
 
 A one-character query should not search. It matches too much to be useful and
 wastes a full corpus scan. `findMatchScore` already returns `0` for terms shorter
-than two characters, so this is handled — but keep the early return in
-`searchTheses` too, so an all-garbage query never builds an index:
+than two characters, so this is handled.
+
+The sketch below is **illustrative only** — there is no `searchTheses` or
+`sortByNewest` in the code, and you should not add them. The real equivalent is
+the `results` `useMemo` in `SearchScreen.tsx` (§6), which already returns
+everything newest-first for an empty query:
 
 ```typescript
 export function searchTheses(query: string, theses: Thesis[]): SearchResult[] {
@@ -173,6 +180,12 @@ Use the same numbers `bm25Score` computed. Do not recompute them for display —
 two implementations of the same formula will eventually disagree, and the panel
 becomes a thing that lies.
 
+Today `bm25Score` returns only the product per term (`{ term, score, field }`).
+So this is the **one allowed change to `search.ts`**: add `idf` and `tf`
+(`tfNorm`) to each `termScores` entry, from the variables already computed on
+the lines above the push. Additive only — `score` and every formula stay
+byte-identical, and the §8 "ranking identical" check must still pass.
+
 ### Filters
 
 - **Department ▼ · Year ▼ · Status ▼** — Status is staff-only; students never see it
@@ -182,7 +195,12 @@ becomes a thing that lies.
 - "Clear filters" returns to the full list
 
 Read the option lists from `DEPARTMENTS` and `STATUSES` in `src/types.ts` rather
-than hardcoding option arrays in the component.
+than hardcoding option arrays in the component. (Today the department dropdown
+derives its options from the loaded theses — `allDepts` in `SearchScreen.tsx` —
+so a department with no theses yet is missing. Switch it to `DEPARTMENTS`.)
+
+The staff default department comes from `App.tsx` as a prop (`04` §2.3). It is
+one of the exact `DEPARTMENTS` strings.
 
 ### Relevance percentage
 
@@ -218,8 +236,10 @@ same message.
 
 ## 6. Performance — already done, do not redo it
 
+## ✅ DONE
+
 This was the one real performance bug in the prototype and it is **already
-fixed**. Do not "optimise" it again; move the existing code.
+fixed**. Do not "optimise" it again.
 
 **What was wrong.** `bm25Score` took the whole corpus as an argument and, for
 *each* document it was scoring, looped over the *entire* corpus re-tokenising
@@ -243,7 +263,7 @@ const results = useMemo(() => {
   if (!query.trim()) {
     return filtered
       .map((t) => ({ thesis: t, score: 0, termScores: [] }))
-      .sort((a, b) => b.thesis.dateAdded.localeCompare(a.thesis.dateAdded));
+      .sort((a, b) => registeredAtISO(b.thesis).localeCompare(registeredAtISO(a.thesis)));
   }
   const df = computeDocFreq(tokenize(query), index);
   return filtered
@@ -269,9 +289,12 @@ If the collection ever grows past roughly a thousand, move the index into a
 
 ---
 
-## 7. Seed data — your other job
+## 7. Seed data
 
-The prototype has 8 sample theses. **Write at least 20.**
+## ✅ DONE — `src/seed.ts` has 21 theses (step 02). It is A's file; do not edit it.
+
+The prototype had 8 sample theses; the seed now has 21. The reasoning, kept for
+the record:
 
 Eight documents give BM25 almost nothing to discriminate between, the relevance
 percentages all look similar, and the combined summary in step 07 has nothing to
@@ -299,11 +322,13 @@ actually have something to match against.
 - [ ] Active filters appear as removable chips; "Clear filters" resets everything
 - [ ] Staff see their own department preselected; students see "All Departments"
 - [ ] Students do not see the Status filter
-- [ ] Ranking is **identical** to before the move to `search.ts` — verify by
-      running the same query before and after
+- [ ] Ranking is **identical** before and after your change — run the same
+      queries on `main` and on your branch and compare
 - [ ] An archive with zero theses shows the empty state and does not print `NaN`
 - [ ] `search.ts` imports nothing from `firebase/*`
-- [ ] Seed has ≥ 20 theses
+- [x] Seed has ≥ 20 theses (21, step 02)
+- [ ] The department dropdown lists all ten `DEPARTMENTS`, even ones with no theses
+- [ ] `search.ts` diff is additive only: `idf` / `tf` fields, nothing else
 
 ---
 

@@ -10,7 +10,7 @@ contain the right instruction. Your job is to assemble, not to author.**
 **Two things per message. Always. Never three.**
 
 ```
-1.  00-AI-PREAMBLE.md  lines 13 to 221  (between the BEGIN/END markers)
+1.  00-AI-PREAMBLE.md  everything between the BEGIN PREAMBLE and END PREAMBLE markers
 2.  exactly ONE step doc, the whole file, nothing after it
 ```
 
@@ -68,7 +68,7 @@ Paste these three blocks, in this order, as **one message**:
 
 ```
 [ BLOCK 1 ]
-00-AI-PREAMBLE.md, lines 13 to 221
+00-AI-PREAMBLE.md, from the BEGIN PREAMBLE marker to the END PREAMBLE marker
 
 [ BLOCK 2 ]
 --- the whole of your step doc, e.g. 05-search-ranking.md ---
@@ -84,24 +84,10 @@ next step, which it will otherwise try to do.
 
 ## Part 4 - Every step, ready to go
 
-### Step 02 - Database design
+### Step 02 - Database design — ✅ DONE
 
-| | |
-|---|---|
-| Owner | **A** |
-| Branch | `person-a-data` |
-| Doc | `02-database-design.md` |
-| Blocked? | Partly. §6 seed script can be **written** but not **run** - needs Firebase |
-| Already done | §5 status enum (marked DONE in the file - the AI will skip it) |
-
-**Block 3:**
-
-> Implement only what `02-database-design.md` specifies. Do not start step 03.
-
-**What the AI produces:** `src/types.ts` (extended), `src/seed.ts`, the
-Firestore schema, and the queries in §7.
-
-**Verify:** §9 of the doc. Then `npm run build`.
+Merged in PR #4. Nothing to send. The seed is **run** in step 03, once your
+account is `STAFF` (`03` §8).
 
 ---
 
@@ -116,21 +102,26 @@ Firestore schema, and the queries in §7.
 
 **§1 of this doc is a manual Firebase Console task.** It needs your Google
 account: create the project, register the web app, enable Google sign-in and
-Firestore, then add the authorized domain. There is no API key to paste and the
-AI cannot do it for you.
+Firestore, then add the authorized domains. The AI cannot do it for you. At the
+end you copy the `firebaseConfig` (it includes an `apiKey` — that is public and
+gets committed) and give it to the AI with the message.
 
 **Order:** do §1 yourself in the browser first. Only then send the message.
-Then §8 (making someone STAFF) also needs the console.
+Then §8 (making someone STAFF) also needs the console, and only after that can
+you run the seed. While you are in the console, also create the Drive API key
+for C (`06` §0).
 
 **Block 3:**
 
 > Implement only what `03-backend-firebase.md` specifies. Do not start step 04.
 
-**What the AI produces:** `src/firebase.ts`, real Google sign-in with the
-`@isu.edu.ph` check, role routing, session restore, sign-out on every screen,
-and `firestore.rules`.
+**What the AI produces:** the real config in `src/firebase.ts`, `AccountRole`
+moved to `types.ts`, real Google sign-in with the `@isu.edu.ph` check, role
+routing, session restore, sign-out, and `firestore.rules`.
 
-**Verify:** §9. Confirm sign-out works from **all three** screens, not just one.
+**Verify:** §9, including the 5-row Rules Playground. Confirm sign-out works from
+the staff dashboard, the student dashboard **and** the search screen (the last
+needs B's `onSignOut` prop — `03` §6).
 
 ---
 
@@ -166,15 +157,16 @@ A and C work simultaneously here. Their files do not overlap, so no conflict.
 | Owner | **B** |
 | Branch | `person-b-search` |
 | Doc | `05-search-ranking.md` |
-| Already done | §1 (the move to `src/search.ts`) and §6 (performance). Both marked done - **do not let the AI redo them** |
+| Already done | §1 (the move to `src/search.ts`), §6 (performance) and §7 (seed data). All marked done - **do not let the AI redo them** |
 
 **Block 3:**
 
 > Implement only what `05-search-ranking.md` specifies. `src/search.ts` already
-> exists and is correct - do not rewrite it. Do not start step 06.
+> exists and is correct - the only allowed change is adding `idf` and `tf` to
+> `termScores` (§4). Do not start step 06.
 
-**What the AI produces:** the 300ms debounce, filter chips, "Why this rank?",
-empty states, and the expanded seed list.
+**What the AI produces:** the 300ms debounce, filter chips, "Why this rank?"
+with IDF × TF, and empty states.
 
 **Verify:** §8 of the doc — it is a long checklist. Two checks matter most:
 
@@ -182,10 +174,9 @@ empty states, and the expanded seed list.
   theses. If it does, the `length >= 4` guard was lost.
 - Relevance reads **~97%, not 100%**. That is deliberate.
 
-**Coordinate:** §7 asks you to expand the seed data, and that data lives in
-`src/data.ts` - which is **A's** file. Whoever writes `data.ts` first owns it. If
-A's PR is already merged, build on top of it. If not, do the search work and
-leave the seed rows to A.
+**Coordinate:** A needs an `onSignOut` prop on `SearchScreen` for step 03 —
+add it when A asks. The seed data is already done (21 theses in `src/seed.ts`,
+A's file); do not edit it.
 
 ---
 
@@ -201,8 +192,11 @@ leave the seed rows to A.
 
 > Implement only what `06-pdf-extraction.md` specifies. Do not start step 07.
 
-**What the AI produces:** `src/extractPdf.ts`, plus `RegisterForm` rewired off
-the `setTimeout` mock.
+**Before sending:** run the Drive API spike in `06` §0 with the key A gave you.
+If it does not return `200 application/pdf`, stop and tell the group first.
+
+**What the AI produces:** `src/extractPdf.ts` (Drive API download + pdf.js),
+plus `RegisterForm` rewired off the `setTimeout` mock.
 
 **Note:** this step installs `pdfjs-dist`. Preamble rule 6 says ask before adding
 a dependency — but this doc authorises it, so send this extra line:
@@ -228,9 +222,13 @@ manual-entry state, not a crash or a spinner that never stops.
 > any API. Do not start step 08.
 
 **What the AI produces:** `src/summary.ts`, and `CombinedSummaryPanel.tsx` rewired
-to call it instead of the hardcoded string.
+to call it instead of the hardcoded string, with citations numbered by visible
+rank.
 
-**Verify:** §8. The two automated checks that matter:
+**Coordinate:** the summary payload becomes `RankedThesis[]`, which changes one
+type in `App.tsx` (A's file) — agree it with A first (`07` §2).
+
+**Verify:** §6. The two automated checks that matter:
 
 ```bash
 grep -n "const extractive" src/components/CombinedSummaryPanel.tsx

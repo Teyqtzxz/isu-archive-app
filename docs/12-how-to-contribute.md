@@ -1,6 +1,6 @@
 # 12 — How to Contribute (for people who have never used GitHub)
 
-**Status:** ☐ DONE · **Owner:** everyone · **Depends on:** nothing
+**Status:** ☑ Reference — read once · **Owner:** everyone · **Depends on:** nothing
 
 > *"Read this whole file once. It takes about ten minutes and it is the only
 > Git knowledge you need for this project. Follow the numbered steps literally
@@ -33,13 +33,10 @@ branch is a proposal.
 ## Why this project splits work by file
 
 `main` cannot hold two people's work at once without conflicts, so each person
-owns specific files and nobody else edits them:
-
-| Person | Owns |
-|--------|------|
-| A | `src/data.ts`, `src/types.ts`, `firestore.rules`, `firebase.json` |
-| B | `src/search.ts`, `src/components/SearchScreen.tsx`, `src/components/CombinedSummaryPanel.tsx` |
-| C | `src/components/RegisterForm.tsx`, `src/App.css`, `src/index.css` |
+owns specific files and nobody else edits them. **The full list is in
+`10-group-work-split.md` §2** — check it before you edit anything. In short: A
+has data, auth, `App.tsx` and the dashboards; B has search and the summary; C
+has PDF extraction, the register form, the CSS and the deploy config.
 
 If you need a change in someone else's file, **ask them.** Do not edit it. That
 one rule prevents nearly every merge conflict you could have.
@@ -55,8 +52,16 @@ npm ci
 npm run dev          # opens http://localhost:8443
 ```
 
-If `npm run dev` prints a port error, that port is taken. Run
-`PORT=3000 npm run dev` instead and use that address.
+If `npm run dev` prints a port error, that port is taken. Use another port and
+open that address instead:
+
+```bash
+PORT=3000 npm run dev            # Git Bash / macOS / Linux
+```
+
+```powershell
+$env:PORT=3000; npm run dev      # Windows PowerShell
+```
 
 Check it works before you change anything. You should see the ISU login screen.
 
@@ -75,11 +80,13 @@ Always do this first. Skipping it is the number one cause of merge conflicts.
 ### 2. Make your own branch
 
 ```bash
-git checkout -b person-a-firestore
+git checkout -b person-a-data
 ```
 
-Name it after what you are doing, not who you are. One branch per task. When a
-task is merged, you delete the branch and make a new one.
+Use your track's branch name: `person-a-data`, `person-b-search` or
+`person-c-pdf` (the same names `10` and `13` use). When a task is merged, delete
+the branch and make a fresh one from the latest `main`, e.g.
+`person-a-data-step04`.
 
 ### 3. Work
 
@@ -115,13 +122,15 @@ Check what you are about to commit — this catches accidentally included junk:
 git status
 ```
 
-Never commit `node_modules/`, `.env`, or your `firebaseConfig`. If you created
-a `.env`, stop and tell the group; real secrets must never be pushed.
+Never commit `node_modules/` or a `.env`. If you created a `.env`, stop and tell
+the group; real secrets must never be pushed. (`src/firebase.ts` with the
+Firebase web config **is** committed on purpose — it is not a secret. See
+`10` §3.)
 
 ### 6. Push your branch
 
 ```bash
-git push -u origin person-a-firestore
+git push -u origin person-a-data
 ```
 
 Do this once per branch. Later pushes on the same branch are just `git push`.
@@ -174,8 +183,10 @@ Never use `git reset --hard` unless you understand it. It throws away work.
 git pull origin main
 ```
 
-Merge `main` into your branch **before** asking for review, not after. It is
-much easier to resolve a conflict in your own branch than in the review.
+Merge `main` into your branch **before** asking for review, not after — and at
+least daily while you work. It is much easier to resolve a conflict in your own
+branch than in the review. Always merge; never `git rebase` a branch you have
+pushed (it would need a force-push, which is banned).
 
 ### You have a merge conflict
 
@@ -208,7 +219,9 @@ back: `git stash pop`.
 1. **Never work on `main`.** Always on a branch.
 2. **Never edit another person's files.** Ask them.
 3. **`npm run build` must pass** before every commit you ask to merge.
-4. **Never commit secrets.** No `.env`, no real `apiKey`, no service account JSON.
+4. **Never commit secrets.** No `.env`, no service account JSON, no admin
+   credentials. The Firebase web config and the domain-restricted Drive browser
+   key are **not** secrets and are committed (preamble rule 11).
 5. **Never force-push to `main`.** If a push is rejected, pull and merge —
    do not reach for `--force`.
 6. **One task per branch.** Merged task, then delete the branch and start a new one.
@@ -225,7 +238,8 @@ Your loop becomes:
 
 1. Make sure you are on your own branch (step 2 above)
 2. Start the AI in the project folder
-3. Paste `00-AI-PREAMBLE.md` lines 13–221, then your step doc below it
+3. Paste everything between the `BEGIN PREAMBLE` and `END PREAMBLE` markers in
+   `00-AI-PREAMBLE.md`, then your step doc below it
 4. The AI edits the real files and runs `npm run build`
 5. It reports back: what changed, which files, how to verify
 6. **You** run that doc's Verification section yourself — do not trust the report
