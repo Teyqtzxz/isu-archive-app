@@ -1,7 +1,8 @@
 # 03 — Backend: Firebase Setup, Auth, Roles, Security Rules
 
-**Status:** ◐ BUILT — 2026-09-30, branch `person-a-data`. Code is in; §9 still
-needs a human run (rules pasted into the console, two real accounts).
+**Status:** ☑ DONE — 2026-09-30, branch `person-a-data`. §9 verified by hand:
+ISU / non-ISU sign-in, session restore, sign-out, console promotion to STAFF,
+and all 5 Rules Playground rows. Rules are published in the console.
 **Owner:** A · **Depends on:** 02 · **Next:** 04
 
 ### How the shipped code differs from the sketches below
