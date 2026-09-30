@@ -1,7 +1,28 @@
 # 03 — Backend: Firebase Setup, Auth, Roles, Security Rules
 
-**Status:** ☐ TODO
+**Status:** ◐ BUILT — 2026-09-30, branch `person-a-data`. Code is in; §9 still
+needs a human run (rules pasted into the console, two real accounts).
 **Owner:** A · **Depends on:** 02 · **Next:** 04
+
+### How the shipped code differs from the sketches below
+
+The sketches in §4–§5 are the design; the real files are the reference:
+
+- `getRoleForUser(uid)` shipped as **`getUserProfile(user)`** in `src/data.ts`.
+  It returns `{ role, department }` (step 04 needs the department) and writes
+  `email` / `displayName` / `createdAt` in the same first-login `setDoc`, so
+  there is no second write racing the auth listener.
+- **`signInWithGoogle()` returns nothing.** It only runs the popup and rejects
+  non-ISU accounts. Routing happens in exactly one place: the
+  `onAuthStateChanged` listener in `App.tsx`, for fresh sign-ins and restored
+  sessions alike. `LoginScreen` therefore takes no props.
+- `App.tsx` shows the ISU seal until auth resolves (`authReady`), so a
+  signed-in user refreshing the page never sees the login screen flash.
+- `LoginScreen` maps Firebase error codes to plain messages; closing the popup
+  is silent, a blocked popup says so.
+- **Sign-out from `SearchScreen` is not wired yet** — it is B's file and has no
+  `onSignOut` prop. Until B adds it, the search screen's Back button returns to
+  a dashboard that has Sign Out.
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. Set up Firebase:
@@ -17,7 +38,7 @@
 The AI cannot do any of §1. Do these in the Firebase console, in order.
 
 1. https://console.firebase.google.com → **Add project**
-   - Name: `isu-thesis-archive`
+   - Name: `isu-archive` (Firebase appends a suffix — the real project ID is `isu-archive-9253b`)
    - Disable Google Analytics
 2. **Add a Web App** (`</>` icon) — name `isu-archive-web`
 3. Copy the `firebaseConfig` object. You will paste it into `src/firebase.ts`.
@@ -25,8 +46,8 @@ The AI cannot do any of §1. Do these in the Firebase console, in order.
 5. **Firestore Database → Create** — Production mode, nearest region
    (`asia-southeast1`)
 6. **Authentication → Settings → Authorized domains → Add domain**, and add:
-   - `isu-thesis-archive.web.app`
-   - `isu-thesis-archive.firebaseapp.com`
+   - `isu-archive-9253b.web.app`
+   - `isu-archive-9253b.firebaseapp.com`
    - `localhost` is already there by default
 
 ### Why step 6 is not optional
@@ -61,9 +82,9 @@ import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "…",
-  authDomain: "isu-thesis-archive.firebaseapp.com",
-  projectId: "isu-thesis-archive",
-  storageBucket: "isu-thesis-archive.appspot.com",
+  authDomain: "isu-archive-9253b.firebaseapp.com",
+  projectId: "isu-archive-9253b",
+  storageBucket: "isu-archive-9253b.firebasestorage.app",
   messagingSenderId: "…",
   appId: "…",
 };

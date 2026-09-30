@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// ISU Thesis Archive — security rules. These are the security boundary: the
+// client code's checks are UX only, because anyone can call Firestore directly.
+// Keep this file and the Firebase console (Firestore → Rules) identical: A
+// pastes this file into the console after every change (docs/08 §4).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Signed in AND a verified ISU account. The @isu.edu.ph check in data.ts is
+    // only UX: a personal Google account can call Firestore directly, so the
+    // domain must be enforced here too.
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@isu[.]edu[.]ph$');
+    }
+
+    function isStaff() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'STAFF';
+    }
+
+    match /users/{uid} {
+      // Needed so isStaff() and the app can read roles. Exposes profiles to
+      // signed-in ISU accounts only.
+      allow read: if signedIn();
+
+      // Create only your own profile, and only as a STUDENT.
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == 'STUDENT';
+
+      // Update your own profile, but the role may never change. Promotion to
+      // STAFF happens in the Firebase console, which bypasses these rules.
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    match /theses/{thesisId} {
+      allow read: if signedIn();                      // staff AND students
+      allow create, update, delete: if isStaff();     // staff only
+    }
+  }
+}

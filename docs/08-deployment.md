@@ -125,7 +125,7 @@ Answer the prompts:
 
 | Prompt | Answer |
 |--------|--------|
-| Which project | `isu-thesis-archive` |
+| Which project | `isu-archive-9253b` |
 | Public directory | `dist` |
 | Single-page app | **Yes** |
 | Automatic builds (GitHub Actions) | No (optional later) |
@@ -155,8 +155,8 @@ live app looks completely broken while `localhost` still works.
 
 1. Firebase console → **Authentication → Settings → Authorized domains**
 2. **Add domain**, then add:
-   - `isu-thesis-archive.web.app`
-   - `isu-thesis-archive.firebaseapp.com`
+   - `isu-archive-9253b.web.app`
+   - `isu-archive-9253b.firebaseapp.com`
 3. Save — it applies immediately, no redeploy needed
 4. Verify by signing in **on the deployed URL**
 

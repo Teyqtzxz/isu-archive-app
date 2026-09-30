@@ -17,7 +17,7 @@
 **Why the Drive API.** A browser may only download a file from another site if
 that site allows it (CORS). Google Drive's ordinary download links
 (`drive.google.com/uc?…`, `drive.usercontent.google.com/download?…`) do not, so a
-direct `fetch` from `isu-thesis-archive.web.app` is blocked and auto-fill would
+direct `fetch` from `isu-archive-9253b.web.app` is blocked and auto-fill would
 fail on every thesis. The **Drive API v3** endpoint is designed to be called from
 web pages and does allow it. It is **free** — no billing account, no per-request
 charge, only generous rate limits that one-at-a-time registration never
@@ -25,14 +25,14 @@ approaches.
 
 **Setup — A does this (A owns the Firebase / Google Cloud project, `10` §3):**
 
-1. https://console.cloud.google.com → select the `isu-thesis-archive` project
+1. https://console.cloud.google.com → select the `isu-archive-9253b` project
    (Firebase created it)
 2. **APIs & Services → Library → Google Drive API → Enable**
 3. **APIs & Services → Credentials → Create credentials → API key**
 4. Edit the key:
    - **Application restrictions → Websites**, add
-     `http://localhost:8443/*`, `https://isu-thesis-archive.web.app/*`,
-     `https://isu-thesis-archive.firebaseapp.com/*`
+     `http://localhost:8443/*`, `https://isu-archive-9253b.web.app/*`,
+     `https://isu-archive-9253b.firebaseapp.com/*`
    - **API restrictions → Restrict key → Google Drive API** only
 5. Give the key to C. It goes into `src/extractPdf.ts` as `DRIVE_API_KEY` and is
    committed — restricted to your domains and to downloads of files that are

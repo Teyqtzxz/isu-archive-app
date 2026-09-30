@@ -8,6 +8,13 @@ export type Role = "staff" | "student";
 export type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
 export type StaffTab = "dashboard" | "register" | "search" | "settings";
 
+/**
+ * The role a user document may hold. Deliberately uppercase and separate from
+ * the lowercase `Role` above: this is stored data, while that is the
+ * in-app routing value. Map between them at the boundary, never by casting.
+ */
+export type AccountRole = "STAFF" | "STUDENT";
+
 /** The only three legal thesis status values. Uppercase, always. */
 export const STATUSES = ["ARCHIVED", "NEEDS_REVIEW", "DRAFT"] as const;
 export type ThesisStatus = (typeof STATUSES)[number];
