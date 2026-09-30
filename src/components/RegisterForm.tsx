@@ -1,16 +1,22 @@
 import { useState } from "react";
-import type { Screen, ExtractionState, Thesis } from "../types";
+import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
 import { DEPARTMENTS } from "../types";
 import { ADVISERS } from "../data";
 import { DeptBadge } from "./shared";
 
-export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSuccess: (thesis: Thesis) => void }) {
+export function RegisterForm({ onBack, onSave }: {
+  onBack: () => void;
+  /** Persists the thesis. Rejects on failure so the form can show the error. */
+  onSave: (thesis: NewThesis, status: ThesisStatus) => Promise<void>;
+}) {
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
   const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: "2024", adviser: "" });
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const MOCK_ABSTRACT = "This study investigates the application of machine learning algorithms for predictive modeling of crop yield in Isabela Province, Philippines. Using historical weather data, soil profiles, and satellite imagery from 2010 to 2023, a gradient boosting model achieved 87.3% prediction accuracy for palay yield. Feature importance analysis revealed that soil nitrogen content and rainfall distribution during the tillering stage are primary determinants of yield variability. The model offers practical value for agricultural planning at the municipal level, enabling early intervention and resource allocation optimization.";
   const MOCK_KEYWORDS = ["machine learning", "crop yield prediction", "palay", "Isabela Province", "gradient boosting", "precision agriculture"];
@@ -39,16 +45,23 @@ export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSucc
     }, 2800);
   }
 
-  function handleSave() {
-    onSuccess({
-      id: Date.now().toString(), title: form.title, department: form.department,
-      year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
-      // Status is still hardcoded here on purpose. Step 02 owns the schema;
-      // choosing ARCHIVED vs NEEDS_REVIEW per button is step 04 work, and the
-      // spec says status is always passed in, never hardcoded inside a save.
-      status: "ARCHIVED", registeredBy: "", registeredAt: new Date().toISOString(),
-      driveLink: form.driveLink,
-    });
+  async function handleSave() {
+    // The button decides the status (docs/02 §4): "Confirm & Save" after a
+    // successful read → ARCHIVED; "Save Manually" after a failed one →
+    // NEEDS_REVIEW, so it shows up under Pending Review.
+    const status: ThesisStatus = extractState === "success" ? "ARCHIVED" : "NEEDS_REVIEW";
+    setSaveError("");
+    setSaving(true);
+    try {
+      await onSave({
+        title: form.title, department: form.department,
+        year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
+        driveLink: form.driveLink,
+      }, status);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Could not save the thesis. Try again.");
+      setSaving(false);
+    }
   }
 
   return (
@@ -211,9 +224,15 @@ export function RegisterForm({ onBack, onSuccess }: { onBack: () => void; onSucc
             </div>
           </div>
 
-          <button onClick={handleSave} className="btn-submit">
+          {saveError && (
+            <div className="error-box" role="alert">
+              ⚠️ {saveError}
+            </div>
+          )}
+
+          <button onClick={handleSave} disabled={saving} className="btn-submit">
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            {extractState === "success" ? "Confirm & Save" : "Save Manually"}
+            {saving ? "Saving..." : extractState === "success" ? "Confirm & Save" : "Save Manually"}
           </button>
         </div>
       )}

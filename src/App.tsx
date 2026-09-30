@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import "./App.css";
-import type { Role, Screen, StaffTab, Thesis } from "./types";
+import type { NewThesis, Role, Screen, StaffTab, Thesis, ThesisStatus } from "./types";
 import { auth } from "./firebase";
-import { SAMPLE_THESES, getUserProfile, isIsuEmail, signOutUser } from "./data";
+import {
+  getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses, updateThesisStatus,
+} from "./data";
 import { LoginScreen } from "./components/LoginScreen";
-import { StaffDashboard } from "./components/StaffDashboard";
-import { RegisterForm } from "./components/RegisterForm";
+import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { SearchScreen } from "./components/SearchScreen";
 import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
@@ -19,7 +20,13 @@ export default function App() {
   // false until Firebase has told us whether a session exists, so a signed-in
   // user refreshing the page does not see the login screen flash first.
   const [authReady, setAuthReady] = useState(false);
-  const [theses, setTheses] = useState<Thesis[]>(SAMPLE_THESES);
+  const [account, setAccount] = useState<StaffAccount>({ displayName: "", email: "", department: "" });
+  // Live from Firestore once signed in. `thesesLoaded` and `dataError` keep
+  // "still loading", "failed to load" and "genuinely empty" distinguishable —
+  // otherwise all three look like an empty archive (docs/04 §2.3).
+  const [theses, setTheses] = useState<Thesis[]>([]);
+  const [thesesLoaded, setThesesLoaded] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
@@ -45,12 +52,18 @@ export default function App() {
       }
       try {
         const profile = await getUserProfile(user);
+        if (import.meta.env.DEV) {
+          console.info("[auth] signed in", { email: user.email, uid: user.uid, profile });
+        }
+        setAccount({ displayName: user.displayName ?? "", email: user.email ?? "", department: profile.department });
         const r: Role = profile.role === "STAFF" ? "staff" : "student";
         setRole(r);
         setScreen(r === "staff" ? "staff-dashboard" : "student-dashboard");
-      } catch {
+      } catch (err) {
         // Firestore unreachable or rules not published yet. If the role cannot
-        // be confirmed, show the read-only view. Never default to staff.
+        // be confirmed, show the read-only view. Never default to staff — but
+        // say why, or a permissions problem is indistinguishable from a student.
+        console.error("[auth] could not read the user profile; showing the student view", err);
         setRole("student");
         setScreen("student-dashboard");
       }
@@ -59,9 +72,35 @@ export default function App() {
     return unsub; // cleanup: without it every re-mount leaks a listener
   }, []);
 
-  function handleRegisterSuccess(thesis: Thesis) {
-    setTheses(prev => [thesis, ...prev]);
-    setTimeout(() => setToast("Thesis registered!"), 100);
+  // Live theses. Only while signed in: the rules deny every read to signed-out
+  // users, so subscribing earlier would just produce a permission error.
+  useEffect(() => {
+    setTheses([]);
+    setThesesLoaded(false);
+    setDataError(null);
+    if (!role) return;
+    return subscribeToTheses(
+      (list) => { setTheses(list); setThesesLoaded(true); setDataError(null); },
+      (err) => {
+        console.error("[data] could not load theses", err);
+        setDataError("Could not load the thesis archive. Check your connection and reload the page.");
+      },
+    ); // the returned unsubscribe is the cleanup — no leaked listener per role change
+  }, [role]);
+
+  // Rejects on failure so RegisterForm can show the error and stay open.
+  async function handleSave(thesis: NewThesis, status: ThesisStatus) {
+    await saveThesis(thesis, status);
+    setToast(status === "ARCHIVED" ? "Thesis registered!" : "Saved — marked Needs Review");
+  }
+
+  function handleMarkArchived(id: string) {
+    updateThesisStatus(id, "ARCHIVED")
+      .then(() => setToast("Marked as Archived"))
+      .catch((err) => {
+        console.error("[data] could not update status", err);
+        setToast("Could not update the status. Try again.");
+      });
   }
 
   // onAuthStateChanged(null) does the screen reset; nothing else to tear down.
@@ -88,14 +127,26 @@ export default function App() {
 
   return (
     <div className="app-root">
+      {role && (dataError || !thesesLoaded) && (
+        <div role={dataError ? "alert" : "status"} style={{
+          padding: "8px 16px", fontSize: 13, textAlign: "center",
+          background: dataError ? "var(--isu-red-light)" : "var(--isu-green-light)",
+          color: dataError ? "var(--isu-red)" : "var(--isu-green)",
+        }}>
+          {dataError ?? "Loading the thesis archive…"}
+        </div>
+      )}
+
       {screen === "login" && <LoginScreen />}
 
       {screen === "staff-dashboard" && (
         <StaffDashboard
           theses={theses}
+          account={account}
           activeTab={staffTab}
           onTabChange={setStaffTab}
-          onRegisterSuccess={thesis => { handleRegisterSuccess(thesis); }}
+          onSave={handleSave}
+          onMarkArchived={handleMarkArchived}
           onSearch={() => goSearch()}
           onSignOut={handleSignOut}
         />

@@ -39,6 +39,10 @@ export interface Thesis {
   registeredAt: Timestamp | string | null;
 }
 
+/** What the register form hands to saveThesis(). The server fills in the id,
+ *  registeredBy and registeredAt; status comes from the button staff pressed. */
+export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
+
 /**
  * registeredAt as a sortable ISO string, whatever shape it arrived in.
  * Sorting ("newest first") and the "This Month" stat both need to compare dates

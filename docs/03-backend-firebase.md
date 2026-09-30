@@ -378,8 +378,9 @@ const m = await import("/src/seed.ts"); await m.seedTheses();   // → 21
 ```
 
 `seed.ts` is not part of the app bundle, so this `import()` is how you load it —
-typing `seedTheses()` on its own fails. Run it **once**; each call adds another
-21 documents. Run it before promoting and every write is denied.
+typing `seedTheses()` on its own fails. It skips titles that already exist, so
+re-running it is harmless (the first version did not, and a double run left 42
+documents — `removeDuplicateTheses()` in the same file cleans that up). Run it before promoting and every write is denied.
 
 **You will need at least two accounts** to test roles properly. Google sign-in
 uses one account per browser profile, so use a normal window for one account and

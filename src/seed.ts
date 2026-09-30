@@ -6,11 +6,12 @@
 //
 //   const m = await import("/src/seed.ts"); await m.seedTheses();
 //
-// Run it once — every call adds another 21 documents.
+// Safe to re-run: theses whose title already exists are skipped. If an older
+// version of this script ran twice, removeDuplicateTheses() cleans up.
 //
 // It writes documents the way the app will, using the same shapes and the same
 // server clock, so the seeded archive ranks identically to a real one.
-import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import type { AccountRole, Thesis } from "./types";
 
@@ -275,8 +276,12 @@ const THESES_TO_SEED: ThesisToSeed[] = [
  * is a one-off script where a clear answer matters more than speed.
  */
 export async function seedTheses(): Promise<number> {
+  // Skip titles already in the archive, so running this twice cannot
+  // duplicate the corpus (every duplicate would show up twice in search).
+  const existing = new Set((await getDocs(collection(db, "theses"))).docs.map(d => normTitle(d.data().title)));
   let written = 0;
   for (const t of THESES_TO_SEED) {
+    if (existing.has(normTitle(t.title))) continue;
     const { status, ...rest } = t;
     await addDoc(collection(db, "theses"), {
       ...rest,
@@ -290,6 +295,32 @@ export async function seedTheses(): Promise<number> {
     written++;
   }
   return written;
+}
+
+function normTitle(title: unknown): string {
+  return String(title ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Delete extra copies of any thesis whose title appears more than once,
+ * keeping one. Returns how many were deleted. Staff only (rules). Run from
+ * devtools like seedTheses():
+ *
+ *   const m = await import("/src/seed.ts"); await m.removeDuplicateTheses();
+ */
+export async function removeDuplicateTheses(): Promise<number> {
+  const seen = new Set<string>();
+  let deleted = 0;
+  for (const d of (await getDocs(collection(db, "theses"))).docs) {
+    const key = normTitle(d.data().title);
+    if (seen.has(key)) {
+      await deleteDoc(d.ref);
+      deleted++;
+    } else {
+      seen.add(key);
+    }
+  }
+  return deleted;
 }
 
 
