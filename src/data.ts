@@ -1,7 +1,72 @@
-// Data layer. Today it holds the prototype's hardcoded sample data; in steps
-// 03–04 it becomes the only module that imports firebase/firestore, and
-// SAMPLE_THESES goes away. This file stays.
-import type { Thesis } from "./types";
+// Data layer — the only module that imports firebase/firestore. Step 03 added
+// the auth + user-profile functions below; step 04 replaces SAMPLE_THESES with
+// live Firestore data.
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { GoogleAuthProvider, signInWithPopup, signOut, type User } from "firebase/auth";
+import { auth, db } from "./firebase";
+import { DEPARTMENTS, type AccountRole, type Thesis } from "./types";
+
+// ─── Auth & user profile (step 03) ──────────────────────────────────────────
+
+const ISU_DOMAIN = "@isu.edu.ph";
+
+/** Client-side UX check only. firestore.rules enforces the domain for real. */
+export function isIsuEmail(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase().endsWith(ISU_DOMAIN);
+}
+
+export interface UserProfile {
+  role: AccountRole;
+  /** One of DEPARTMENTS, or "" when unset. Used by step 04's staff filters. */
+  department: string;
+}
+
+/**
+ * Read users/{uid}, creating it as a STUDENT on first login. An account is never
+ * created as staff — promotion happens in the Firebase console (docs/03 §8).
+ * Anything that is not exactly "STAFF" is treated as STUDENT: least privilege.
+ */
+export async function getUserProfile(user: User): Promise<UserProfile> {
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    const data = snap.data();
+    const dept = (DEPARTMENTS as readonly string[]).includes(data.department) ? data.department : "";
+    return { role: data.role === "STAFF" ? "STAFF" : "STUDENT", department: dept };
+  }
+  await setDoc(ref, {
+    role: "STUDENT",
+    department: "",
+    email: user.email ?? "",
+    displayName: user.displayName ?? "",
+    createdAt: serverTimestamp(),
+  });
+  return { role: "STUDENT", department: "" };
+}
+
+/**
+ * Google sign-in, ISU accounts only. Routing is NOT done here: App.tsx's
+ * onAuthStateChanged listener is the single place that turns a signed-in user
+ * into a role and a screen, both for a fresh sign-in and a restored session.
+ * This function only has to reject the wrong account with a clear message.
+ */
+export async function signInWithGoogle(): Promise<void> {
+  const provider = new GoogleAuthProvider();
+  // Without this, Google silently reuses the last account, so switching
+  // between staff and student test accounts appears not to work.
+  provider.setCustomParameters({ prompt: "select_account" });
+  const { user } = await signInWithPopup(auth, provider);
+  if (!isIsuEmail(user.email)) {
+    await signOut(auth);
+    throw new Error("Please sign in with your ISU Google account (@isu.edu.ph).");
+  }
+}
+
+export async function signOutUser(): Promise<void> {
+  await signOut(auth);
+}
+
+// ─── Sample data (prototype; replaced by Firestore in step 04) ───────────────
 
 export const SAMPLE_THESES: Thesis[] = [
   {

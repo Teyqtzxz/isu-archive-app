@@ -1,14 +1,46 @@
 import { useState } from "react";
-import type { Screen, Role, Thesis } from "../types";
+import { FirebaseError } from "firebase/app";
+import { signInWithGoogle } from "../data";
 import { ISUSeal } from "./shared";
 
-export function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<Role>("staff");
+/** Turn a sign-in failure into something a user can act on. */
+function signInErrorMessage(e: unknown): string | null {
+  if (e instanceof FirebaseError) {
+    switch (e.code) {
+      case "auth/popup-closed-by-user":
+      case "auth/cancelled-popup-request":
+        return null; // the user closed the window — not an error
+      case "auth/popup-blocked":
+        return "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.";
+      case "auth/unauthorized-domain":
+        return "Sign-in is not enabled for this web address yet. Contact the Research Department.";
+      case "auth/network-request-failed":
+        return "No connection. Check your internet and try again.";
+    }
+  }
+  return e instanceof Error ? e.message : "Sign-in failed. Try again.";
+}
 
-  function handleLogin() {
-    setLoading(true);
-    setTimeout(() => onLogin(selectedRole), 1400);
+/**
+ * One real Google sign-in button. There is no role picker: the role comes from
+ * the user's Firestore profile, and App.tsx routes to the right dashboard once
+ * onAuthStateChanged fires. This screen only starts sign-in and shows errors.
+ */
+export function LoginScreen() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSignIn() {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+      // Success: App.tsx's auth listener takes over and leaves this screen.
+    } catch (e) {
+      setError(signInErrorMessage(e) ?? "");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -38,41 +70,29 @@ export function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
 
         <div className="login-divider" />
 
-        {/* Role selector */}
-        <div style={{ marginBottom: 20 }}>
-          <p className="role-label">
-            Sign in as
-          </p>
-          <div className="role-grid">
-            {(["staff", "student"] as Role[]).map(role => (
-              <button
-                key={role}
-                onClick={() => setSelectedRole(role)}
-                className={`role-btn${selectedRole === role ? " role-btn-active" : ""}`}
-              >
-                <span className="role-emoji">{role === "staff" ? "👩‍💼" : "🎓"}</span>
-                <span className={`role-name ${selectedRole === role ? "role-name-active" : "role-name-default"}`}>
-                  {role === "staff" ? "Research Staff" : "Student"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Info pill */}
         <div className="info-pill">
           <p>
-            {selectedRole === "staff" ? "🔒 Staff access · Register & manage theses" : "🔍 Student access · Search & browse archive"}
+            🔍 Search & browse the archive · Research staff can also register theses
           </p>
         </div>
 
+        {error && (
+          <p role="alert" style={{
+            margin: "0 0 14px", padding: "10px 12px", borderRadius: 8, fontSize: 13, lineHeight: 1.4,
+            background: "var(--isu-red-light)", color: "var(--isu-red)", border: "1px solid rgba(205,32,43,0.25)",
+          }}>
+            {error}
+          </p>
+        )}
+
         {/* Google sign-in */}
         <button
-          onClick={handleLogin}
-          disabled={loading}
+          onClick={handleSignIn}
+          disabled={busy}
           className="gbtn"
         >
-          {loading ? (
+          {busy ? (
             <>
               <div className="animate-spin" style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.15)", borderTopColor: "#006439" }} />
               <span>Signing in...</span>
@@ -101,4 +121,3 @@ export function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
     </div>
   );
 }
-

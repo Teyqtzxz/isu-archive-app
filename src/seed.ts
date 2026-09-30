@@ -12,7 +12,7 @@
 // server clock, so the seeded archive ranks identically to a real one.
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Thesis } from "./types";
+import type { AccountRole, Thesis } from "./types";
 
 /**
  * What goes into a `theses` document, minus the two fields Firestore owns:
@@ -292,12 +292,6 @@ export async function seedTheses(): Promise<number> {
   return written;
 }
 
-/**
- * The role a user document may hold. Deliberately uppercase and separate from
- * the lowercase `Role` in types.ts: this is stored data, while that is the
- * in-app routing value. Map between them at the boundary, never by casting.
- */
-export type AccountRole = "STAFF" | "STUDENT";
 
 /**
  * Set a user's role and department.

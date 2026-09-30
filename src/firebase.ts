@@ -1,23 +1,19 @@
 // Firebase app, auth and Firestore handles. Owned by A (docs/10 §2).
 //
-// PLACEHOLDER CONFIG. Step 03 §1 creates the Firebase project; paste the real
-// firebaseConfig from the console over the REPLACE_ME values below. The web
-// config is public by design and is committed (docs/03 §3) — the security
-// boundary is firestore.rules, not this file.
-//
-// initializeApp() does not contact the network, so the placeholders are safe
-// until the first auth or Firestore call — and nothing calls either yet.
+// The web config is public by design and is committed on purpose (docs/03 §3,
+// docs/10 §3) — every browser downloads it anyway. The security boundary is
+// firestore.rules, not this file.
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "isu-thesis-archive.firebaseapp.com",
-  projectId: "isu-thesis-archive",
-  storageBucket: "isu-thesis-archive.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME",
+  apiKey: "AIzaSyC3RM6qnEQbdObmYVnktagihqshHbP6qsw",
+  authDomain: "isu-archive-9253b.firebaseapp.com",
+  projectId: "isu-archive-9253b",
+  storageBucket: "isu-archive-9253b.firebasestorage.app",
+  messagingSenderId: "465848464073",
+  appId: "1:465848464073:web:bc2d3890ebe3c32d059318",
 };
 
 export const app = initializeApp(firebaseConfig);
