@@ -1,7 +1,7 @@
 # 07 — Combined Summary (extractive, with citations)
 
-**Status:** ◐ BUILT — 2026-10-02, branch `step-07-summary`, pending the §6
-checks by hand. Three deliberate changes from the code below are listed in §7.
+**Status:** ◐ BUILT — 2026-10-02, branches `step-07-summary` + `step-07-mmr`, pending the §6
+checks by hand. The summariser uses MMR rather than the §3 points system — see §7.
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
@@ -285,18 +285,51 @@ Worth knowing before you demo, because a teacher may probe:
 
 ---
 
-## 7. What shipped differently from §3–§4 (2026-10-02)
+## 7. What shipped: MMR instead of the §3 points system (2026-10-02)
 
-- **Only sentences containing a query word are candidates.** As written, §3
-  gives every abstract's first sentence +1, so it passes `score > 0` with no
-  match at all: "biodiversity" over the seed data returned one biodiversity
-  sentence and three unrelated opening lines. The +1 is now a tie-breaker
-  between matching sentences. The fallback (no query / no match) is unchanged.
-- **Middle initials are protected** in `splitSentences` ("Prof. J. Cruz" was
-  split after "J."). Cost: a sentence ending in a lone capital ("Vitamin A.")
-  is not split there.
-- **Sentences from one thesis keep abstract order** in the final sort.
-- `highlightKw()` now builds React nodes instead of an HTML string, so abstract
+The §3 `scoreSentence` (+2 per match, +1 for the first sentence, −2 if short…)
+was replaced. Its weights had no source, it never compared the theses with each
+other (so it could not find "common themes"), and it repeated itself: two
+records with the same abstract produced the same sentence twice, and one thesis
+could fill all four slots. `splitSentences`, the `summarise()` signature and the
+panel are unchanged.
+
+**Method — Maximal Marginal Relevance** (Carbonell & Goldstein, 1998):
+
+1. **Query relevance** — every sentence is scored with the real `bm25Score()`
+   from `search.ts`, treating each sentence as a small document. Search and
+   summary therefore agree on what "relevant" means, and BM25's length
+   normalisation replaces the old "too long" penalty.
+2. **Centrality** (the idea behind LexRank, Erkan & Radev, 2004) — the average
+   TF-IDF cosine similarity between a sentence and the sentences of the *other*
+   ticked theses: how much it says what the rest of the selection also says.
+3. **Relevance** = (BM25 ÷ best BM25 + centrality ÷ best centrality) ÷ 2. With a
+   query, only sentences with BM25 > 0 are eligible. With no query or no match,
+   relevance is centrality alone — a generic summary of the selection (this
+   replaces the old "first sentence of each" fallback).
+4. **Selection** — repeat up to 4 times: take the sentence with the highest
+   `λ·relevance − (1−λ)·(similarity to the closest sentence already picked)`,
+   λ = 0.7 (the usual starting value). Theses not yet quoted are preferred, and a
+   sentence with cosine ≥ 0.8 to one already picked is never taken.
+5. Output is put back into rank order, then abstract order within one thesis.
+
+Measured on the 21 seed abstracts: no repeated sentences, at most one sentence
+per thesis until every eligible thesis is quoted, ~12 ms with all 21 ticked.
+
+**Trade-offs, honestly:** λ = 0.7 and the 0.8 duplicate cut-off are judgement
+calls, tested on the seed data, not derived. Novelty can beat relevance — for
+"rice" over all 21 theses MMR quotes #15 (rice *and corn* cooperatives, which
+shares more with the other theses) instead of #3. Matching is still word-for-
+word: "farming" and "agriculture" are different words to BM25 and to TF-IDF.
+The summary still reads as quotes side by side; only rewriting (an AI) fixes
+that, and that is out of scope.
+
+**Smaller changes, unchanged from the first version of this step:**
+
+- Middle initials are protected in `splitSentences` ("Prof. J. Cruz" was split
+  after "J."). Cost: a sentence ending in a lone capital ("Vitamin A.") is not
+  split there.
+- `highlightKw()` builds React nodes instead of an HTML string, so abstract
   text is never parsed as HTML (and the original casing is kept).
 - Result cards show their rank (`1.`, `2.`…) so a `[n]` chip can be traced by eye.
 - `App.tsx` (A's file): `summaryData` type → `RankedThesis[]`, plus a

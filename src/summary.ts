@@ -1,6 +1,12 @@
 // Pure extractive summary: no React, no firebase, no network. It picks real
 // sentences out of the abstracts already in memory; it never writes new prose.
-import { tokenize } from "./search";
+//
+// Method: Maximal Marginal Relevance (Carbonell & Goldstein, 1998). Each
+// sentence's relevance is its BM25 score against the query (the same engine
+// as search.ts) plus how central it is to the ticked theses as a group
+// (LexRank-style, Erkan & Radev, 2004). Sentences are then picked one at a
+// time, each penalised for repeating what was already picked.
+import { bm25Score, buildIndex, computeDocFreq, tokenize } from "./search";
 import type { Thesis } from "./types";
 
 export interface SummarySentence {
@@ -39,64 +45,128 @@ export function splitSentences(text: string): string[] {
     .filter((s) => s.length > 20); // drop fragments too short to be useful
 }
 
-function scoreSentence(sentence: string, terms: string[], isFirstInAbstract: boolean): number {
-  const lower = sentence.toLowerCase();
-  let score = 0;
+/* How much MMR favours relevance over novelty. 0.7 is the usual starting value
+   in the literature: mostly relevance, with enough penalty to stop repeats. */
+const LAMBDA = 0.7;
+/* Cosine similarity at or above this counts as the same sentence (e.g. two
+   records with a copied abstract) and is never picked twice. */
+const NEAR_DUPLICATE = 0.8;
 
-  for (const t of terms) {
-    if (lower.includes(t)) {
-      score += 2; // matched a query term
-      score += lower.split(t).length - 1; // +1 per extra occurrence
+interface Candidate extends SummarySentence {
+  position: number; // sentence number inside its abstract, for the final order
+  relevance: number;
+  vecIndex: number; // which TF-IDF vector belongs to this sentence
+}
+
+/** TF-IDF vector per sentence, scaled to length 1 so a dot product is the cosine. */
+function tfidfVectors(docTokens: string[][], postings: Map<string, number[]>): Map<string, number>[] {
+  const N = docTokens.length;
+  return docTokens.map((tokens) => {
+    const vec = new Map<string, number>();
+    for (const t of tokens) vec.set(t, (vec.get(t) ?? 0) + 1);
+    let norm = 0;
+    for (const [t, tf] of vec) {
+      // A word in every sentence ("the", "of") gets idf 0 and drops out, so no stopword list is needed.
+      const w = tf * Math.log(N / postings.get(t)!.length);
+      vec.set(t, w);
+      norm += w * w;
     }
-  }
+    norm = Math.sqrt(norm);
+    for (const [t, w] of vec) vec.set(t, norm > 0 ? w / norm : 0);
+    return vec;
+  });
+}
 
-  if (isFirstInAbstract) score += 1; // opening sentences usually state the aim
-  const words = sentence.split(" ").length;
-  if (words < 5) score -= 2; // too short to be useful
-  if (words > 60) score -= 1; // too long to read
-
-  return score;
+function cosine(a: Map<string, number>, b: Map<string, number>): number {
+  const [small, large] = a.size < b.size ? [a, b] : [b, a];
+  let dot = 0;
+  for (const [t, w] of small) dot += w * (large.get(t) ?? 0);
+  return dot;
 }
 
 /** Every ticked result is used — the user chose them. Order does not matter;
  *  output is put back into rank order at the end. */
 export function summarise(results: RankedThesis[], query: string, maxSentences = 4): SummarySentence[] {
   const top = [...results].sort((a, b) => a.rank - b.rank);
-  const terms = tokenize(query);
 
-  // Only sentences that contain a query word are candidates. The opening-sentence
-  // bonus in scoreSentence is a tie-breaker between those; on its own it would
-  // let every abstract's first line in, whatever it is about.
-  const candidates: (SummarySentence & { score: number; position: number })[] = [];
-  top.forEach(({ thesis, rank }) => {
-    splitSentences(thesis.abstract).forEach((s, sIdx) => {
-      const lower = s.toLowerCase();
-      if (!terms.some((t) => lower.includes(t))) return;
-      candidates.push({
-        text: s,
-        sourceIndex: rank,
-        score: scoreSentence(s, terms, sIdx === 0),
-        position: sIdx,
-      });
+  const sentences: { text: string; sourceIndex: number; position: number; thesis: Thesis }[] = [];
+  for (const { thesis, rank } of top) {
+    splitSentences(thesis.abstract).forEach((text, position) => {
+      sentences.push({ text, sourceIndex: rank, position, thesis });
+    });
+  }
+  if (sentences.length === 0) return [];
+
+  // Each sentence becomes a tiny "document" so the real BM25 from search.ts can
+  // score it. BM25's length normalisation also handles over-long sentences.
+  const asDocs = sentences.map((s) => ({ ...s.thesis, title: "", keywords: [], abstract: s.text }));
+  const index = buildIndex(asDocs);
+  const terms = tokenize(query);
+  const df = computeDocFreq(terms, index);
+  const bm25 = asDocs.map((d, i) => (terms.length > 0 ? bm25Score(query, d, i, index, df).score : 0));
+
+  // Centrality: average similarity to the sentences of the OTHER ticked theses,
+  // i.e. how much this sentence says what the rest of the selection also says.
+  // With a single thesis there are no others, so compare within its abstract.
+  const vecs = tfidfVectors(index.docTokens, index.postings);
+  const multiSource = new Set(sentences.map((s) => s.sourceIndex)).size > 1;
+  const centrality = sentences.map((s, i) => {
+    let sum = 0;
+    let n = 0;
+    sentences.forEach((o, j) => {
+      if (j === i || (multiSource && o.sourceIndex === s.sourceIndex)) return;
+      sum += cosine(vecs[i], vecs[j]);
+      n++;
+    });
+    return n > 0 ? sum / n : 0;
+  });
+
+  // Relevance in 0..1. With a query: BM25 and centrality weighted equally, and
+  // only sentences that match the query are eligible. With no query, or no
+  // match anywhere: centrality alone, which is a generic summary of the group.
+  const maxBm25 = Math.max(...bm25);
+  const maxCentrality = Math.max(...centrality) || 1;
+  const queryMatched = maxBm25 > 0;
+  const candidates: Candidate[] = [];
+  sentences.forEach((s, i) => {
+    if (queryMatched && bm25[i] === 0) return;
+    candidates.push({
+      text: s.text,
+      sourceIndex: s.sourceIndex,
+      position: s.position,
+      relevance: queryMatched
+        ? (bm25[i] / maxBm25 + centrality[i] / maxCentrality) / 2
+        : centrality[i] / maxCentrality,
+      vecIndex: i,
     });
   });
 
-  // Fallback: no query, or nothing matched. Use the opening sentence of the
-  // top results in rank order so the panel is never empty.
-  if (terms.length === 0 || !candidates.some((c) => c.score > 0)) {
-    return top
-      .map(({ thesis, rank }) => {
-        const first = splitSentences(thesis.abstract)[0];
-        return first ? { text: first, sourceIndex: rank } : null;
-      })
-      .filter((x): x is SummarySentence => x !== null)
-      .slice(0, maxSentences);
+  // MMR: repeatedly take the candidate with the best
+  //   λ · relevance − (1 − λ) · (similarity to the closest sentence already picked).
+  // Theses not yet quoted go first, so one abstract cannot fill the whole summary.
+  const picked: Candidate[] = [];
+  const pool = [...candidates];
+  while (picked.length < maxSentences) {
+    const usable = pool.filter((c) => !picked.some((p) => cosine(vecs[c.vecIndex], vecs[p.vecIndex]) >= NEAR_DUPLICATE));
+    if (usable.length === 0) break;
+    const unquoted = usable.filter((c) => !picked.some((p) => p.sourceIndex === c.sourceIndex));
+    const choices = unquoted.length > 0 ? unquoted : usable;
+
+    let best = choices[0];
+    let bestScore = -Infinity;
+    for (const c of choices) {
+      const redundancy = Math.max(0, ...picked.map((p) => cosine(vecs[c.vecIndex], vecs[p.vecIndex])));
+      const score = LAMBDA * c.relevance - (1 - LAMBDA) * redundancy;
+      if (score > bestScore) {
+        best = c;
+        bestScore = score;
+      }
+    }
+    picked.push(best);
+    pool.splice(pool.indexOf(best), 1);
   }
 
-  return candidates
-    .filter((c) => c.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxSentences)
+  return picked
     // back into rank order, and abstract order within one thesis
     .sort((a, b) => a.sourceIndex - b.sourceIndex || a.position - b.position)
     .map(({ text, sourceIndex }) => ({ text, sourceIndex }));
