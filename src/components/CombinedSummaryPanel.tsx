@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
-import type { Thesis } from "../types";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { tokenize } from "../search";
+import { summarise, type RankedThesis } from "../summary";
 import { Icon } from "./shared";
 
-export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesis[]; query: string; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
+export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
+  theses: RankedThesis[]; query: string; onClose: () => void;
+  /** A citation chip was tapped: close the panel and let SearchScreen scroll to that result. */
+  onCiteJump: (thesisId: string) => void;
+}) {
+  const sources = useMemo(() => [...theses].sort((a, b) => a.rank - b.rank), [theses]);
+  const sentences = useMemo(() => summarise(sources, query), [sources, query]);
+  const idByRank = new Map(sources.map(s => [s.rank, s.thesis.id]));
 
-  const extractive = `Several theses archived at ISU Echague Campus address research related to ${query || "key thematic areas"} in Isabela Province [1][2]. These studies collectively highlight interdisciplinary approaches combining field surveys, computational modeling, and community-based methodologies [3]. Findings consistently emphasize sustainable resource management and data-driven policy frameworks [1][4]. Taken together, they contribute substantially to the regional knowledge base and provide practical recommendations for local government units and research institutions [2][3].`;
-
-  const keywords = Array.from(new Set(theses.flatMap(t => t.keywords))).slice(0, 8);
+  const keywords = Array.from(new Set(sources.flatMap(s => s.thesis.keywords))).slice(0, 8);
 
   // Escape closes the panel, like any dialog.
   useEffect(() => {
@@ -17,20 +21,14 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  function highlightKw(text: string) {
-    if (!query) return text;
+  // Wraps query words in <mark>. Builds React nodes rather than an HTML string,
+  // so abstract text is never parsed as HTML, and the original casing is kept.
+  function highlightKw(text: string): ReactNode {
     const terms = tokenize(query);
-    let result = text;
-    terms.forEach(term => {
-      result = result.replace(new RegExp(`\\b${term}\\b`, "gi"), `<mark class="keyword-highlight">${term}</mark>`);
-    });
-    return result;
-  }
-
-  function handleCopy() {
-    navigator.clipboard.writeText(extractive);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (terms.length === 0) return text;
+    const re = new RegExp(`\\b(${terms.join("|")})\\b`, "gi");
+    return text.split(re).map((part, i) =>
+      i % 2 === 1 ? <mark key={i} className="keyword-highlight">{part}</mark> : part);
   }
 
   return (
@@ -47,7 +45,7 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
           <div className="sheet-title-row">
             <div>
               <h2 className="sheet-h2" id="summary-title">
-                Summary of {theses.length} Results
+                Summary of {sources.length} {sources.length === 1 ? "Result" : "Results"}
               </h2>
               {query && <p className="sheet-query">for <strong>“{query}”</strong></p>}
             </div>
@@ -63,15 +61,32 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
 
         {/* Content */}
         <div className="sheet-body">
-          <p className="summary-text"
-            dangerouslySetInnerHTML={{ __html: highlightKw(extractive) }} />
+          {sentences.length === 0 ? (
+            <p className="summary-note">These abstracts are too short to summarise.</p>
+          ) : (
+            <p className="summary-text">
+              {sentences.map((s, i) => (
+                <span key={i}>
+                  {highlightKw(s.text)}{" "}
+                  <button className="cite-chip" onClick={() => onCiteJump(idByRank.get(s.sourceIndex)!)}
+                    aria-label={`Go to result ${s.sourceIndex}`}>
+                    [{s.sourceIndex}]
+                  </button>{" "}
+                </span>
+              ))}
+            </p>
+          )}
+          {/* One result is not a summary of several studies; say so (docs/07 §5). */}
+          {sources.length === 1 && sentences.length > 0 && (
+            <p className="summary-note">Only one result is selected, so every sentence above comes from its abstract.</p>
+          )}
 
-          {/* Citations */}
+          {/* Citations: numbered by the rank shown on the search screen */}
           <div className="sources-box">
             <div className="overline-label">Sources</div>
-            {theses.slice(0, 4).map((t, i) => (
+            {sources.map(({ thesis: t, rank }) => (
               <div key={t.id} className="source-row">
-                <span className="source-num">{i + 1}</span>
+                <span className="source-num">{rank}</span>
                 <span className="source-text">{t.title} ({t.year}) · {t.adviser}</span>
               </div>
             ))}
@@ -88,17 +103,8 @@ export function CombinedSummaryPanel({ theses, query, onClose }: { theses: Thesi
           </div>
         </div>
 
-        {/* Action bar */}
+        {/* Action bar: Close only (docs/07 §4) */}
         <div className="sheet-action">
-          <button onClick={handleCopy}
-            className={`btn-copy${copied ? " btn-copy-done" : ""}`}>
-            <Icon name={copied ? "check" : "file"} size={15} />
-            {copied ? "Copied" : "Copy summary"}
-          </button>
-          <button className="btn-export">
-            <Icon name="external" size={15} />
-            Export PDF
-          </button>
           <button onClick={onClose} className="btn-close">
             Close
           </button>

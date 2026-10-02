@@ -1,7 +1,6 @@
 # 05 — Search & Ranking (BM25, debounce, filters)
 
-**Status:** ◐ BUILT — 2026-09-30, branch `person-b-search`, pending the §8
-checks by hand.
+**Status:** ☑ DONE — merged in PRs #10 and #11 (branch `person-b-search`).
 **Owner:** B · **Depends on:** 04 · **Next:** 06 or 07
 
 ### What shipped
