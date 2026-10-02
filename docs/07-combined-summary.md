@@ -1,6 +1,7 @@
 # 07 — Combined Summary (extractive, with citations)
 
-**Status:** ☐ TODO
+**Status:** ◐ BUILT — 2026-10-02, branch `step-07-summary`, pending the §6
+checks by hand. Three deliberate changes from the code below are listed in §7.
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
@@ -281,6 +282,25 @@ Worth knowing before you demo, because a teacher may probe:
       (the Copy button and its state are removed)
 - [ ] No network request is made when the panel opens
 - [ ] `npm run build` passes
+
+---
+
+## 7. What shipped differently from §3–§4 (2026-10-02)
+
+- **Only sentences containing a query word are candidates.** As written, §3
+  gives every abstract's first sentence +1, so it passes `score > 0` with no
+  match at all: "biodiversity" over the seed data returned one biodiversity
+  sentence and three unrelated opening lines. The +1 is now a tie-breaker
+  between matching sentences. The fallback (no query / no match) is unchanged.
+- **Middle initials are protected** in `splitSentences` ("Prof. J. Cruz" was
+  split after "J."). Cost: a sentence ending in a lone capital ("Vitamin A.")
+  is not split there.
+- **Sentences from one thesis keep abstract order** in the final sort.
+- `highlightKw()` now builds React nodes instead of an HTML string, so abstract
+  text is never parsed as HTML (and the original casing is kept).
+- Result cards show their rank (`1.`, `2.`…) so a `[n]` chip can be traced by eye.
+- `App.tsx` (A's file): `summaryData` type → `RankedThesis[]`, plus a
+  `citeJump` state passed to `SearchScreen` as `jumpTo` for the chip scroll.
 
 ---
 

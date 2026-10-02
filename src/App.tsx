@@ -11,6 +11,7 @@ import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { SearchScreen } from "./components/SearchScreen";
 import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
+import type { RankedThesis } from "./summary";
 import { ISUSeal, Icon, Toast } from "./components/shared";
 
 export default function App() {
@@ -30,7 +31,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
-  const [summaryData, setSummaryData] = useState<{ theses: Thesis[]; query: string } | null>(null);
+  const [summaryData, setSummaryData] = useState<{ theses: RankedThesis[]; query: string } | null>(null);
+  const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number } | null>(null);
 
   // The single place that turns "a user is signed in" into a role and a
   // screen — for a fresh sign-in and for a session restored on refresh alike.
@@ -113,7 +115,7 @@ export default function App() {
     setScreen("search");
   }
 
-  function handleCombinedSummary(results: Thesis[], query: string) {
+  function handleCombinedSummary(results: RankedThesis[], query: string) {
     setSummaryData({ theses: results, query });
   }
 
@@ -161,6 +163,7 @@ export default function App() {
           role={role}
           initialQuery={searchInitialQuery}
           defaultDepartment={account.department}
+          jumpTo={citeJump}
           onCombinedSummary={handleCombinedSummary}
           onBack={() => setScreen(role === "staff" ? "staff-dashboard" : "student-dashboard")}
           onSignOut={handleSignOut}
@@ -172,6 +175,7 @@ export default function App() {
           theses={summaryData.theses}
           query={summaryData.query}
           onClose={() => setSummaryData(null)}
+          onCiteJump={thesisId => { setSummaryData(null); setCiteJump({ thesisId, nonce: Date.now() }); }}
         />
       )}
 

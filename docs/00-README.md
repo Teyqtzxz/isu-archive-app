@@ -91,9 +91,9 @@ Verified against the code on 2026-09-30.
 | 03 Auth + rules + authorized domains | A | ☑ done — verified 2026-09-30 (sign-in, roles, 5 Playground rows) |
 | 04 Live data | A | ☑ done — verified 2026-09-30 |
 | 04 Theme + safe-area | C | ☑ merged — PR #9. Real-phone check still worth doing |
-| 05 Debounce + filters | B | ◐ built on `person-b-search` — needs §8 checks by hand |
+| 05 Debounce + filters | B | ☑ done — PRs #10, #11 |
 | 06 pdf.js extraction | C | ☐ |
-| 07 Extractive summary | B | ☐ |
+| 07 Extractive summary | B | ◐ built on `step-07-summary` — needs §6 checks by hand |
 | 08 Deployed | C | ☐ |
 | 09 QA passed | C | ☐ |
 
@@ -110,12 +110,11 @@ Verified against the code on 2026-09-30.
   "Save Manually" work; real failure detection comes with step 06
 - ☑ Staff reviews → Confirm & Save → stored in Firestore
 - ☑ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
-- ◐ Search: BM25, prefix + substring (☑), 300ms debounce (step 05, in review)
+- ☑ Search: BM25, prefix + substring, 300ms debounce
 - ~~"Why this rank?" term-by-term breakdown~~ — removed 2026-09-30 (group decision)
-- ◐ Filters: Department / Year / Status (☑); all ten departments + removable
-  chips (step 05, in review)
+- ☑ Filters: Department / Year / Status; all ten departments + removable chips
 - ☑ Click a result title → abstract preview → "Open in Drive"
-- ☐ Combined summary of ticked results, extractive, with `[n]` citations
+- ◐ Combined summary of ticked results, extractive, with `[n]` citations (step 07, in review)
 - ☑ Responsive headers with safe-area handling
 - ☑ Security: only STAFF can write; students read-only; ISU accounts only
 - ☐ Deployed on Firebase Hosting with HTTPS

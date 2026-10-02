@@ -2,15 +2,18 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, STATUSES, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
+import type { RankedThesis } from "../summary";
 import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS, Icon } from "./shared";
 
 export function SearchScreen({
-  theses, role, initialQuery, defaultDepartment = "", onCombinedSummary, onBack, onSignOut,
+  theses, role, initialQuery, defaultDepartment = "", jumpTo, onCombinedSummary, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role; initialQuery?: string;
   /** Staff start filtered to their own department (docs/05 §4). Students start on "All". */
   defaultDepartment?: string;
-  onCombinedSummary: (results: Thesis[], query: string) => void;
+  /** Set when a summary citation chip was tapped; `nonce` makes a repeat tap on the same chip fire again. */
+  jumpTo?: { thesisId: string; nonce: number } | null;
+  onCombinedSummary: (results: RankedThesis[], query: string) => void;
   onBack: () => void;
   onSignOut: () => void;
 }) {
@@ -64,6 +67,23 @@ export function SearchScreen({
       .filter(r => r.score > 0)
       .sort((a, b) => b.score - a.score);
   }, [filtered, index, searchQuery]);
+
+  // Citation chip → scroll to that result and flash it (docs/07 §4). The panel
+  // is already closed by then, so the card is not hidden behind the overlay.
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!jumpTo) return;
+    document.getElementById(`result-${jumpTo.thesisId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashId(jumpTo.thesisId);
+    const t = setTimeout(() => setFlashId(null), 1600);
+    return () => clearTimeout(t);
+  }, [jumpTo]);
+
+  // The summary uses ticked results that are still visible, each with the rank
+  // it is shown at, so the button count and the [n] chips match the list.
+  const ticked: RankedThesis[] = results
+    .map((r, i) => ({ thesis: r.thesis, rank: i + 1 }))
+    .filter(r => selected.has(r.thesis.id));
 
   const maxScore = Math.max(...results.map(r => r.score), 0.01);
   const allYears = Array.from(new Set(theses.map(t => t.year))).sort((a, b) => b - a);
@@ -173,11 +193,11 @@ export function SearchScreen({
               <>{results.length} {results.length === 1 ? "thesis" : "theses"}{hasActiveFilters ? " match the filters" : ", newest first"}</>
             )}
           </div>
-          {selected.size > 0 && (
-            <button onClick={() => onCombinedSummary(results.filter(r => selected.has(r.thesis.id)).map(r => r.thesis), searchQuery)}
+          {ticked.length > 0 && (
+            <button onClick={() => onCombinedSummary(ticked, searchQuery)}
               className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}>
               <Icon name="layers" size={16} />
-              View Summary ({selected.size})
+              View Summary ({ticked.length})
             </button>
           )}
         </div>
@@ -206,13 +226,14 @@ export function SearchScreen({
         {/* While the debounce is pending the list still holds the previous query's
             results; fade it so it is not mistaken for the answer to what is typed. */}
         <div className={`results-list${typing ? " results-list--stale" : ""}`} aria-busy={typing}>
-          {results.map(({ thesis: t, score }) => {
+          {results.map(({ thesis: t, score }, i) => {
             const pct = searchQuery && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
             const isSelected = selected.has(t.id);
             const showPreview = previewId === t.id;
 
             return (
-              <div key={t.id} className={`result-card${isSelected ? " result-card-selected" : ""}`}>
+              <div key={t.id} id={`result-${t.id}`}
+                className={`result-card${isSelected ? " result-card-selected" : ""}${flashId === t.id ? " result-card-flash" : ""}`}>
                 <div className="result-pad">
                   <div style={{ display: "flex", gap: 12, marginBottom: 8, alignItems: "flex-start" }}>
                     <input type="checkbox" checked={isSelected} onChange={() => setSelected(prev => { const n = new Set(prev); n.has(t.id) ? n.delete(t.id) : n.add(t.id); return n; })}
@@ -221,6 +242,7 @@ export function SearchScreen({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <button onClick={() => setPreviewId(showPreview ? null : t.id)} className="result-title-btn" aria-expanded={showPreview}>
                         <h3 className="result-title">
+                          <span className="result-rank">{i + 1}.</span>
                           {t.title}
                         </h3>
                       </button>
