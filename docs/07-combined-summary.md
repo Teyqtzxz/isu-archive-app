@@ -1,7 +1,7 @@
 # 07 — Combined Summary (extractive, with citations)
 
-**Status:** ◐ BUILT — 2026-10-02, branches `step-07-summary` + `step-07-mmr`, pending the §6
-checks by hand. The summariser uses MMR rather than the §3 points system — see §7.
+**Status:** ☑ DONE — merged in PRs #12 and #13; the §6 checks were done by hand in the
+browser on 2026-10-02. The summariser uses MMR rather than the §3 points system — see §7.
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**

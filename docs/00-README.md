@@ -67,8 +67,7 @@ The app is **not** a blank project. Working today:
 
 What is still fake:
 
-- PDF extraction is a `setTimeout` and a `MOCK_ABSTRACT` string (step 06)
-- The summary is one static template string (step 07)
+- Nothing — PDF extraction became real in step 06 (pdf.js + Drive API)
 
 **Do not rebuild the working parts.** Replace the data sources and the fake
 behaviour. This rule appears in `01-system-architecture.md` §5 and in the
@@ -92,8 +91,8 @@ Verified against the code on 2026-09-30.
 | 04 Live data | A | ☑ done — verified 2026-09-30 |
 | 04 Theme + safe-area | C | ☑ merged — PR #9. Real-phone check still worth doing |
 | 05 Debounce + filters | B | ☑ done — PRs #10, #11 |
-| 06 pdf.js extraction | C | ☐ |
-| 07 Extractive summary | B | ◐ built on `step-07-summary` — needs §6 checks by hand |
+| 06 pdf.js extraction | C | ◐ built on `step-06-pdf` — Drive key made and day-1 spike passed 2026-10-04; needs §8 checks by hand |
+| 07 Extractive summary | B | ☑ done — PRs #12, #13; §6 checked in the browser 2026-10-02 |
 | 08 Deployed | C | ☐ |
 | 09 QA passed | C | ☐ |
 
@@ -105,16 +104,16 @@ Verified against the code on 2026-09-30.
 - ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☑ Sign out from every screen
 - ☑ Staff registers a thesis by pasting a Google Drive link
-- ☐ System reads the PDF (first pages, see `06` §4) → auto-fills Abstract + Keywords
-- ◐ Fallback to manual entry if the PDF cannot be read — the manual path and
-  "Save Manually" work; real failure detection comes with step 06
+- ◐ System reads the PDF (first 8 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06, in review)
+- ◐ Fallback to manual entry if the PDF cannot be read — scanned PDFs, sharing
+  problems and bad links now show the reason (step 06, in review)
 - ☑ Staff reviews → Confirm & Save → stored in Firestore
 - ☑ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
 - ☑ Search: BM25, prefix + substring, 300ms debounce
 - ~~"Why this rank?" term-by-term breakdown~~ — removed 2026-09-30 (group decision)
 - ☑ Filters: Department / Year / Status; all ten departments + removable chips
 - ☑ Click a result title → abstract preview → "Open in Drive"
-- ◐ Combined summary of ticked results, extractive, with `[n]` citations (step 07, in review)
+- ☑ Combined summary of ticked results, extractive (MMR over BM25), with `[n]` citations (step 07)
 - ☑ Responsive headers with safe-area handling
 - ☑ Security: only STAFF can write; students read-only; ISU accounts only
 - ☐ Deployed on Firebase Hosting with HTTPS
