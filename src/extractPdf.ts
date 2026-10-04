@@ -1,0 +1,180 @@
+// PDF auto-extraction (docs/06): download a shared thesis PDF through the
+// Google Drive API, read its first pages with pdf.js, and pull out the
+// abstract and keywords with regex. Pure — no Firebase import.
+import * as pdfjsLib from "pdfjs-dist";
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+
+/** Browser key from docs/06 §0. Restricted to our three sites and to the
+ *  Drive API only; safe to commit (preamble rule 11). */
+const DRIVE_API_KEY = "AIzaSyCidmWQuqPAb5T5OM2hlsOdLHY7L7El_lw";
+
+/** Theses often put the abstract after the title page, approval sheet and
+ *  acknowledgements, so 4 pages can miss it. Tune against real ISU PDFs (§8). */
+export const MAX_PAGES = 8;
+
+/** Fewer letters than this in the pages read → treat the PDF as scanned. */
+const MIN_TEXT_CHARS = 50;
+
+/** Accepts /file/d/{id}/view · /file/d/{id} · ?id={id} · /open?id={id} */
+export function driveFileId(link: string): string | null {
+  const m = link.match(/(?:file\/d\/|[?&]id=)([-\w]{25,})/);
+  return m ? m[1] : null;
+}
+
+/** The Drive API download URL — the only Drive endpoint that allows browser CORS. */
+export function driveLinkToFileUrl(link: string): string | null {
+  const id = driveFileId(link);
+  if (!id) return null;
+  return `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${DRIVE_API_KEY}`;
+}
+
+/** Reject bad links before spending a PDF download on them. */
+export function validateDriveLink(link: string): string | null {
+  const trimmed = link.trim();
+  if (!trimmed) return "Please paste a Google Drive link.";
+  if (!/^https?:\/\/(drive|docs)\.google\.com\//i.test(trimmed)) {
+    return "That does not look like a Google Drive link.";
+  }
+  if (!driveLinkToFileUrl(trimmed)) {
+    return "Could not find a file id in that link. Make sure it is a shared file link.";
+  }
+  return null;
+}
+
+function firstNonEmptyLine(lines: string[], from: number): string {
+  for (let i = from; i < lines.length; i++) {
+    if (lines[i].trim()) return lines[i].trim();
+  }
+  return "";
+}
+
+const DRIVE_BUSY =
+  "Google Drive is busy or limiting downloads right now. Wait a few minutes and try again, or type the abstract and keywords.";
+
+/** Waits between retries. Google asks clients to back off on 5xx (Drive API
+ *  "Resolve errors" guide); a few seconds is enough for one registration. */
+const RETRY_DELAYS_MS = [1000, 3000];
+
+/** fetch() that retries on Drive's temporary failures. A 5xx without CORS
+ *  headers reaches the page as a network error (fetch throws), not as a
+ *  status, so both count as temporary. 4xx answers are returned at once. */
+async function fetchWithRetry(url: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    let res: Response | null = null;
+    try {
+      res = await fetch(url);
+      if (res.status < 500) return res;
+    } catch {
+      if (!navigator.onLine) {
+        throw new Error("You appear to be offline. Check your internet connection and try again.");
+      }
+    }
+    if (attempt >= RETRY_DELAYS_MS.length) {
+      if (res) throw new Error(`Google Drive returned an error (${res.status}). ${DRIVE_BUSY}`);
+      throw new Error(DRIVE_BUSY);
+    }
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+  }
+}
+
+/** Download and read the first MAX_PAGES pages, preserving line breaks. */
+async function readPdfText(driveLink: string): Promise<string> {
+  const fileUrl = driveLinkToFileUrl(driveLink.trim());
+  if (!fileUrl) throw new Error("Invalid Google Drive link");
+
+  // Fetch first so a sharing problem becomes a clear message instead of an
+  // InvalidPDFException from pdf.js.
+  const res = await fetchWithRetry(fileUrl);
+  if (res.status === 403 || res.status === 404) {
+    // Drive also answers 403 when it is rate-limiting downloads; only the
+    // body tells the two apart.
+    const body = await res.text().catch(() => "");
+    if (/rateLimit|quota/i.test(body)) throw new Error(DRIVE_BUSY);
+    throw new Error(
+      "Could not open that file. Make sure it is shared as 'Anyone with the link → Viewer'.",
+    );
+  }
+  if (!res.ok) throw new Error(`Google Drive returned an error (${res.status}). Try again.`);
+  const type = res.headers.get("content-type") ?? "";
+  if (!type.includes("pdf")) {
+    throw new Error("That Drive file is not a PDF.");
+  }
+
+  const task = pdfjsLib.getDocument({ data: await res.arrayBuffer() });
+  try {
+    const pdf = await task.promise;
+    const pages = Math.min(pdf.numPages, MAX_PAGES);
+    let text = "";
+    for (let i = 1; i <= pages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      for (const item of content.items as any[]) {
+        if (typeof item.str !== "string") continue;   // skip markup/annotation items
+        text += item.str;
+        text += item.hasEOL ? "\n" : " ";
+      }
+      text += "\n";                                   // page break
+    }
+    return text;
+  } finally {
+    void task.destroy();                              // free the worker and its copy of the file
+  }
+}
+
+export function extractAbstractAndKeywords(
+  text: string,
+): { abstract: string; keywords: string[] } {
+  const flat = text.replace(/[ \t ]+/g, " ");
+
+  // --- Abstract: after the heading, stop at the next section heading.
+  // Length-bounded (40–3000 chars) so a missing terminator cannot run away.
+  // Terminators must START A LINE: with /i, a bare \bBACKGROUND\b also matches
+  // "against a background of…" mid-abstract and cuts the abstract short.
+  const abstractMatch = flat.match(
+    /\bABSTRACT\b\s*[:.\-–—]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
+  );
+  const abstract = abstractMatch?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+
+  // --- Keywords: bounded to ONE LINE.
+  // \bKEY\s?WORDS?\b matches KEYWORD, KEYWORDS, "KEY WORD" and "KEY WORDS".
+  const lines = flat.split("\n");
+  let kwRaw = "";
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/\bKEY\s?WORDS?\b\s*[:.\-–—]?\s*(.*)$/i);
+    if (m) {
+      kwRaw = m[1].trim() || firstNonEmptyLine(lines, i + 1);
+      break;
+    }
+  }
+
+  const keywords = kwRaw
+    ? kwRaw
+        .split(/\.\s|\n/)[0]                 // drop a trailing sentence
+        .split(/[,;]|\band\b/i)
+        .map((k) => k.trim().replace(/[.;:]+$/, ""))
+        .filter((k) => k.length > 1 && k.length < 60)
+        .slice(0, 10)
+    : [];
+
+  return { abstract, keywords };
+}
+
+export async function extractFromDrive(
+  driveLink: string,
+): Promise<{ abstract: string; keywords: string[] }> {
+  const invalid = validateDriveLink(driveLink);
+  if (invalid) throw new Error(invalid);
+
+  const text = await readPdfText(driveLink);
+  if (text.replace(/\s/g, "").length < MIN_TEXT_CHARS) {
+    throw new Error(
+      "This PDF has no readable text — it is probably scanned. Please type the abstract and keywords.",
+    );
+  }
+  const { abstract, keywords } = extractAbstractAndKeywords(text);
+  if (!abstract && keywords.length === 0) {
+    throw new Error("Could not find an abstract or keywords in that PDF. Please type them in.");
+  }
+  return { abstract, keywords };
+}

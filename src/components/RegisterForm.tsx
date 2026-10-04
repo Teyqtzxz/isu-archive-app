@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
 import { DEPARTMENTS } from "../types";
 import { ADVISERS } from "../data";
+import { MAX_PAGES, extractFromDrive, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
 
 export function RegisterForm({ onBack, onSave }: {
@@ -18,31 +19,36 @@ export function RegisterForm({ onBack, onSave }: {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  const MOCK_ABSTRACT = "This study investigates the application of machine learning algorithms for predictive modeling of crop yield in Isabela Province, Philippines. Using historical weather data, soil profiles, and satellite imagery from 2010 to 2023, a gradient boosting model achieved 87.3% prediction accuracy for palay yield. Feature importance analysis revealed that soil nitrogen content and rainfall distribution during the tillering stage are primary determinants of yield variability. The model offers practical value for agricultural planning at the municipal level, enabling early intervention and resource allocation optimization.";
-  const MOCK_KEYWORDS = ["machine learning", "crop yield prediction", "palay", "Isabela Province", "gradient boosting", "precision agriculture"];
-
   const steps = [
     { label: "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
     { label: "Processing", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
     { label: "Review & Save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.driveLink || !form.title || !form.department || !form.adviser) {
       setError("Please fill in all required fields.");
       return;
     }
-    if (!form.driveLink.includes("drive.google.com")) {
-      setError("Please enter a valid Google Drive link (drive.google.com).");
-      return;
-    }
+    // Validate before downloading anything (docs/06 §6).
+    const invalid = validateDriveLink(form.driveLink);
+    if (invalid) { setError(invalid); return; }
+
     setError("");
     setExtractState("extracting");
-    setTimeout(() => {
-      setAbstract(MOCK_ABSTRACT);
-      setKeywords(MOCK_KEYWORDS);
-      setExtractState(Math.random() > 0.3 ? "success" : "needs_review");
-    }, 2800);
+    try {
+      const { abstract, keywords } = await extractFromDrive(form.driveLink);
+      setAbstract(abstract);
+      setKeywords(keywords);
+      setExtractState("success");
+    } catch (err) {
+      // Not a crash: manual entry is the designed fallback (docs/06 §7).
+      // Keep the reason so staff know why the fields are empty.
+      setError(err instanceof Error ? err.message : "Could not read that PDF.");
+      setAbstract("");
+      setKeywords([]);
+      setExtractState("needs_review");
+    }
   }
 
   async function handleSave() {
@@ -161,7 +167,7 @@ export function RegisterForm({ onBack, onSave }: {
             <div className="spin-core"><Icon name="file" size={18} /></div>
           </div>
           <div className="extract-title">Reading PDF and filling in details...</div>
-          <div className="extract-sub">pdf.js · Scanning pages 1–4 · Regex: Abstract/Keywords</div>
+          <div className="extract-sub">pdf.js · Scanning pages 1–{MAX_PAGES} · Regex: Abstract/Keywords</div>
           <div className="progress-track">
             <div className="progress-fill" />
           </div>
@@ -188,6 +194,13 @@ export function RegisterForm({ onBack, onSave }: {
               </div>
             </div>
           </div>
+
+          {extractState === "needs_review" && error && (
+            <div className="error-box" role="alert">
+              <Icon name="alert" size={16} />
+              {error}
+            </div>
+          )}
 
           {/* Thesis summary */}
           <div className="review-card">
@@ -247,7 +260,7 @@ export function RegisterForm({ onBack, onSave }: {
 
       {/* Submit button */}
       {extractState === "idle" && (
-        <button onClick={handleSubmit} className="btn-submit">
+        <button onClick={handleSubmit} disabled={!form.driveLink.trim()} className="btn-submit">
           <Icon name="file" size={18} />
           Read PDF & continue
         </button>

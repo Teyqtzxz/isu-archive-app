@@ -1,6 +1,9 @@
 # 06 — PDF Auto-Extraction
 
-**Status:** ☐ TODO
+**Status:** ◐ BUILT — 2026-10-04, branch `step-06-pdf`. Drive API key created and the §0
+day-1 spike printed `200 application/pdf` from `localhost:8443` (and the key is refused from
+other sites). pdfjs-dist 6.4.299, worker `pdf.worker.min.mjs`. Pending the §8 checks by hand
+and a test with real ISU thesis PDFs.
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**
@@ -355,6 +358,19 @@ of scope; ask Research staff to share the PDFs.
 Do **not** switch back to `drive.google.com/uc?…` or
 `drive.usercontent.google.com/download?…`. Those send no CORS headers; the
 browser blocks them no matter how the file is shared.
+
+**Temporary refusals (seen 2026-10-04).** After ~15 downloads of the same two test files in a
+few minutes, Drive answered `503` to every `alt=media` request while metadata requests still
+returned 200. A 503 arrives without CORS headers, so the browser reports it as a network error
+("Failed to fetch"), not as a status. `extractPdf.ts` therefore retries twice (after 1 s and
+3 s) on a 5xx or network error, then shows a "Drive is busy — wait a few minutes" message
+instead of blaming the user's internet. A freshly uploaded file then failed the same way, and
+the same request made with curl showed the real cause: Google's anti-robot page ("your computer
+or network may be sending automated queries"). The block is on the **network's IP address**,
+not on the key, the files or the code — metadata requests kept working. It cannot and must not
+be bypassed (no CAPTCHA solving); it clears on its own, and another network (e.g. a phone
+hotspot) is not affected. During testing, avoid re-downloading the same file over and over; in
+the demo, register each thesis once and have the manual-entry path ready.
 
 Very large files (≈100 MB+) that Google cannot virus-scan may be refused by the
 API. Thesis PDFs are far smaller; if one hits this, manual entry covers it.
