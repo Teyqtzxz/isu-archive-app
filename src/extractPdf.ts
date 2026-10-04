@@ -78,8 +78,8 @@ async function fetchWithRetry(url: string): Promise<Response> {
   }
 }
 
-/** Download and read the first MAX_PAGES pages, preserving line breaks. */
-async function readPdfText(driveLink: string): Promise<string> {
+/** Download the PDF through the Drive API. */
+async function downloadDrivePdf(driveLink: string): Promise<ArrayBuffer> {
   const fileUrl = driveLinkToFileUrl(driveLink.trim());
   if (!fileUrl) throw new Error("Invalid Google Drive link");
 
@@ -100,10 +100,16 @@ async function readPdfText(driveLink: string): Promise<string> {
   if (!type.includes("pdf")) {
     throw new Error("That Drive file is not a PDF.");
   }
+  return res.arrayBuffer();
+}
 
-  const task = pdfjsLib.getDocument({ data: await res.arrayBuffer() });
+/** Read the first MAX_PAGES pages, preserving line breaks. */
+async function readPdfText(data: ArrayBuffer): Promise<string> {
+  const task = pdfjsLib.getDocument({ data });
   try {
-    const pdf = await task.promise;
+    const pdf = await task.promise.catch(() => {
+      throw new Error("That file could not be opened as a PDF. It may be damaged.");
+    });
     const pages = Math.min(pdf.numPages, MAX_PAGES);
     let text = "";
     for (let i = 1; i <= pages; i++) {
@@ -125,14 +131,14 @@ async function readPdfText(driveLink: string): Promise<string> {
 export function extractAbstractAndKeywords(
   text: string,
 ): { abstract: string; keywords: string[] } {
-  const flat = text.replace(/[ \t ]+/g, " ");
+  const flat = text.replace(/[ \t\u00a0]+/g, " ");
 
   // --- Abstract: after the heading, stop at the next section heading.
   // Length-bounded (40–3000 chars) so a missing terminator cannot run away.
   // Terminators must START A LINE: with /i, a bare \bBACKGROUND\b also matches
   // "against a background of…" mid-abstract and cuts the abstract short.
   const abstractMatch = flat.match(
-    /\bABSTRACT\b\s*[:.\-–—]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
+    /\bABSTRACT\b\s*[:.\-\u2013\u2014]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
   );
   const abstract = abstractMatch?.[1]?.replace(/\s+/g, " ").trim() ?? "";
 
@@ -141,7 +147,7 @@ export function extractAbstractAndKeywords(
   const lines = flat.split("\n");
   let kwRaw = "";
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/\bKEY\s?WORDS?\b\s*[:.\-–—]?\s*(.*)$/i);
+    const m = lines[i].match(/\bKEY\s?WORDS?\b\s*[:.\-\u2013\u2014]?\s*(.*)$/i);
     if (m) {
       kwRaw = m[1].trim() || firstNonEmptyLine(lines, i + 1);
       break;
@@ -160,13 +166,11 @@ export function extractAbstractAndKeywords(
   return { abstract, keywords };
 }
 
-export async function extractFromDrive(
-  driveLink: string,
+/** Shared by both sources: read the text, then find the abstract and keywords. */
+async function extractFromBytes(
+  data: ArrayBuffer,
 ): Promise<{ abstract: string; keywords: string[] }> {
-  const invalid = validateDriveLink(driveLink);
-  if (invalid) throw new Error(invalid);
-
-  const text = await readPdfText(driveLink);
+  const text = await readPdfText(data);
   if (text.replace(/\s/g, "").length < MIN_TEXT_CHARS) {
     throw new Error(
       "This PDF has no readable text — it is probably scanned. Please type the abstract and keywords.",
@@ -177,4 +181,29 @@ export async function extractFromDrive(
     throw new Error("Could not find an abstract or keywords in that PDF. Please type them in.");
   }
   return { abstract, keywords };
+}
+
+export async function extractFromDrive(
+  driveLink: string,
+): Promise<{ abstract: string; keywords: string[] }> {
+  const invalid = validateDriveLink(driveLink);
+  if (invalid) throw new Error(invalid);
+  return extractFromBytes(await downloadDrivePdf(driveLink));
+}
+
+/** Larger than any thesis PDF; stops someone picking a huge file by mistake. */
+const MAX_FILE_MB = 100;
+
+/** Backup source: a PDF picked from this computer. No Drive download, so a
+ *  Drive outage or rate limit cannot stop auto-fill. */
+export async function extractFromFile(
+  file: File,
+): Promise<{ abstract: string; keywords: string[] }> {
+  if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+    throw new Error("That file is not a PDF.");
+  }
+  if (file.size > MAX_FILE_MB * 1024 * 1024) {
+    throw new Error(`That PDF is larger than ${MAX_FILE_MB} MB. Please type the abstract and keywords.`);
+  }
+  return extractFromBytes(await file.arrayBuffer());
 }

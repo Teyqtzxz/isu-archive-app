@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
 import { DEPARTMENTS } from "../types";
 import { ADVISERS } from "../data";
-import { MAX_PAGES, extractFromDrive, validateDriveLink } from "../extractPdf";
+import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
 
 export function RegisterForm({ onBack, onSave }: {
@@ -18,6 +18,12 @@ export function RegisterForm({ onBack, onSave }: {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  /** Backup source (docs/06 §7): a PDF picked from this computer, read without Drive. */
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  /** The last PDF read and how it went, so "Edit details" → continue does not
+   *  download the same file again or wipe the staff member's edits. */
+  const lastRead = useRef<{ source: string; ok: boolean } | null>(null);
 
   const steps = [
     { label: "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
@@ -34,21 +40,45 @@ export function RegisterForm({ onBack, onSave }: {
     const invalid = validateDriveLink(form.driveLink);
     if (invalid) { setError(invalid); return; }
 
+    const source = pdfFile
+      ? `file:${pdfFile.name}:${pdfFile.size}:${pdfFile.lastModified}`
+      : `drive:${form.driveLink.trim()}`;
+    const sameSource = lastRead.current?.source === source;
+    // Back from "Edit details" with the same PDF, and it was read fine last
+    // time: keep that result and the edits made to it.
+    if (sameSource && lastRead.current?.ok) {
+      setError("");
+      setExtractState("success");
+      return;
+    }
+
     setError("");
     setExtractState("extracting");
     try {
-      const { abstract, keywords } = await extractFromDrive(form.driveLink);
+      const { abstract, keywords } = await (pdfFile ? extractFromFile(pdfFile) : extractFromDrive(form.driveLink));
       setAbstract(abstract);
       setKeywords(keywords);
       setExtractState("success");
+      lastRead.current = { source, ok: true };
     } catch (err) {
       // Not a crash: manual entry is the designed fallback (docs/06 §7).
       // Keep the reason so staff know why the fields are empty.
       setError(err instanceof Error ? err.message : "Could not read that PDF.");
-      setAbstract("");
-      setKeywords([]);
+      // Same PDF failed again (e.g. Drive still busy): keep what staff typed.
+      if (!sameSource) {
+        setAbstract("");
+        setKeywords([]);
+      }
       setExtractState("needs_review");
+      lastRead.current = { source, ok: false };
     }
+  }
+
+  /** Review → back to the details form, keeping everything entered so far. */
+  function editDetails() {
+    setError("");
+    setSaveError("");
+    setExtractState("idle");
   }
 
   async function handleSave() {
@@ -72,6 +102,15 @@ export function RegisterForm({ onBack, onSave }: {
 
   return (
     <div className="animate-fade-in">
+      {/* Back: leave the form, or return from review to fix the details */}
+      {extractState !== "extracting" && !saving && (
+        <button onClick={extractState === "idle" ? onBack : editDetails}
+          className="btn btn-outline-green btn-sm" style={{ marginBottom: 14 }}>
+          <Icon name="arrowLeft" size={14} />
+          {extractState === "idle" ? "Back to dashboard" : "Edit details"}
+        </button>
+      )}
+
       {/* Step indicator */}
       <div className="steps-row">
         {steps.map((s, i) => (
@@ -113,6 +152,31 @@ export function RegisterForm({ onBack, onSave }: {
               </button>
             </div>
             <p className="hint">Paste the "Anyone with the link" share URL from Google Drive</p>
+
+            {/* Backup: read the PDF from this computer instead of downloading it */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+              <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden
+                onChange={e => { setPdfFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+              <button type="button" onClick={() => fileInput.current?.click()}
+                disabled={extractState === "extracting"} className="paste-btn" style={{ padding: "8px 12px" }}>
+                <Icon name="file" size={16} />
+                {pdfFile ? "Choose a different PDF" : "Choose PDF from this computer"}
+              </button>
+              {pdfFile && (
+                <span className="kw-chip">
+                  {pdfFile.name}
+                  <button onClick={() => setPdfFile(null)} disabled={extractState === "extracting"}
+                    className="kw-chip-x" aria-label="Remove the chosen PDF">
+                    <Icon name="x" size={12} strokeWidth={2.5} />
+                  </button>
+                </span>
+              )}
+            </div>
+            <p className="hint">
+              {pdfFile
+                ? "The PDF will be read from this computer. The Drive link is still saved so students can open it."
+                : "Optional backup: if Google Drive is not responding, read the PDF from this computer instead."}
+            </p>
           </div>
 
           {/* Title */}
@@ -167,7 +231,7 @@ export function RegisterForm({ onBack, onSave }: {
             <div className="spin-core"><Icon name="file" size={18} /></div>
           </div>
           <div className="extract-title">Reading PDF and filling in details...</div>
-          <div className="extract-sub">pdf.js · Scanning pages 1–{MAX_PAGES} · Regex: Abstract/Keywords</div>
+          <div className="extract-sub">pdf.js · {pdfFile ? "From this computer" : "From Google Drive"} · Scanning pages 1–{MAX_PAGES}</div>
           <div className="progress-track">
             <div className="progress-fill" />
           </div>

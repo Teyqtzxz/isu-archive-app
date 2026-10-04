@@ -372,6 +372,18 @@ be bypassed (no CAPTCHA solving); it clears on its own, and another network (e.g
 hotspot) is not affected. During testing, avoid re-downloading the same file over and over; in
 the demo, register each thesis once and have the manual-entry path ready.
 
+**Backup source: a PDF from this computer (added 2026-10-04, after the block above).** Under
+the Drive link, **"Choose PDF from this computer"** lets staff pick the thesis PDF from their own
+laptop; `extractFromFile()` hands it to the same pdf.js + regex pipeline, so no Drive download
+happens and a Drive block cannot stop auto-fill. The Drive link is still required and saved —
+students need it for "Open in Drive". Files over 100 MB or not ending in `.pdf` are refused.
+
+**Back and Edit details.** The form has **"← Back to dashboard"**; the review screen has
+**"← Edit details"**, which returns to the form with every field kept. Continuing again with the
+same link/file does not re-read the PDF when the last read succeeded, so edits to the abstract
+and keywords survive and Drive is not asked for the same file twice. If the last read failed
+(e.g. Drive busy), it tries again but keeps anything typed in the meantime.
+
 Very large files (≈100 MB+) that Google cannot virus-scan may be refused by the
 API. Thesis PDFs are far smaller; if one hits this, manual entry covers it.
 
