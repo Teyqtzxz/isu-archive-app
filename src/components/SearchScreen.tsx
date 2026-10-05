@@ -6,11 +6,13 @@ import type { RankedThesis } from "../summary";
 import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS, Icon } from "./shared";
 
 export function SearchScreen({
-  theses, role, initialQuery, defaultDepartment = "", jumpTo, onCombinedSummary, onBack, onSignOut,
+  theses, role, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role; initialQuery?: string;
   /** Staff start filtered to their own department (docs/05 §4). Students start on "All". */
   defaultDepartment?: string;
+  /** Open already filtered to this department (a department chip was tapped). Overrides the default. */
+  initialDepartment?: string;
   /** Set when a summary citation chip was tapped; `nonce` makes a repeat tap on the same chip fire again. */
   jumpTo?: { thesisId: string; nonce: number } | null;
   onCombinedSummary: (results: RankedThesis[], query: string) => void;
@@ -30,7 +32,7 @@ export function SearchScreen({
   // terms under 2 chars anyway), so it counts as "no query": show everything.
   const searchQuery = debouncedQuery.trim().length >= 2 ? debouncedQuery.trim() : "";
 
-  const [deptFilter, setDeptFilter] = useState(role === "staff" ? defaultDepartment : "");
+  const [deptFilter, setDeptFilter] = useState(initialDepartment ?? (role === "staff" ? defaultDepartment : ""));
   const [yearFilter, setYearFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);

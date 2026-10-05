@@ -31,6 +31,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
+  // undefined = use the default (staff: own department, students: all).
+  const [searchInitialDept, setSearchInitialDept] = useState<string | undefined>(undefined);
   const [summaryData, setSummaryData] = useState<{ theses: RankedThesis[]; query: string } | null>(null);
   const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number } | null>(null);
 
@@ -110,8 +112,9 @@ export default function App() {
     signOutUser().catch(() => setToast("Sign-out failed. Try again."));
   }
 
-  function goSearch(q = "") {
+  function goSearch(q = "", department?: string) {
     setSearchInitialQuery(q);
+    setSearchInitialDept(department);
     setScreen("search");
   }
 
@@ -154,7 +157,8 @@ export default function App() {
       )}
 
       {screen === "student-dashboard" && (
-        <StudentDashboard theses={theses} account={account} onSearch={goSearch} onSignOut={handleSignOut} />
+        <StudentDashboard theses={theses} account={account} onSearch={goSearch}
+          onBrowseDepartment={dept => goSearch("", dept)} onSignOut={handleSignOut} />
       )}
 
       {screen === "search" && role && (
@@ -163,6 +167,7 @@ export default function App() {
           role={role}
           initialQuery={searchInitialQuery}
           defaultDepartment={account.department}
+          initialDepartment={searchInitialDept}
           jumpTo={citeJump}
           onCombinedSummary={handleCombinedSummary}
           onBack={() => setScreen(role === "staff" ? "staff-dashboard" : "student-dashboard")}
