@@ -91,7 +91,7 @@ Verified against the code on 2026-09-30.
 | 04 Live data | A | ☑ done — verified 2026-09-30 |
 | 04 Theme + safe-area | C | ☑ merged — PR #9. Real-phone check still worth doing |
 | 05 Debounce + filters | B | ☑ done — PRs #10, #11 |
-| 06 pdf.js extraction | C | ☑ done — PRs #14, #15; §8 checked 2026-10-05 with six real thesis PDFs, abstract regex fixed (`06` §8 Results) |
+| 06 pdf.js extraction | C | ☑ done — PRs #14–#16 + second fix round; checked by script on ten real theses and by registering one through the app (abstract matched word for word, `06` status) |
 | 07 Extractive summary | B | ☑ done — PRs #12, #13; §6 checked in the browser 2026-10-02 |
 | 08 Deployed | C | ☐ |
 | 09 QA passed | C | ☐ |
@@ -104,7 +104,7 @@ Verified against the code on 2026-09-30.
 - ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☑ Sign out from every screen
 - ☑ Staff registers a thesis by pasting a Google Drive link
-- ☑ System reads the PDF (first 8 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06)
+- ☑ System reads the PDF (first 15 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06)
 - ◐ Fallback to manual entry if the PDF cannot be read — scanned PDFs, sharing
   problems and bad links now show the reason (step 06)
 - ☑ Staff reviews → Confirm & Save → stored in Firestore

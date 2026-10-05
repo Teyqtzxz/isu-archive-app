@@ -37,8 +37,21 @@ export function RegisterForm({ onBack, onSave }: {
   ];
 
   async function handleSubmit() {
-    if (!form.driveLink || !form.title || !form.department || !form.adviser) {
-      setError("Please fill in all required fields.");
+    // Say exactly what is missing. The button used to stay disabled with no
+    // reason given until a Drive link was typed — even with a PDF already chosen.
+    if (!form.driveLink.trim()) {
+      setError(pdfFile
+        ? "Paste the thesis's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full thesis."
+        : "Please paste the Google Drive link of the thesis PDF.");
+      return;
+    }
+    const missing = [
+      !form.title.trim() && "Title",
+      !form.department && "Department",
+      !form.adviser && "Adviser",
+    ].filter(Boolean);
+    if (missing.length > 0) {
+      setError(`Please fill in: ${missing.join(", ")}.`);
       return;
     }
     // Validate before downloading anything (docs/06 §6).
@@ -329,7 +342,7 @@ export function RegisterForm({ onBack, onSave }: {
 
       {/* Submit button */}
       {extractState === "idle" && (
-        <button onClick={handleSubmit} disabled={!form.driveLink.trim()} className="btn-submit">
+        <button onClick={handleSubmit} className="btn-submit">
           <Icon name="file" size={18} />
           Read PDF & continue
         </button>

@@ -1,10 +1,13 @@
 # 06 — PDF Auto-Extraction
 
-**Status:** ☑ DONE — PRs #14, #15 and the §8 fixes (branch `step-06-real-pdf-checks`).
-Drive API key created and the §0 day-1 spike printed `200 application/pdf` from
-`localhost:8443` (and the key is refused from other sites). pdfjs-dist 6.4.299, worker
-`pdf.worker.min.mjs`. §8 checked 2026-10-05 against six real thesis PDFs (§8 "Results");
-still worth one run with an actual ISU thesis from the library.
+**Status:** ☑ DONE — PRs #14, #15, #16 and the second round of §8 fixes. Drive API key
+created and the §0 day-1 spike printed `200 application/pdf` from `localhost:8443` (and
+the key is refused from other sites). pdfjs-dist 6.4.299, worker `pdf.worker.min.mjs`.
+The extraction code was checked by script against ten real bachelor's theses (§8
+"Results"), and on 2026-10-05 a real thesis was **registered through the app** (Register
+→ "read a PDF from this computer", arXiv 1407.7143, abstract on page 11): the filled-in
+abstract matched the PDF's abstract page word for word (268 words) and the save
+succeeded. Still worth one run with an actual ISU thesis when one is available.
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**
@@ -143,7 +146,7 @@ const DRIVE_API_KEY = "REPLACE_WITH_KEY_FROM_A";
 
 /** Theses often put the abstract after the title page, approval sheet and
  *  acknowledgements, so 4 pages can miss it. Tune against real ISU PDFs (§8). */
-const MAX_PAGES = 8;
+const MAX_PAGES = 15;   // was 8 — see §8 Results, second round
 
 /** Accepts /file/d/{id}/view · /file/d/{id} · ?id={id} · /open?id={id} */
 export function driveFileId(link: string): string | null {
@@ -377,7 +380,9 @@ Do not touch it; this step only replaces the fake extraction. Keep the
 
 ## 6. Validation and UX
 
-- Disable Submit until the link is non-empty
+- Submit is always clickable; clicking with something missing shows exactly what
+  (a disabled button gave no reason — staff who had chosen a local PDF could not
+  tell that the Drive link was still required)
 - Validate before downloading — `validateDriveLink` returns a message, show it
 - Show a word count under the abstract (the prototype already does)
 - Keywords are chips: staff can remove one with X, and add one by typing + Enter.
@@ -437,7 +442,7 @@ the app.
 Test against **real PDFs**, not ones you imagine. Take 3–4 actual ISU thesis
 PDFs shared as "Anyone with the link", and paste the extracted text into a
 scratch script to inspect it before trusting it in the form. Note on which page
-each abstract actually starts, and adjust `MAX_PAGES` if 8 is not enough.
+each abstract actually starts, and adjust `MAX_PAGES` if 15 is not enough.
 
 - [ ] The §0 day-1 spike printed `200 application/pdf` from `localhost:8443`
 
@@ -474,17 +479,56 @@ bachelor's/undergraduate theses from arXiv were used, read from disk with the sa
 | 2309.15869 — Vietnamese speech recognition | 70 | 3 (contents entry first) | nothing (→ manual) | ✓ 1,517 chars |
 | 2501.02203 — AWS IAM (Seoul National Univ.) | 25 | 2 | ✓ + 4 keywords | ✓ + 4 keywords |
 
-The abstract started on page 2–5 in every case, so **`MAX_PAGES = 8` is enough** for
-these. A Philippine thesis can have more front matter (approval sheet, acknowledgment,
-dedication, contents and lists before the abstract); if an ISU thesis puts its abstract
-after page 8, raise `MAX_PAGES` — reading a few more pages costs well under a second.
+The abstract started on page 2–5 in every case. (The second round below found one
+on page 11, so `MAX_PAGES` is now 15.)
 
 Text-level cases for an ISU-style layout (approval sheet, acknowledgment, contents entry
 `Abstract ........ v`, then `ABSTRACT` and `KEY WORDS:`), "background" / "introduction"
 / "contents" starting a wrapped line, `1. INTRODUCTION`, `DEDICATION` after the abstract,
 and an abstract ending in "Region II": 3 of 7 passed before the fix, 7 of 7 after.
 
-Only one of the six PDFs had a keywords line. Its `identity and access management`
+**How these were checked:** by a script that runs the app's own `extractPdf.ts` on
+PDFs read from disk — not through the app's Register screen.
+
+### Results — second round, 2026-10-05
+
+Four more real bachelor's theses from arXiv (no Philippine repository could be used:
+DLSU's Animo Repository is behind a bot check, which must not be bypassed). Same method:
+the app's own `extractPdf.ts`, only the pdf.js import swapped for its Node build.
+
+| Thesis (arXiv) | Pages | Abstract on page | Before this round | After |
+|---|---|---|---|---|
+| 1407.7143 — VIT B.Tech project report (India) | 65 | **11** (contents entry `Abstract ix` on p. 5) | nothing (→ manual): only 8 pages read | ✓ 1,933 chars |
+| 1906.06254 — Nazarbayev Univ. bachelor's | 43 | 5 | abstract preceded by "Physics Department … by Khalykbek Yelshibekov" | ✓ 533 chars, header block dropped |
+| 1604.01830 — WiggleZ undergraduate thesis | 6 | 5 | ended in "v vi Abstract" (page no. + blank page's running header) | ✓ 1,289 chars |
+| 1211.0689 — Invenio bachelor's thesis | 70 | 3 | English abstract + German *Zusammenfassung* on the same page, both kept | unchanged — known limitation |
+
+Changes from this round, all in `extractAbstractAndKeywords` / `MAX_PAGES`:
+
+- `MAX_PAGES` 8 → 15: a real project report put the abstract on page 11, behind a
+  certificate, acknowledgement, contents, lists of tables/figures and abbreviations.
+- A **header block** at the top of the abstract page is dropped: "Label: value" lines
+  (`Title:`, `Researcher(s):`, `Adviser:`, `Degree:` … — the usual Philippine layout)
+  or a short run of department / degree / title / "by Author" lines. Text on the heading
+  line itself ("ABSTRACT: This study…") is never treated as a header, and if less than
+  150 characters would remain the block is kept.
+- **Trailing page furniture** is removed repeatedly: page numbers ("v", "(iv)", "| 4")
+  and a blank back page's running header ("vi Abstract").
+- `ABSTRAK` and `BUOD` (a Filipino-language abstract after the English one) end the
+  English abstract.
+
+Text-level regression cases, 11 of 11 pass: Philippine "Title / Researcher / Adviser"
+header (also with a title wrapping onto two lines), English then `ABSTRAK`, text on the
+heading line, contents entry before the real abstract, mid-abstract "background", a short
+two-line abstract that must not be mistaken for a header, a trailing "(iv)", and an
+abstract ending "Region II." / "Region II" (must be kept) or "Region II." followed by
+page number "v".
+
+**Known limitation:** a page with the abstract in two languages and no Filipino/English
+heading between them (Invenio: English, then the German version) keeps both. Staff trim
+it in the editable abstract box before saving.
+
+Only one of the first six PDFs had a keywords line. Its `identity and access management`
 became two chips (`identity`, `access management`) because keywords are also split on
 "and"; staff can fix that in the review step.
 
