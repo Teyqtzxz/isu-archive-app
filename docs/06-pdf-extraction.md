@@ -1,9 +1,10 @@
 # 06 — PDF Auto-Extraction
 
-**Status:** ◐ BUILT — 2026-10-04, branch `step-06-pdf`. Drive API key created and the §0
-day-1 spike printed `200 application/pdf` from `localhost:8443` (and the key is refused from
-other sites). pdfjs-dist 6.4.299, worker `pdf.worker.min.mjs`. Pending the §8 checks by hand
-and a test with real ISU thesis PDFs.
+**Status:** ☑ DONE — PRs #14, #15 and the §8 fixes (branch `step-06-real-pdf-checks`).
+Drive API key created and the §0 day-1 spike printed `200 application/pdf` from
+`localhost:8443` (and the key is refused from other sites). pdfjs-dist 6.4.299, worker
+`pdf.worker.min.mjs`. §8 checked 2026-10-05 against six real thesis PDFs (§8 "Results");
+still worth one run with an actual ISU thesis from the library.
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**
@@ -219,13 +220,34 @@ export function extractAbstractAndKeywords(
   const flat = text.replace(/[ \t\u00a0]+/g, " ");
 
   // --- Abstract: after the heading, stop at the next section heading.
-  // Length-bounded (40–3000 chars) so a missing terminator cannot run away.
+  // Length-bounded (40–4000 chars) so a missing terminator cannot run away.
   // Terminators must START A LINE: with /i, a bare \bBACKGROUND\b also matches
   // "against a background of…" mid-abstract and cuts the abstract short.
-  const abstractMatch = flat.match(
-    /\bABSTRACT\b\s*[:.\-\u2013\u2014]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
+  // Most must also END the line (after an optional "2"/"1."/"I." number and a
+  // trailing page number): a wrapped line can begin "introduction of hybrid
+  // lines…" or "contents of nitrogen…". Only KEYWORDS, CHAPTER 1 and TABLE OF
+  // CONTENTS may run on, as in "Keywords: rice, soil".
+  const sectionEnd = String.raw`(?:(?:\d+|[IVX]+)\.?\s+)?(?:INTRODUCTION|BACKGROUND|CONTENTS|ACKNOWLEDG\w*|DEDICATION|DECLARATION|LIST\s+OF\s+(?:FIGURES|TABLES)|APPROVAL\s+SHEET|BIOGRAPHICAL\s+SKETCH|CERTIFICATION)[ \t]*(?:[ivxlc\d]+[ \t]*)?\n`;
+  const abstractRe = new RegExp(
+    String.raw`\bABSTRACT\b[ \t]*([^\n]*)\n?([\s\S]{40,4000}?)(?=\n\s*(?:KEY\s?WORDS?|CHAPTER\s+(?:1|I|ONE)\b|TABLE\s+OF\s+CONTENTS|${sectionEnd}))`,
+    "gi",
   );
-  const abstract = abstractMatch?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+  let abstract = "";
+  for (let m; (m = abstractRe.exec(flat)); ) {
+    // Skip table-of-contents entries such as "ABSTRACT ........ 3" or "Abstract v":
+    // in a thesis the contents page often comes before the abstract itself.
+    // Resume just past this heading, or the skipped match swallows the real one.
+    if (/^(?:[\s.]*\.{3}|(?:\.\s){3}|[ivxlc\d]+\s*$)/i.test(m[1])) {
+      abstractRe.lastIndex = m.index + "ABSTRACT".length;
+      continue;
+    }
+    abstract = `${m[1].replace(/^[:.\-\u2013\u2014]\s*/, "")}\n${m[2]}`
+      .replace(/\s+/g, " ")
+      .trim()
+      // Drop the page number printed under the abstract: "(iv)", "| 4", "- 5 -".
+      .replace(/([.!?)\]"\u201d])\s+[|\-\u2013\u2014]?\s*\(?(?:[ivxlc]+|\d{1,4})\)?\s*[|\-\u2013\u2014]?$/i, "$1");
+    break;
+  }
 
   // --- Keywords: bounded to ONE LINE.
   // \bKEY\s?WORDS?\b matches KEYWORD, KEYWORDS, "KEY WORD" and "KEY WORDS".
@@ -290,8 +312,24 @@ and `KEY WORDS`, in any case. The spaced spelling is common in real theses. Do n
 "simplify" the pattern to `KEYWORDS?`, which never matches it.
 
 **Length-bound the abstract.** The non-greedy `+?` still needs a terminator. The
-`{40,3000}` guard means a PDF whose abstract has no following heading produces a
-truncated abstract instead of the entire document.
+`{40,4000}` guard stops a missing terminator from swallowing the whole document — the
+match then **fails** and the abstract is empty (manual entry), it is not truncated. So
+the terminator list has to cover what really follows an abstract: in the six real
+theses of §8 that was `Contents`, `Acknowledgements` and a numbered `2 Introduction`,
+none of which the first version listed. 4000, not 3000, because one-page thesis
+abstracts reach ~2,200 characters.
+
+**Most terminators must be the whole line.** Starting a line is not enough: a wrapped
+sentence can put "introduction of hybrid lines…" or "contents of nitrogen…" at the
+start of a line. Only `KEYWORDS`, `CHAPTER 1` and `TABLE OF CONTENTS` may run on
+("Keywords: rice, soil"); the rest must end the line, allowing a section number before
+("2 Introduction", "I. INTRODUCTION") and a page number after.
+
+**Skip the table of contents.** Theses often print the contents page *before* the
+abstract, so the first `ABSTRACT` in the text is the entry `Abstract ........ v`. A
+heading line that is only dot leaders or a page number is skipped, and the search
+resumes just past it — a plain `matchAll` would let the skipped match swallow the real
+heading.
 
 ---
 
@@ -419,6 +457,36 @@ each abstract actually starts, and adjust `MAX_PAGES` if 8 is not enough.
 - [ ] A non-Drive URL is rejected before any download starts
 - [ ] `grep -rn "MOCK_ABSTRACT\|Math.random" src/` returns nothing
 - [ ] `npm run build` passes
+
+### Results — 2026-10-05
+
+No ISU thesis PDFs were available online (the ISU library and other Philippine
+repositories need a login or show a bot check, which must not be bypassed), so six real
+bachelor's/undergraduate theses from arXiv were used, read from disk with the same
+`extractAbstractAndKeywords` and `MAX_PAGES` as the app:
+
+| Thesis (arXiv) | Pages | Abstract heading on page | Before fix | After fix |
+|---|---|---|---|---|
+| 1511.07101 — CAPM risk–return (finance) | 50 | 2 (contents entry first) | contents dot leaders | ✓ 1,191 chars |
+| 1908.10714 — neural architecture design | 58 | 3 | nothing (→ manual) | ✓ 1,191 chars |
+| 1911.09518 — video copy detection | 56 | 3 | ✓, ended in page number "(iv)" | ✓ 1,310 chars |
+| 1912.00337 — DC servo motor control (NIT Silchar) | 138 | 5 | nothing (→ manual) | ✓ 2,139 chars |
+| 2309.15869 — Vietnamese speech recognition | 70 | 3 (contents entry first) | nothing (→ manual) | ✓ 1,517 chars |
+| 2501.02203 — AWS IAM (Seoul National Univ.) | 25 | 2 | ✓ + 4 keywords | ✓ + 4 keywords |
+
+The abstract started on page 2–5 in every case, so **`MAX_PAGES = 8` is enough** for
+these. A Philippine thesis can have more front matter (approval sheet, acknowledgment,
+dedication, contents and lists before the abstract); if an ISU thesis puts its abstract
+after page 8, raise `MAX_PAGES` — reading a few more pages costs well under a second.
+
+Text-level cases for an ISU-style layout (approval sheet, acknowledgment, contents entry
+`Abstract ........ v`, then `ABSTRACT` and `KEY WORDS:`), "background" / "introduction"
+/ "contents" starting a wrapped line, `1. INTRODUCTION`, `DEDICATION` after the abstract,
+and an abstract ending in "Region II": 3 of 7 passed before the fix, 7 of 7 after.
+
+Only one of the six PDFs had a keywords line. Its `identity and access management`
+became two chips (`identity`, `access management`) because keywords are also split on
+"and"; staff can fix that in the review step.
 
 ---
 
