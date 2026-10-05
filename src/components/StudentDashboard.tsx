@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
-import { registeredAtISO } from "../types";
+import { DEPARTMENTS, registeredAtISO } from "../types";
 import { ISUSeal, DeptBadge, Icon, initialsOf } from "./shared";
 
-export function StudentDashboard({ theses, account, onSearch, onSignOut }: {
+export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onSignOut }: {
   theses: Thesis[];
   account: { displayName: string; email: string };
   onSearch: (q: string) => void;
+  /** Open the search screen filtered to one department (not a text search for its name). */
+  onBrowseDepartment: (department: string) => void;
   onSignOut: () => void;
 }) {
   const [heroQuery, setHeroQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -22,7 +23,6 @@ export function StudentDashboard({ theses, account, onSearch, onSignOut }: {
     return () => { document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
   }, [menuOpen]);
 
-  const quickFilters = ["Recent", "Agriculture", "Computer Science", "Forestry", "Biology", "Education"];
   const name = account.displayName || account.email;
 
   const recent = [...theses]
@@ -99,13 +99,18 @@ export function StudentDashboard({ theses, account, onSearch, onSignOut }: {
         </section>
 
         <div className="container" style={{ paddingTop: 24, paddingBottom: 40 }}>
-          {/* Quick filter chips */}
+          {/* Browse chips. "Recent" opens every thesis newest first; a department
+              chip opens the search screen filtered to that department. They used to
+              run a text search for the department's name, which missed theses that
+              never use those words and caught ones from other departments that do. */}
           <div className="chip-row">
-            <div className="chip-row-inner">
-              {quickFilters.map(f => (
-                <button key={f} onClick={() => { setActiveFilter(f === activeFilter ? "" : f); if (f !== "Recent") onSearch(f); }}
-                  className={`chip${activeFilter === f ? " chip-active" : ""}`}>
-                  {f}
+            <div className="chip-row-inner" role="group" aria-label="Browse theses">
+              <button onClick={() => onSearch("")} className="chip">
+                Recent
+              </button>
+              {DEPARTMENTS.map(d => (
+                <button key={d} onClick={() => onBrowseDepartment(d)} className="chip">
+                  {d}
                 </button>
               ))}
             </div>

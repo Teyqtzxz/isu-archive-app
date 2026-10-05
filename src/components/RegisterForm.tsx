@@ -5,13 +5,18 @@ import { ADVISERS } from "../data";
 import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
 
+/** Academic year options: this year back ten years, computed so the list never
+ *  goes stale (it used to be hardcoded 2025–2020, which shut out 2026 theses). */
+const THIS_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - i);
+
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
   onSave: (thesis: NewThesis, status: ThesisStatus) => Promise<void>;
 }) {
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
-  const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: "2024", adviser: "" });
+  const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
@@ -199,7 +204,7 @@ export function RegisterForm({ onBack, onSave }: {
               <label className="field-label">Academic Year</label>
               <select value={form.year} onChange={e => setForm(p => ({ ...p, year: e.target.value }))} disabled={extractState === "extracting"}
                 className="input" style={{ appearance: "none" }}>
-                {[2025, 2024, 2023, 2022, 2021, 2020].map(y => <option key={y} value={y}>{y}</option>)}
+                {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           </div>
