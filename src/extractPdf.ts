@@ -134,13 +134,34 @@ export function extractAbstractAndKeywords(
   const flat = text.replace(/[ \t\u00a0]+/g, " ");
 
   // --- Abstract: after the heading, stop at the next section heading.
-  // Length-bounded (40–3000 chars) so a missing terminator cannot run away.
+  // Length-bounded (40–4000 chars) so a missing terminator cannot run away.
   // Terminators must START A LINE: with /i, a bare \bBACKGROUND\b also matches
   // "against a background of…" mid-abstract and cuts the abstract short.
-  const abstractMatch = flat.match(
-    /\bABSTRACT\b\s*[:.\-\u2013\u2014]?\s*([\s\S]{40,3000}?)(?=\n\s*(?:KEY\s?WORDS?|INTRODUCTION|CHAPTER\s+(?:1|I|ONE)\b|BACKGROUND|TABLE\s+OF\s+CONTENTS))/i,
+  // Most must also END the line (after an optional "2"/"1."/"I." number and a
+  // trailing page number): a wrapped line can begin "introduction of hybrid
+  // lines…" or "contents of nitrogen…". Only KEYWORDS, CHAPTER 1 and TABLE OF
+  // CONTENTS may run on, as in "Keywords: rice, soil".
+  const sectionEnd = String.raw`(?:(?:\d+|[IVX]+)\.?\s+)?(?:INTRODUCTION|BACKGROUND|CONTENTS|ACKNOWLEDG\w*|DEDICATION|DECLARATION|LIST\s+OF\s+(?:FIGURES|TABLES)|APPROVAL\s+SHEET|BIOGRAPHICAL\s+SKETCH|CERTIFICATION)[ \t]*(?:[ivxlc\d]+[ \t]*)?\n`;
+  const abstractRe = new RegExp(
+    String.raw`\bABSTRACT\b[ \t]*([^\n]*)\n?([\s\S]{40,4000}?)(?=\n\s*(?:KEY\s?WORDS?|CHAPTER\s+(?:1|I|ONE)\b|TABLE\s+OF\s+CONTENTS|${sectionEnd}))`,
+    "gi",
   );
-  const abstract = abstractMatch?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+  let abstract = "";
+  for (let m; (m = abstractRe.exec(flat)); ) {
+    // Skip table-of-contents entries such as "ABSTRACT ........ 3" or "Abstract v":
+    // in a thesis the contents page often comes before the abstract itself.
+    // Resume just past this heading, or the skipped match swallows the real one.
+    if (/^(?:[\s.]*\.{3}|(?:\.\s){3}|[ivxlc\d]+\s*$)/i.test(m[1])) {
+      abstractRe.lastIndex = m.index + "ABSTRACT".length;
+      continue;
+    }
+    abstract = `${m[1].replace(/^[:.\-\u2013\u2014]\s*/, "")}\n${m[2]}`
+      .replace(/\s+/g, " ")
+      .trim()
+      // Drop the page number printed under the abstract: "(iv)", "| 4", "- 5 -".
+      .replace(/([.!?)\]"\u201d])\s+[|\-\u2013\u2014]?\s*\(?(?:[ivxlc]+|\d{1,4})\)?\s*[|\-\u2013\u2014]?$/i, "$1");
+    break;
+  }
 
   // --- Keywords: bounded to ONE LINE.
   // \bKEY\s?WORDS?\b matches KEYWORD, KEYWORDS, "KEY WORD" and "KEY WORDS".
