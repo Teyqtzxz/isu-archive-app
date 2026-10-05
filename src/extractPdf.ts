@@ -9,9 +9,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
  *  Drive API only; safe to commit (preamble rule 11). */
 const DRIVE_API_KEY = "AIzaSyCidmWQuqPAb5T5OM2hlsOdLHY7L7El_lw";
 
-/** Theses often put the abstract after the title page, approval sheet and
- *  acknowledgements, so 4 pages can miss it. Tune against real ISU PDFs (§8). */
-export const MAX_PAGES = 8;
+/** Theses put the abstract after the title page, approval sheet, certificate,
+ *  acknowledgements, dedication, contents and lists of tables/figures. A real
+ *  bachelor's project report tested on 2026-10-05 had it on page 11, so 8 was
+ *  too few. Reading 15 pages of text takes well under a second. */
+export const MAX_PAGES = 15;
 
 /** Fewer letters than this in the pages read → treat the PDF as scanned. */
 const MIN_TEXT_CHARS = 50;
@@ -41,6 +43,38 @@ export function validateDriveLink(link: string): string | null {
   }
   return null;
 }
+
+/** "Label: value" lines that some abstract pages print above the abstract
+ *  itself — common in Philippine theses ("Title: …", "Researcher: …"). */
+const HEADER_LABEL =
+  /^(?:thesis\s+)?(?:title|authors?|researchers?|proponents?|advis[eo]rs?|degree|course|program(?:me)?|department|college|school|institution|university|year|date|name)\s*:/i;
+
+/** Drop the header block some abstract pages start with — label lines, or a
+ *  short run of department / degree / title / "by Author" lines — and keep the
+ *  abstract text. A line counts as text when it ends a sentence, or is a long
+ *  line followed by another long one (a wrapped paragraph). A title on its own
+ *  line is long but is followed by a short line, so it is still dropped. If too
+ *  little would remain, the block was not a header after all: keep everything. */
+function stripHeaderBlock(body: string): string {
+  const lines = body.split("\n").map((l) => l.trim());
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line || HEADER_LABEL.test(line)) { i++; continue; }
+    const next = lines.slice(i + 1).find((l) => l) ?? "";
+    const isText = /[.!?]$/.test(line) || line.length >= 100 || (line.length >= 60 && next.length >= 50);
+    if (isText) break;
+    i++;
+  }
+  const rest = lines.slice(i).join("\n");
+  return rest.replace(/\s+/g, "").length >= 150 ? rest : body;
+}
+
+/** Trailing page furniture after the last sentence: a page number ("v",
+ *  "(iv)", "| 4", "- 5 -") and the running header of a blank back page
+ *  ("vi Abstract"), possibly several of them in a row. */
+const TRAILING_PAGE_MARKS =
+  /([.!?)\]"\u201d])(?:\s+(?:[|\-\u2013\u2014]?\s*\(?(?:[ivxlc]+|\d{1,4})\)?\s*[|\-\u2013\u2014]?|abstract))+\s*$/i;
 
 function firstNonEmptyLine(lines: string[], from: number): string {
   for (let i = from; i < lines.length; i++) {
@@ -141,7 +175,8 @@ export function extractAbstractAndKeywords(
   // trailing page number): a wrapped line can begin "introduction of hybrid
   // lines…" or "contents of nitrogen…". Only KEYWORDS, CHAPTER 1 and TABLE OF
   // CONTENTS may run on, as in "Keywords: rice, soil".
-  const sectionEnd = String.raw`(?:(?:\d+|[IVX]+)\.?\s+)?(?:INTRODUCTION|BACKGROUND|CONTENTS|ACKNOWLEDG\w*|DEDICATION|DECLARATION|LIST\s+OF\s+(?:FIGURES|TABLES)|APPROVAL\s+SHEET|BIOGRAPHICAL\s+SKETCH|CERTIFICATION)[ \t]*(?:[ivxlc\d]+[ \t]*)?\n`;
+  // ABSTRAK / BUOD: a Filipino-language abstract that follows the English one.
+  const sectionEnd = String.raw`(?:(?:\d+|[IVX]+)\.?\s+)?(?:INTRODUCTION|BACKGROUND|CONTENTS|ACKNOWLEDG\w*|DEDICATION|DECLARATION|LIST\s+OF\s+(?:FIGURES|TABLES)|APPROVAL\s+SHEET|BIOGRAPHICAL\s+SKETCH|CERTIFICATION|ABSTRAK|BUOD)[ \t]*(?:[ivxlc\d]+[ \t]*)?\n`;
   const abstractRe = new RegExp(
     String.raw`\bABSTRACT\b[ \t]*([^\n]*)\n?([\s\S]{40,4000}?)(?=\n\s*(?:KEY\s?WORDS?|CHAPTER\s+(?:1|I|ONE)\b|TABLE\s+OF\s+CONTENTS|${sectionEnd}))`,
     "gi",
@@ -155,11 +190,13 @@ export function extractAbstractAndKeywords(
       abstractRe.lastIndex = m.index + "ABSTRACT".length;
       continue;
     }
-    abstract = `${m[1].replace(/^[:.\-\u2013\u2014]\s*/, "")}\n${m[2]}`
+    // Text on the heading line itself ("ABSTRACT: This study…") is abstract
+    // text, so the header-block check only applies when the heading stood alone.
+    const sameLine = m[1].replace(/^[:.\-\u2013\u2014]\s*/, "");
+    abstract = `${sameLine}\n${sameLine.trim() ? m[2] : stripHeaderBlock(m[2])}`
       .replace(/\s+/g, " ")
       .trim()
-      // Drop the page number printed under the abstract: "(iv)", "| 4", "- 5 -".
-      .replace(/([.!?)\]"\u201d])\s+[|\-\u2013\u2014]?\s*\(?(?:[ivxlc]+|\d{1,4})\)?\s*[|\-\u2013\u2014]?$/i, "$1");
+      .replace(TRAILING_PAGE_MARKS, "$1");
     break;
   }
 
