@@ -78,7 +78,7 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
           )}
           {/* One result is not a summary of several studies; say so (docs/07 §5). */}
           {sources.length === 1 && sentences.length > 0 && (
-            <p className="summary-note">Only one result is selected, so every sentence above comes from its abstract.</p>
+            <p className="summary-note">Only one result is selected, so the summary is its most relevant sentence.</p>
           )}
 
           {/* Citations: numbered by the rank shown on the search screen */}

@@ -2,6 +2,8 @@
 
 **Status:** ☑ DONE — merged in PRs #12 and #13; the §6 checks were done by hand in the
 browser on 2026-10-02. The summariser uses MMR rather than the §3 points system — see §7.
+**Changed 2026-10-07 (group decision):** the summary has **one sentence per ticked thesis**,
+with no upper limit, and never quotes a thesis twice (was: at most 4 sentences) — see §7.
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
@@ -18,7 +20,7 @@ From the Search screen, **"View Summary (N)"** opens a panel that:
 
 1. Takes the theses the user **ticked**, in rank order
 2. Reads their abstracts
-3. Produces **3–4 sentences** covering the common themes
+3. Produces **one sentence per ticked thesis** covering the common themes (see §7)
 4. Tags each with a citation chip `[n]` where `n` is that thesis's **visible
    rank** in the result list — tick results #2 and #5 and the chips read `[2]`
    and `[5]`, not `[1]` and `[2]`
@@ -244,10 +246,12 @@ scrolling, so the panel does not need to know how result cards are rendered.
 Worth knowing before you demo, because a teacher may probe:
 
 - Sentences are copied verbatim from abstracts, so the summary can be disjointed.
-  A single "This study…" sentence from five different theses reads oddly. Lower
-  `maxSentences` to 3 if that shows up in testing.
-- With one result, this is not a summary — it is the top of one abstract. Say so
-  rather than padding it.
+  A single "This study…" sentence from five different theses reads oddly, and
+  ticking many theses gives an equally long summary (one sentence each).
+- With one result, the summary is that abstract's single most relevant sentence.
+  The panel says so.
+- A ticked thesis with no sentence containing the search words is not quoted, so
+  the summary can have fewer sentences than theses ticked.
 - It matches on query terms only. A query with no matching sentence anywhere
   triggers the fallback rather than returning nothing.
 
@@ -307,10 +311,14 @@ panel are unchanged.
    query, only sentences with BM25 > 0 are eligible. With no query or no match,
    relevance is centrality alone — a generic summary of the selection (this
    replaces the old "first sentence of each" fallback).
-4. **Selection** — repeat up to 4 times: take the sentence with the highest
-   `λ·relevance − (1−λ)·(similarity to the closest sentence already picked)`,
-   λ = 0.7 (the usual starting value). Theses not yet quoted are preferred, and a
-   sentence with cosine ≥ 0.8 to one already picked is never taken.
+4. **Selection** — one sentence per ticked thesis: repeatedly take the sentence
+   with the highest `λ·relevance − (1−λ)·(similarity to the closest sentence
+   already picked)`, λ = 0.7 (the usual starting value), **only from theses not
+   quoted yet**, until every thesis that can be quoted is. A sentence with
+   cosine ≥ 0.8 to one already picked is never taken; a thesis whose sentences
+   are all excluded (no query match, or only near-copies) is left out rather
+   than another thesis being quoted twice. (Until 2026-10-07 the summary was
+   capped at 4 sentences, so ticking 5+ theses left some unquoted.)
 5. Output is put back into rank order, then abstract order within one thesis.
 
 Measured on the 21 seed abstracts: no repeated sentences, at most one sentence
