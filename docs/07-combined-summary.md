@@ -250,8 +250,9 @@ Worth knowing before you demo, because a teacher may probe:
   ticking many theses gives an equally long summary (one sentence each).
 - With one result, the summary is that abstract's single most relevant sentence.
   The panel says so.
-- A ticked thesis with no sentence containing the search words is not quoted, so
-  the summary can have fewer sentences than theses ticked.
+- A ticked thesis can match the search only in its title or keywords, with no
+  abstract sentence containing the search words. It still contributes its most
+  central sentence, which then does not contain the search words.
 - It matches on query terms only. A query with no matching sentence anywhere
   triggers the fallback rather than returning nothing.
 
@@ -314,11 +315,13 @@ panel are unchanged.
 4. **Selection** — one sentence per ticked thesis: repeatedly take the sentence
    with the highest `λ·relevance − (1−λ)·(similarity to the closest sentence
    already picked)`, λ = 0.7 (the usual starting value), **only from theses not
-   quoted yet**, until every thesis that can be quoted is. A sentence with
-   cosine ≥ 0.8 to one already picked is never taken; a thesis whose sentences
-   are all excluded (no query match, or only near-copies) is left out rather
-   than another thesis being quoted twice. (Until 2026-10-07 the summary was
-   capped at 4 sentences, so ticking 5+ theses left some unquoted.)
+   quoted yet**, until every ticked thesis is quoted. Within a thesis that has
+   sentences containing the search words, only those are eligible; a thesis
+   with none (it matched on title or keywords only) uses all its sentences,
+   scored on centrality. A sentence with cosine ≥ 0.8 to one already picked is
+   never taken, so only a thesis whose every sentence nearly copies one already
+   chosen is left out. (Until 2026-10-07 the summary was capped at 4 sentences,
+   so ticking 5+ theses left some unquoted.)
 5. Output is put back into rank order, then abstract order within one thesis.
 
 Measured on the 21 seed abstracts: no repeated sentences, at most one sentence
