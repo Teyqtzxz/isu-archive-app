@@ -85,10 +85,10 @@ function cosine(a: Map<string, number>, b: Map<string, number>): number {
 }
 
 /** One sentence per ticked thesis: the summary is as long as the selection,
- *  and no thesis is quoted twice. A thesis with no usable sentence (none
- *  matches the query, or its only match nearly copies one already chosen) is
- *  left out rather than another thesis being quoted again. Order of `results`
- *  does not matter; output is put back into rank order at the end. */
+ *  and no thesis is quoted twice. A thesis whose abstract never mentions the
+ *  search words still contributes its most central sentence. Only a thesis
+ *  whose every sentence nearly copies one already chosen is left out. Order of
+ *  `results` does not matter; output is put back into rank order at the end. */
 export function summarise(results: RankedThesis[], query: string): SummarySentence[] {
   const top = [...results].sort((a, b) => a.rank - b.rank);
 
@@ -124,15 +124,19 @@ export function summarise(results: RankedThesis[], query: string): SummarySenten
     return n > 0 ? sum / n : 0;
   });
 
-  // Relevance in 0..1. With a query: BM25 and centrality weighted equally, and
-  // only sentences that match the query are eligible. With no query, or no
-  // match anywhere: centrality alone, which is a generic summary of the group.
+  // Relevance in 0..1. With a query: BM25 and centrality weighted equally, so a
+  // sentence that matches the query outranks one that does not. With no query,
+  // or no match anywhere: centrality alone, a generic summary of the group.
   const maxBm25 = Math.max(...bm25);
   const maxCentrality = Math.max(...centrality) || 1;
   const queryMatched = maxBm25 > 0;
+  // A thesis can be a search result because its title or keywords match while
+  // no sentence of its abstract does. Such a thesis still gets one sentence:
+  // all of its sentences stay eligible, scored on centrality alone (BM25 = 0).
+  const matchingSources = new Set(sentences.filter((_, i) => bm25[i] > 0).map((s) => s.sourceIndex));
   const candidates: Candidate[] = [];
   sentences.forEach((s, i) => {
-    if (queryMatched && bm25[i] === 0) return;
+    if (bm25[i] === 0 && matchingSources.has(s.sourceIndex)) return;
     candidates.push({
       text: s.text,
       sourceIndex: s.sourceIndex,
