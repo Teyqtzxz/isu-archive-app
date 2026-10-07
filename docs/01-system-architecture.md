@@ -114,7 +114,7 @@ Any search bar → query
 ```
 Search screen → tick results → "View Summary (N)"
    → take the N ticked theses' abstracts, in rank order
-   → extractive sentence scoring → 3-4 sentences with [n] citations
+   → extractive sentence scoring (BM25 + MMR) → one sentence per ticked thesis, with [n] citations
    → show in slide-up panel → Close only
 ```
 

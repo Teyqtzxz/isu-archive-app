@@ -84,9 +84,12 @@ function cosine(a: Map<string, number>, b: Map<string, number>): number {
   return dot;
 }
 
-/** Every ticked result is used — the user chose them. Order does not matter;
- *  output is put back into rank order at the end. */
-export function summarise(results: RankedThesis[], query: string, maxSentences = 4): SummarySentence[] {
+/** One sentence per ticked thesis: the summary is as long as the selection,
+ *  and no thesis is quoted twice. A thesis with no usable sentence (none
+ *  matches the query, or its only match nearly copies one already chosen) is
+ *  left out rather than another thesis being quoted again. Order of `results`
+ *  does not matter; output is put back into rank order at the end. */
+export function summarise(results: RankedThesis[], query: string): SummarySentence[] {
   const top = [...results].sort((a, b) => a.rank - b.rank);
 
   const sentences: { text: string; sourceIndex: number; position: number; thesis: Thesis }[] = [];
@@ -142,15 +145,15 @@ export function summarise(results: RankedThesis[], query: string, maxSentences =
   });
 
   // MMR: repeatedly take the candidate with the best
-  //   λ · relevance − (1 − λ) · (similarity to the closest sentence already picked).
-  // Theses not yet quoted go first, so one abstract cannot fill the whole summary.
+  //   λ · relevance − (1 − λ) · (similarity to the closest sentence already picked),
+  // only from theses not quoted yet, until every thesis that can be quoted is.
   const picked: Candidate[] = [];
   const pool = [...candidates];
-  while (picked.length < maxSentences) {
-    const usable = pool.filter((c) => !picked.some((p) => cosine(vecs[c.vecIndex], vecs[p.vecIndex]) >= NEAR_DUPLICATE));
-    if (usable.length === 0) break;
-    const unquoted = usable.filter((c) => !picked.some((p) => p.sourceIndex === c.sourceIndex));
-    const choices = unquoted.length > 0 ? unquoted : usable;
+  for (;;) {
+    const choices = pool.filter((c) =>
+      !picked.some((p) => p.sourceIndex === c.sourceIndex) &&
+      !picked.some((p) => cosine(vecs[c.vecIndex], vecs[p.vecIndex]) >= NEAR_DUPLICATE));
+    if (choices.length === 0) break;
 
     let best = choices[0];
     let bestScore = -Infinity;
