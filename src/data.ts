@@ -116,6 +116,3 @@ export async function updateThesisStatus(id: string, status: ThesisStatus): Prom
   await updateDoc(doc(db, "theses", id), { status });
 }
 
-/** Adviser options for the register form. A fixed list for now — not thesis data. */
-export const ADVISERS = ["Dr. Maria Santos", "Engr. Jose Reyes", "Dr. Anna Cruz", "Dr. Roberto Dela Cruz", "Engr. Liza Pagulayan", "Dr. Carmen Villanueva", "Dr. Paulo Mendoza", "Prof. Elena Bulan"];
-

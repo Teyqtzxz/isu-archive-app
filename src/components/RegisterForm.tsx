@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
 import { DEPARTMENTS } from "../types";
-import { ADVISERS } from "../data";
 import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
 
@@ -9,6 +8,10 @@ import { DeptBadge, Icon } from "./shared";
  *  goes stale (it used to be hardcoded 2025–2020, which shut out 2026 theses). */
 const THIS_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - i);
+
+/** The adviser is typed freely, so drop stray spaces before saving:
+ *  "  Dr.  Maria Santos " → "Dr. Maria Santos". */
+const cleanAdviser = (name: string) => name.trim().replace(/\s+/g, " ");
 
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
@@ -48,7 +51,7 @@ export function RegisterForm({ onBack, onSave }: {
     const missing = [
       !form.title.trim() && "Title",
       !form.department && "Department",
-      !form.adviser && "Adviser",
+      !form.adviser.trim() && "Adviser",
     ].filter(Boolean);
     if (missing.length > 0) {
       setError(`Please fill in: ${missing.join(", ")}.`);
@@ -109,7 +112,7 @@ export function RegisterForm({ onBack, onSave }: {
     try {
       await onSave({
         title: form.title, department: form.department,
-        year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
+        year: parseInt(form.year), adviser: cleanAdviser(form.adviser), abstract, keywords,
         driveLink: form.driveLink,
       }, status);
     } catch (e) {
@@ -225,11 +228,8 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Adviser */}
           <div>
             <label className="field-label">Adviser <span className="field-req">*</span></label>
-            <select value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))} disabled={extractState === "extracting"}
-              className="input" style={{ color: form.adviser ? undefined : "var(--text-subtle)", appearance: "none" }}>
-              <option value="">Select adviser</option>
-              {ADVISERS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <input value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))}
+              placeholder="e.g. Dr. Maria Santos" disabled={extractState === "extracting"} className="input" />
           </div>
 
           {error && (
@@ -289,7 +289,7 @@ export function RegisterForm({ onBack, onSave }: {
             <p className="review-title">{form.title}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <DeptBadge dept={form.department} small />
-              <span className="result-meta">{form.year} · {form.adviser}</span>
+              <span className="result-meta">{form.year} · {cleanAdviser(form.adviser)}</span>
             </div>
           </div>
 

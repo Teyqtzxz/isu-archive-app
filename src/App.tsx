@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis, ThesisStatus } from "./types";
@@ -11,6 +11,7 @@ import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { SearchScreen } from "./components/SearchScreen";
 import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
+import { SignOutDialog } from "./components/SignOutDialog";
 import type { RankedThesis } from "./summary";
 import { ISUSeal, Icon, Toast } from "./components/shared";
 
@@ -35,6 +36,9 @@ export default function App() {
   const [searchInitialDept, setSearchInitialDept] = useState<string | undefined>(undefined);
   const [summaryData, setSummaryData] = useState<{ theses: RankedThesis[]; query: string } | null>(null);
   const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number } | null>(null);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // Stable, so the dialog's Escape listener is not re-added on every render.
+  const cancelSignOut = useCallback(() => setConfirmSignOut(false), []);
 
   // The single place that turns "a user is signed in" into a role and a
   // screen — for a fresh sign-in and for a session restored on refresh alike.
@@ -107,8 +111,14 @@ export default function App() {
       });
   }
 
-  // onAuthStateChanged(null) does the screen reset; nothing else to tear down.
+  // Every Sign Out button only asks; the dialog's "Sign Out" really signs out.
   function handleSignOut() {
+    setConfirmSignOut(true);
+  }
+
+  // onAuthStateChanged(null) does the screen reset; nothing else to tear down.
+  function confirmedSignOut() {
+    setConfirmSignOut(false);
     signOutUser().catch(() => setToast("Sign-out failed. Try again."));
   }
 
@@ -182,6 +192,10 @@ export default function App() {
           onClose={() => setSummaryData(null)}
           onCiteJump={thesisId => { setSummaryData(null); setCiteJump({ thesisId, nonce: Date.now() }); }}
         />
+      )}
+
+      {confirmSignOut && (
+        <SignOutDialog onConfirm={confirmedSignOut} onCancel={cancelSignOut} />
       )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

@@ -1341,6 +1341,37 @@ select.input {
   .sheet-handle-row { display: none; }
   .sheet-header { padding-top: 20px; }
 }
+/* ─── Sign-out confirmation ────────────────────────────────── */
+/* A small centred card at every width (not a bottom sheet), above the header. */
+.confirm-overlay { justify-content: center; align-items: center; padding: 16px; z-index: 200; }
+.confirm-box {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 24px 22px 20px;
+  text-align: center;
+}
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--isu-red-light);
+  color: var(--isu-red);
+}
+.confirm-title { font-size: 18px; font-weight: 800; color: var(--text); margin: 0 0 6px; }
+.confirm-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-btn { flex: 1; padding: 11px; font-size: 14px; }
+.confirm-btn-danger { background: var(--isu-red); color: #fff; font-weight: 600; }
+.confirm-btn-danger:hover { background: var(--isu-red-ink); }
+
 .mode-pill-row { padding-bottom: 14px; padding-top: 6px; }
 .mode-pill {
   display: inline-flex;

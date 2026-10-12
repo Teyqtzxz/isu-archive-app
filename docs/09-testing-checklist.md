@@ -31,6 +31,9 @@ seconds and catch the regressions that are easiest to reintroduce.
       Student Dashboard. The Summary panel is a modal over Search — Close, then
       Sign Out from Search
 - [ ] Sign Out on mobile is reachable via the avatar dropdown
+- [ ] Every Sign Out button first shows "Sign out?" with Cancel and Sign Out.
+      Cancel, Escape and a click outside the box keep you signed in on the same
+      screen; Sign Out goes to the login screen
 
 ## 2. Roles and security
 
@@ -69,7 +72,8 @@ matters most.
 - [ ] **[auto]** `grep -rn "drive.usercontent" src/` returns nothing — downloads go
       through the Drive API
 - [ ] Clicking "Read PDF & continue" with no Drive link (or a missing title /
-      department / adviser) shows a message naming what is missing
+      department / adviser) shows a message naming what is missing. The adviser
+      is a plain text box; an adviser of only spaces counts as missing
 - [ ] Real text-based PDF → PROCESSING → READY TO REVIEW, on localhost **and**
       on the deployed URL (the Drive API key must allow both — `06` §0)
 - [ ] A file shared as "Restricted" → NEEDS MANUAL ENTRY with the "Anyone with

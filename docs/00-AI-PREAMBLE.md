@@ -116,8 +116,8 @@ like `"CAS"` — staff filters compare it against `Thesis.department`.
 src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in, user profile,
-                        live theses, saveThesis, updateThesisStatus,
-                        plus the ADVISERS option list            ✅ EXISTS
+                        live theses, saveThesis, updateThesisStatus
+                        (adviser is typed freely: no option list) ✅ EXISTS
   firebase.ts         ← app, auth, db — real config for project
                         isu-archive-9253b (committed on purpose) ✅ EXISTS
   seed.ts             ← one-off seed script, 21 theses; skips

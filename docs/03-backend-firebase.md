@@ -263,7 +263,10 @@ be confirmed, show the read-only view. Never default to staff.
 Remove the prototype's fake logout / `page.reload()` logic.
 
 **How to wire it without editing other people's files.** `App.tsx` owns the one
-`handleSignOut = () => signOutUser()` and passes it down as the `onSignOut` prop.
+`handleSignOut` and passes it down as the `onSignOut` prop. It does not sign out
+straight away: it opens `SignOutDialog` ("Sign out?" with **Cancel** and
+**Sign Out**), and only the dialog's Sign Out calls `signOutUser()`. Cancel,
+Escape and a click on the backdrop keep the user signed in (errata #49).
 Today `StaffDashboard` (which also hosts the Register tab) and
 `StudentDashboard` already take `onSignOut` — just change `handleSignOut` in
 `App.tsx`. `SearchScreen` now takes `onSignOut` too (added in PR #9). Do not edit `SearchScreen`,
