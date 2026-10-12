@@ -5,10 +5,27 @@ import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import type { RankedThesis } from "../summary";
 import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
 
+/** The Drive link opened as the e-library account. With several Google accounts in one
+ *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
+ *  "You need access". Empty email or an unparsable link → the link unchanged. */
+function withAccount(link: string, email: string): string {
+  if (!email) return link;
+  try {
+    const url = new URL(link);
+    url.searchParams.set("authuser", email);
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
 export function SearchScreen({
-  theses, role, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
+  theses, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
 }: {
-  theses: Thesis[]; role: Role; initialQuery?: string;
+  theses: Thesis[]; role: Role;
+  /** The signed-in e-library account; Drive links open with it (authuser). */
+  viewerEmail: string;
+  initialQuery?: string;
   /** Staff start filtered to their own department (docs/05 §4). Students start on "All". */
   defaultDepartment?: string;
   /** Open already filtered to this department (a department chip was tapped). Overrides the default. */
@@ -267,13 +284,13 @@ export function SearchScreen({
                       {/* Students read the study in Google's view-only viewer: the file is
                           shared ISU → Viewer with download limited to Editors (docs/08 §7b). */}
                       {role === "staff" ? (
-                        <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
+                        <a href={withAccount(t.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">
                           <Icon name="external" size={13} />
                           Open in Drive
                         </a>
                       ) : (
                         <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, textAlign: "right" }}>
-                          <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
+                          <a href={withAccount(t.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">
                             <Icon name="external" size={13} />
                             Read full study
                           </a>
