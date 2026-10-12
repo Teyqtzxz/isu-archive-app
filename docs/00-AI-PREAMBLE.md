@@ -25,6 +25,8 @@ identifiers, and do not put "thesis" or "archive" back into on-screen text.
 
 ## The system
 
+Students read the whole study **view-only** in Google's viewer ("Read full study"; staff see "Open in Drive"). Each PDF is shared as **Isabela State University → Viewer** with download/print/copy limited to **Editors** — that Drive setting is the real protection, and it also blocks the Drive API download, so staff register from a PDF on their computer.
+
 Staff register research studies by pasting a Google Drive link; the app reads
 the PDF in the browser and auto-fills the abstract and keywords, and saving
 **posts** the study at once (there is no review queue). Staff and students then
