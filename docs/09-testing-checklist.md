@@ -128,6 +128,11 @@ matters most.
       Incognito window — the owner always sees Download)
 - [ ] A **non-ISU** Google account (or signed out) opening the link is asked to
       sign in or request access
+- [ ] **Two Google accounts in one browser** (a personal Gmail signed in first,
+      the ISU account second; sign in to the e-library with the ISU one):
+      "Read full study" opens with the **e-library account** (check the avatar
+      in Drive's top-right corner) — no "You need access", no Download / Print.
+      The link in the new tab contains `authuser=`; staff "Open in Drive" does too
 - [ ] Clicking the title again collapses it
 - [ ] "Open in Drive" on a seeded thesis whose link is still a placeholder does
       not crash the page (it just opens Drive's own not-found page)

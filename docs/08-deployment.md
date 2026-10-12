@@ -263,11 +263,19 @@ Google Drive. For every study PDF:
 - [ ] When registering, choose the PDF **from this computer**: a view-only file
       cannot be read through the Drive API (`06` §7)
 
-**How to check.** Open the study's link **as a student** (or in an Incognito
-window, signed in with a student ISU account). The owner and Editors always see
-Download, so checking from the owner's own account proves nothing. The student
-should see the PDF with **no Download / Print** buttons; a non-ISU Google
-account should be asked to sign in or request access.
+**How to check.** Close **every** Incognito window first (they all share one
+Google sign-in), open a new one and sign in with **only** a student's ISU
+account, then open the study from the e-library with "Read full study". The
+owner and Editors always see Download, so checking from the owner's own account
+proves nothing. The student should see the PDF with **no Download / Print**
+buttons; a non-ISU Google account should be asked to sign in or request access.
+
+**Several Google accounts in one browser.** Drive normally opens a link with the
+browser's *first* Google account (often a personal Gmail), which gets "You need
+access". The e-library adds `authuser=<e-library email>` to the link when it is
+opened (`withAccount()` in `SearchScreen.tsx`; the saved `driveLink` is
+unchanged), so with two accounts signed in the study still opens with the
+account used for the e-library.
 
 **Honest limit.** View-only stops downloading, printing and copying text in
 Google's viewer. It **cannot** stop screenshots or someone photographing the
