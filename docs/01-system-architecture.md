@@ -93,7 +93,7 @@ Sign in with Google
 Staff Dashboard → "Register New Thesis"
    → paste Google Drive link → Submit
    → Drive API downloads the PDF → pdf.js reads the first pages → regex finds Abstract + Keywords
-   → state = READY TO REVIEW (editable form)   OR
+   → state = DETAILS FILLED IN (editable form)   OR
      state = NEEDS MANUAL ENTRY (fallback)
    → staff checks the details → Confirm & Save, or Save Manually (abstract required)
    → posted at once: status POSTED, no review queue

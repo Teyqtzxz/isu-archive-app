@@ -84,7 +84,7 @@ type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
 ```
 
 - **PROCESSING** — yellow bar, spinner, "Reading PDF and filling in details..."
-- **READY TO REVIEW** — green bar, editable abstract textarea, keyword chips, "Confirm & Save"
+- **DETAILS FILLED IN** — green bar, editable abstract textarea, keyword chips, "Confirm & Save"
 - **NEEDS MANUAL ENTRY** — yellow warning, empty fields, "Save Manually"
 
 **Keep all three states and the whole UI.** Replace only the fake data source.
@@ -453,7 +453,7 @@ each abstract actually starts, and adjust `MAX_PAGES` if 15 is not enough.
 
 - [ ] The §0 day-1 spike printed `200 application/pdf` from `localhost:8443`
 
-- [ ] A real text-based thesis PDF → PROCESSING → READY TO REVIEW
+- [ ] A real text-based thesis PDF → PROCESSING → DETAILS FILLED IN
 - [ ] Abstract and keywords come from the actual PDF text
 - [ ] Keyword chips contain **only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF that writes `KEY WORDS:` with a space parses correctly
