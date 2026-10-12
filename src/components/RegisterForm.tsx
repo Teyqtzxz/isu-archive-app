@@ -55,7 +55,7 @@ export function RegisterForm({ onBack, onSave }: {
     // reason given until a Drive link was typed — even with a PDF already chosen.
     if (!form.driveLink.trim()) {
       setError(pdfFile
-        ? "Paste the study's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full study."
+        ? "Paste the study's Google Drive link too. The PDF is read from this computer, but the link is what students open to read the full study."
         : "Please paste the Google Drive link of the study PDF.");
       return;
     }
@@ -169,31 +169,13 @@ export function RegisterForm({ onBack, onSave }: {
       {(extractState === "idle" || extractState === "extracting") && (
         <div className="card card-pad-xl card-accent card-mb">
           <h2 className="form-title">Register a study</h2>
-          <p className="form-sub">Paste the Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
+          <p className="form-sub">Choose the study's PDF, paste its Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
 
-          {/* Drive link */}
+          {/* Main source: the PDF from this computer. Protected (view-only) Drive
+              files cannot be downloaded through the Drive API (docs/06 §7). */}
           <div className="field-mb">
-            <label className="field-label">
-              Google Drive Link <span className="field-req">*</span>
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ position: "relative", flex: 1 }}>
-                <input value={form.driveLink} onChange={e => setForm(p => ({ ...p, driveLink: e.target.value }))}
-                  placeholder="https://drive.google.com/file/d/..."
-                  disabled={extractState === "extracting"} className="input" />
-              </div>
-              <button onClick={() => { if (navigator.clipboard) navigator.clipboard.readText().then(t => setForm(p => ({ ...p, driveLink: t }))).catch(() => {}); }}
-                disabled={extractState === "extracting"}
-                className="paste-btn"
-                title="Paste from clipboard">
-                <Icon name="file" size={16} />
-                Paste
-              </button>
-            </div>
-            <p className="hint">Paste the "Anyone with the link" share URL from Google Drive</p>
-
-            {/* Backup: read the PDF from this computer instead of downloading it */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            <label className="field-label">Study PDF</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden
                 onChange={e => { setPdfFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
               <button type="button" onClick={() => fileInput.current?.click()}
@@ -213,8 +195,34 @@ export function RegisterForm({ onBack, onSave }: {
             </div>
             <p className="hint">
               {pdfFile
-                ? "The PDF will be read from this computer. The Drive link is still saved so students can open it."
-                : "Optional backup: if Google Drive is not responding, read the PDF from this computer instead."}
+                ? "The abstract and keywords will be read from this PDF."
+                : "Choose the study's PDF from this computer to fill in the abstract and keywords."}
+            </p>
+          </div>
+
+          {/* Drive link — saved for staff; read only when no PDF is chosen */}
+          <div className="field-mb">
+            <label className="field-label">
+              Google Drive Link <span className="field-req">*</span>
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <input value={form.driveLink} onChange={e => setForm(p => ({ ...p, driveLink: e.target.value }))}
+                  placeholder="https://drive.google.com/file/d/..."
+                  disabled={extractState === "extracting"} className="input" />
+              </div>
+              <button onClick={() => { if (navigator.clipboard) navigator.clipboard.readText().then(t => setForm(p => ({ ...p, driveLink: t }))).catch(() => {}); }}
+                disabled={extractState === "extracting"}
+                className="paste-btn"
+                title="Paste from clipboard">
+                <Icon name="file" size={16} />
+                Paste
+              </button>
+            </div>
+            <p className="hint">
+              {pdfFile
+                ? "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it."
+                : "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it. With no PDF chosen, the app tries to read the file from Drive (not possible for protected files)."}
             </p>
           </div>
 

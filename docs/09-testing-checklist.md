@@ -79,8 +79,15 @@ matters most.
       is a plain text box; an adviser of only spaces counts as missing
 - [ ] Real text-based PDF → PROCESSING → DETAILS FILLED IN, on localhost **and**
       on the deployed URL (the Drive API key must allow both — `06` §0)
-- [ ] A file shared as "Restricted" → NEEDS MANUAL ENTRY with the "Anyone with
-      the link" message
+- [ ] A view-only study file (ISU → Viewer, download limited to Editors), no PDF
+      chosen → NEEDS MANUAL ENTRY with
+      "This file is protected, so it can't be read from Google Drive. Choose the
+      PDF from this computer instead."
+- [ ] The same study with its PDF chosen from this computer → DETAILS FILLED IN
+      with the abstract and keywords; the Drive link is still saved
+- [ ] The form shows "Choose PDF from this computer" first; the Drive link hint
+      says to share it as Isabela State University → Viewer with download
+      limited to Editors
 - [ ] An abstract containing the word "background" mid-text is not cut short
 - [ ] Abstract and keywords come from the actual PDF
 - [ ] **Keyword chips contain only keywords** — no page 2–4 text bleeding in
@@ -112,8 +119,15 @@ matters most.
 ## 6. Abstract preview
 
 - [ ] Clicking (or tapping) a result title expands the full abstract under it
-- [ ] The preview shows "Open in Drive" (green outline)
-- [ ] "Open in Drive" opens in a new tab
+- [ ] **Staff:** the preview shows "Open in Drive" (green outline)
+- [ ] **Staff:** "Open in Drive" opens in a new tab
+- [ ] **Student:** the preview shows **"Read full study"** (no "Open in Drive")
+      and the muted line "View only: download and printing are turned off."
+- [ ] **Student:** "Read full study" opens the PDF in Google's viewer in a new
+      tab, with **no Download / Print** buttons (test as a student or in an
+      Incognito window — the owner always sees Download)
+- [ ] A **non-ISU** Google account (or signed out) opening the link is asked to
+      sign in or request access
 - [ ] Clicking the title again collapses it
 - [ ] "Open in Drive" on a seeded thesis whose link is still a placeholder does
       not crash the page (it just opens Drive's own not-found page)

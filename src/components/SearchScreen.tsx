@@ -273,10 +273,22 @@ export function SearchScreen({
                   <div className="animate-slide-up preview-box">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
                       <span className="overline-label" style={{ marginBottom: 0 }}>Study Details</span>
-                      <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
-                        <Icon name="external" size={13} />
-                        Open in Drive
-                      </a>
+                      {/* Students read the study in Google's view-only viewer: the file is
+                          shared ISU → Viewer with download limited to Editors (docs/08 §7b). */}
+                      {role === "staff" ? (
+                        <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
+                          <Icon name="external" size={13} />
+                          Open in Drive
+                        </a>
+                      ) : (
+                        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, textAlign: "right" }}>
+                          <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
+                            <Icon name="external" size={13} />
+                            Read full study
+                          </a>
+                          <span className="card-meta">View only: download and printing are turned off.</span>
+                        </span>
+                      )}
                     </div>
                     <dl className="study-details">
                       <dt>Author{t.authors.length === 1 ? "" : "s"}</dt>
