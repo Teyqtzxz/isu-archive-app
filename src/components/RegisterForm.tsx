@@ -20,6 +20,10 @@ export function RegisterForm({ onBack, onSave }: {
 }) {
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
   const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
+  /** One entry per author. A list, not a comma string, because names like
+   *  "Santos, Maria" contain commas themselves. */
+  const [authors, setAuthors] = useState<string[]>([]);
+  const [newAuthor, setNewAuthor] = useState("");
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
@@ -39,6 +43,13 @@ export function RegisterForm({ onBack, onSave }: {
     { label: "Save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
 
+  /** Adds the typed author, cleaned like the adviser, skipping blanks and repeats. */
+  function addAuthor() {
+    const name = cleanAdviser(newAuthor);
+    if (name && !authors.includes(name)) setAuthors(p => [...p, name]);
+    setNewAuthor("");
+  }
+
   async function handleSubmit() {
     // Say exactly what is missing. The button used to stay disabled with no
     // reason given until a Drive link was typed — even with a PDF already chosen.
@@ -50,6 +61,7 @@ export function RegisterForm({ onBack, onSave }: {
     }
     const missing = [
       !form.title.trim() && "Title",
+      authors.length === 0 && !newAuthor.trim() && "Authors",
       !form.department && "Department",
       !form.adviser.trim() && "Adviser",
     ].filter(Boolean);
@@ -60,6 +72,8 @@ export function RegisterForm({ onBack, onSave }: {
     // Validate before downloading anything (docs/06 §6).
     const invalid = validateDriveLink(form.driveLink);
     if (invalid) { setError(invalid); return; }
+    // A name typed but not yet added with Enter still counts.
+    if (newAuthor.trim()) addAuthor();
 
     const source = pdfFile
       ? `file:${pdfFile.name}:${pdfFile.size}:${pdfFile.lastModified}`
@@ -115,7 +129,7 @@ export function RegisterForm({ onBack, onSave }: {
     setSaving(true);
     try {
       await onSave({
-        title: form.title, department: form.department,
+        title: form.title, authors, department: form.department,
         year: parseInt(form.year), adviser: cleanAdviser(form.adviser), abstract, keywords,
         driveLink: form.driveLink,
       });
@@ -218,6 +232,33 @@ export function RegisterForm({ onBack, onSave }: {
             <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
           </div>
 
+          {/* Authors */}
+          <div className="field-mb">
+            <label className="field-label">Authors <span className="field-req">*</span></label>
+            {authors.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                {authors.map(a => (
+                  <span key={a} className="kw-chip">
+                    {a}
+                    <button onClick={() => setAuthors(p => p.filter(x => x !== a))} disabled={extractState === "extracting"}
+                      className="kw-chip-x" aria-label={`Remove author ${a}`}>
+                      <Icon name="x" size={12} strokeWidth={2.5} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={newAuthor} onChange={e => setNewAuthor(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") addAuthor(); }}
+                placeholder="e.g. Juan Dela Cruz" disabled={extractState === "extracting"} className="input" />
+              <button onClick={addAuthor} disabled={extractState === "extracting"} className="chip-add">
+                + Add
+              </button>
+            </div>
+            <p className="hint">Add one author at a time, in the order listed on the study.</p>
+          </div>
+
           {/* Dept + Year */}
           <div className="form-grid-2">
             <div>
@@ -299,6 +340,7 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Thesis summary */}
           <div className="review-card">
             <p className="review-title">{form.title}</p>
+            <p className="result-meta" style={{ marginBottom: 8 }}>{authors.join("; ")}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <DeptBadge dept={form.department} small />
               <span className="result-meta">{form.year} · {cleanAdviser(form.adviser)}</span>

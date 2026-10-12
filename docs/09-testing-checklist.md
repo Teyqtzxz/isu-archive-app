@@ -77,6 +77,12 @@ matters most.
 - [ ] Clicking "Read PDF & continue" with no Drive link (or a missing title /
       department / adviser) shows a message naming what is missing. The adviser
       is a plain text box; an adviser of only spaces counts as missing
+- [ ] "Authors" is required: with no author, "Read PDF & continue" shows
+      "Please fill in: Authors"
+- [ ] Authors are added one at a time as chips, each chip can be removed, and
+      adding the same name twice is ignored
+- [ ] A name typed in the Authors box but not yet added still counts when you
+      press "Read PDF & continue"
 - [ ] Real text-based PDF → PROCESSING → DETAILS FILLED IN, on localhost **and**
       on the deployed URL (the Drive API key must allow both — `06` §0)
 - [ ] A view-only study file (ISU → Viewer, download limited to Editors), no PDF
@@ -119,6 +125,9 @@ matters most.
 ## 6. Abstract preview
 
 - [ ] Clicking (or tapping) a result title expands the full abstract under it
+- [ ] Above the abstract, "Study Details" shows Authors, Adviser, Department,
+      Academic Year, Date Posted and Keywords
+- [ ] An older study saved without authors shows "Not recorded" for Authors
 - [ ] **Staff:** the preview shows "Open in Drive" (green outline)
 - [ ] **Staff:** "Open in Drive" opens in a new tab
 - [ ] **Student:** the preview shows **"Read full study"** (no "Open in Drive")

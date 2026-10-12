@@ -67,6 +67,7 @@ export type ThesisStatus = "POSTED";
 export interface Thesis {
   id: string;
   title: string;
+  authors: string[];   // in citation order; required on Register
   abstract: string;
   keywords: string[];
   department: string;
@@ -95,6 +96,9 @@ export type AccountRole = "STAFF" | "STUDENT";
  *  POSTED); the server adds id, registeredBy, registeredAt. */
 export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
 ```
+
+Records saved before the `authors` field existed have no authors and are read as
+`[]` in `data.ts`, so display code must handle an empty list ("Not recorded").
 
 This is what `src/types.ts` exports today. **Never compare or
 subtract `registeredAt` directly** — it is a three-way union. Sort and compare
