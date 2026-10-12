@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
-import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
+import type { ExtractionState, NewThesis } from "../types";
 import { DEPARTMENTS } from "../types";
-import { ADVISERS } from "../data";
 import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
 
@@ -10,10 +9,14 @@ import { DeptBadge, Icon } from "./shared";
 const THIS_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - i);
 
+/** The adviser is typed freely, so drop stray spaces before saving:
+ *  "  Dr.  Maria Santos " → "Dr. Maria Santos". */
+const cleanAdviser = (name: string) => name.trim().replace(/\s+/g, " ");
+
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
-  onSave: (thesis: NewThesis, status: ThesisStatus) => Promise<void>;
+  onSave: (thesis: NewThesis) => Promise<void>;
 }) {
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
   const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
@@ -41,14 +44,14 @@ export function RegisterForm({ onBack, onSave }: {
     // reason given until a Drive link was typed — even with a PDF already chosen.
     if (!form.driveLink.trim()) {
       setError(pdfFile
-        ? "Paste the thesis's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full thesis."
-        : "Please paste the Google Drive link of the thesis PDF.");
+        ? "Paste the study's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full study."
+        : "Please paste the Google Drive link of the study PDF.");
       return;
     }
     const missing = [
       !form.title.trim() && "Title",
       !form.department && "Department",
-      !form.adviser && "Adviser",
+      !form.adviser.trim() && "Adviser",
     ].filter(Boolean);
     if (missing.length > 0) {
       setError(`Please fill in: ${missing.join(", ")}.`);
@@ -100,20 +103,18 @@ export function RegisterForm({ onBack, onSave }: {
   }
 
   async function handleSave() {
-    // The button decides the status (docs/02 §4): "Confirm & Save" after a
-    // successful read → ARCHIVED; "Save Manually" after a failed one →
-    // NEEDS_REVIEW, so it shows up under Pending Review.
-    const status: ThesisStatus = extractState === "success" ? "ARCHIVED" : "NEEDS_REVIEW";
+    // "Confirm & Save" and "Save Manually" both post the study: staff have
+    // already checked the details here, so there is no later review step.
     setSaveError("");
     setSaving(true);
     try {
       await onSave({
         title: form.title, department: form.department,
-        year: parseInt(form.year), adviser: form.adviser, abstract, keywords,
+        year: parseInt(form.year), adviser: cleanAdviser(form.adviser), abstract, keywords,
         driveLink: form.driveLink,
-      }, status);
+      });
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Could not save the thesis. Try again.");
+      setSaveError(e instanceof Error ? e.message : "Could not save the study. Try again.");
       setSaving(false);
     }
   }
@@ -147,7 +148,7 @@ export function RegisterForm({ onBack, onSave }: {
       {/* Form card */}
       {(extractState === "idle" || extractState === "extracting") && (
         <div className="card card-pad-xl card-accent card-mb">
-          <h2 className="form-title">Register a thesis</h2>
+          <h2 className="form-title">Register a study</h2>
           <p className="form-sub">Paste the Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
 
           {/* Drive link */}
@@ -200,7 +201,7 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Title */}
           <div className="field-mb">
             <label className="field-label">Title <span className="field-req">*</span></label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full thesis title" disabled={extractState === "extracting"} className="input" />
+            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
           </div>
 
           {/* Dept + Year */}
@@ -225,11 +226,8 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Adviser */}
           <div>
             <label className="field-label">Adviser <span className="field-req">*</span></label>
-            <select value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))} disabled={extractState === "extracting"}
-              className="input" style={{ color: form.adviser ? undefined : "var(--text-subtle)", appearance: "none" }}>
-              <option value="">Select adviser</option>
-              {ADVISERS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <input value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))}
+              placeholder="e.g. Dr. Maria Santos" disabled={extractState === "extracting"} className="input" />
           </div>
 
           {error && (
@@ -289,7 +287,7 @@ export function RegisterForm({ onBack, onSave }: {
             <p className="review-title">{form.title}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <DeptBadge dept={form.department} small />
-              <span className="result-meta">{form.year} · {form.adviser}</span>
+              <span className="result-meta">{form.year} · {cleanAdviser(form.adviser)}</span>
             </div>
           </div>
 

@@ -6,7 +6,7 @@ export type Role = "staff" | "student";
 // ExtractionState is UI-only workflow state and deliberately stays lowercase.
 // It is NOT ThesisStatus — do not uppercase it to "make it consistent".
 export type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
-export type StaffTab = "dashboard" | "register" | "search" | "settings";
+export type StaffTab = "dashboard" | "register" | "search" | "statistics" | "settings";
 
 /**
  * The role a user document may hold. Deliberately uppercase and separate from
@@ -15,9 +15,13 @@ export type StaffTab = "dashboard" | "register" | "search" | "settings";
  */
 export type AccountRole = "STAFF" | "STUDENT";
 
-/** The only three legal thesis status values. Uppercase, always. */
-export const STATUSES = ["ARCHIVED", "NEEDS_REVIEW", "DRAFT"] as const;
-export type ThesisStatus = (typeof STATUSES)[number];
+/**
+ * The one legal thesis status. Only Research Department staff register
+ * studies, so everything registered is Posted: the old draft / needs-review
+ * step was removed on the professor's request. Records saved before that hold
+ * "ARCHIVED", "NEEDS_REVIEW" or "DRAFT"; data.ts reads all of them as POSTED.
+ */
+export type ThesisStatus = "POSTED";
 
 export interface Thesis {
   id: string;
@@ -39,8 +43,8 @@ export interface Thesis {
   registeredAt: Timestamp | string | null;
 }
 
-/** What the register form hands to saveThesis(). The server fills in the id,
- *  registeredBy and registeredAt; status comes from the button staff pressed. */
+/** What the register form hands to saveThesis(). saveThesis fills in the
+ *  status (always POSTED) and the server the id, registeredBy and registeredAt. */
 export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
 
 /**
@@ -58,11 +62,6 @@ export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string {
   if (v === null) return "";
   if (typeof v === "string") return v;
   return v.toDate().toISOString();
-}
-
-/** A thesis still waiting on staff. DRAFT and NEEDS_REVIEW both count. */
-export function isPending(t: Pick<Thesis, "status">): boolean {
-  return t.status === "NEEDS_REVIEW" || t.status === "DRAFT";
 }
 
 /**

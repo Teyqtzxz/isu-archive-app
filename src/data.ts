@@ -1,7 +1,7 @@
 // Data layer — the only module that imports firebase/firestore. Components
 // never talk to Firestore directly; they call these functions.
 import {
-  addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc,
+  addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc,
 } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, db } from "./firebase";
@@ -90,7 +90,9 @@ export function subscribeToTheses(
         snap.docs
           // "estimate": a just-saved doc's serverTimestamp() is still pending
           // locally; without this it reads as null and sorts to the bottom.
-          .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }) as Thesis)
+          // Every record reads as POSTED, including ones saved as ARCHIVED,
+          // NEEDS_REVIEW or DRAFT before the review step was removed.
+          .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }), status: "POSTED" }) as Thesis)
           // Never compare registeredAt directly — it is a three-way union, and
           // Timestamp.valueOf() is a string. registeredAtISO handles all shapes.
           .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a))),
@@ -100,8 +102,9 @@ export function subscribeToTheses(
   );
 }
 
-/** Status is passed in by the caller — decided by which button staff pressed. */
-export async function saveThesis(t: NewThesis, status: ThesisStatus): Promise<string> {
+/** Staff are the only ones who register, so a saved study is posted at once. */
+export async function saveThesis(t: NewThesis): Promise<string> {
+  const status: ThesisStatus = "POSTED";
   const ref = await addDoc(collection(db, "theses"), {
     ...t,
     status,
@@ -110,12 +113,4 @@ export async function saveThesis(t: NewThesis, status: ThesisStatus): Promise<st
   });
   return ref.id;
 }
-
-/** The "Mark as Archived" action on a pending row. Rules allow staff only. */
-export async function updateThesisStatus(id: string, status: ThesisStatus): Promise<void> {
-  await updateDoc(doc(db, "theses", id), { status });
-}
-
-/** Adviser options for the register form. A fixed list for now — not thesis data. */
-export const ADVISERS = ["Dr. Maria Santos", "Engr. Jose Reyes", "Dr. Anna Cruz", "Dr. Roberto Dela Cruz", "Engr. Liza Pagulayan", "Dr. Carmen Villanueva", "Dr. Paulo Mendoza", "Prof. Elena Bulan"];
 

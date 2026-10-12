@@ -1,5 +1,5 @@
 /* ============================================================
-   ISU Thesis Archive — component styles
+   ISU Research Study E-Library — component styles
    Colours, radii, shadows and the header height come from the tokens in
    index.css. Never hardcode a brand hex or a header height here.
    Owner: C (docs/10 §2).
@@ -101,40 +101,6 @@
 @media (min-width: 1024px) {
   .header-title { font-size: 16px; }
   .header-sub { font-size: 12px; }
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.9);
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-.icon-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-
-.dot-notif {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: var(--radius-full);
-  background: var(--isu-yellow);
-  color: var(--isu-yellow-ink);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 16px;
-  text-align: center;
-  box-shadow: 0 0 0 2px var(--isu-green);
 }
 
 /* Visible Sign Out at ≥768px; below that it lives in the avatar menu. */
@@ -452,11 +418,8 @@
   border: 1px solid transparent;
 }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-/* docs/09 §3: ARCHIVED green · NEEDS REVIEW yellow · DRAFT gray.
-   (DRAFT still uses the .status-pending class name — see shared.tsx.) */
-.status-archived     { background: var(--isu-green-light); color: var(--isu-green); border-color: rgba(0, 100, 57, 0.18); }
-.status-needs-review { background: var(--isu-yellow-light); color: var(--isu-yellow-ink); border-color: rgba(247, 208, 0, 0.55); }
-.status-pending      { background: var(--gray-100); color: var(--gray-600); border-color: var(--gray-200); }
+/* POSTED is the only status: the draft / needs-review step was removed. */
+.status-posted { background: var(--isu-green-light); color: var(--isu-green); border-color: rgba(0, 100, 57, 0.18); }
 
 /* ─── Forms ────────────────────────────────────────────────── */
 .field-label {
@@ -658,7 +621,6 @@ select.input {
 .list-row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
 .list-row-title { font-size: 14px; font-weight: 600; color: var(--isu-blue); margin: 0; flex: 1; line-height: 1.45; }
 .list-row-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
-.list-row-action { margin-left: auto; }
 
 .empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); }
 .empty-state-icon {
@@ -731,6 +693,74 @@ select.input {
   .dash-layout .action-grid { grid-template-columns: 1fr; margin-bottom: 0; }
   .dash-side { position: sticky; top: calc(var(--header-top) + var(--header-h) + 64px); }
 }
+
+/* Department statistics (DepartmentStats.tsx): staff Statistics tab and the
+   student "E-Library at a glance". Bars are plain CSS; the fill width is set
+   inline as a percentage of the biggest department. */
+.stats-layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+  .stats-layout { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.bar-list { padding: 8px 12px 12px; }
+.bar-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.15s;
+}
+.bar-row:hover:not(:disabled) { background: var(--gray-25); }
+.bar-row:disabled { cursor: default; }
+.bar-label { font-size: 13px; font-weight: 500; color: var(--gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-mine { color: var(--isu-green); font-weight: 600; }
+.bar-track { height: 10px; border-radius: var(--radius-full); background: var(--gray-100); overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--isu-green); opacity: 0.55; transition: width 0.3s; }
+.bar-row--mine .bar-fill { opacity: 1; }
+.bar-count { font-size: 14px; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 479px) {
+  .bar-row { grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) 2rem; gap: 8px; }
+  .bar-label { font-size: 12px; }
+}
+
+.keyword-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 20px 20px; }
+.keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--gray-300);
+  background: var(--surface);
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.keyword-chip:hover { border-color: var(--isu-green); color: var(--isu-green); }
+.keyword-count,
+.chip-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--isu-green-light);
+  color: var(--isu-green);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.chip-count { margin-left: 6px; }
+.glance-section { margin-bottom: 28px; }
 
 /* Settings list */
 .settings-row {
@@ -985,26 +1015,6 @@ select.input {
   border-color: var(--isu-green);
   color: var(--isu-green);
   background-color: var(--isu-green-light);
-}
-.filter-divider { width: 1px; height: 20px; background: var(--gray-200); margin: 0 2px; }
-.btn-pill {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--gray-300);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-700);
-  background: var(--surface);
-  cursor: pointer;
-  white-space: nowrap;
-  font-family: inherit;
-}
-.btn-pill:hover { border-color: var(--isu-green); }
-.btn-pill-active {
-  border-color: var(--isu-green);
-  color: var(--isu-green);
-  background: var(--isu-green-light);
 }
 .btn-clear {
   height: 32px;
@@ -1341,6 +1351,37 @@ select.input {
   .sheet-handle-row { display: none; }
   .sheet-header { padding-top: 20px; }
 }
+/* ─── Sign-out confirmation ────────────────────────────────── */
+/* A small centred card at every width (not a bottom sheet), above the header. */
+.confirm-overlay { justify-content: center; align-items: center; padding: 16px; z-index: 200; }
+.confirm-box {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 24px 22px 20px;
+  text-align: center;
+}
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--isu-red-light);
+  color: var(--isu-red);
+}
+.confirm-title { font-size: 18px; font-weight: 800; color: var(--text); margin: 0 0 6px; }
+.confirm-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-btn { flex: 1; padding: 11px; font-size: 14px; }
+.confirm-btn-danger { background: var(--isu-red); color: #fff; font-weight: 600; }
+.confirm-btn-danger:hover { background: var(--isu-red-ink); }
+
 .mode-pill-row { padding-bottom: 14px; padding-top: 6px; }
 .mode-pill {
   display: inline-flex;

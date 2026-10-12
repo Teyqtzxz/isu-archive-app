@@ -347,8 +347,8 @@ Done as of the enum migration (`02` §5):
 Still to check once this step's remaining work is done:
 
 - [x] `src/seed.ts` compiles (after `src/firebase.ts` was added)
-- [x] `DEPARTMENTS` is exported from `src/types.ts` only; `ADVISERS` stays in
-      `src/data.ts` until step 04 replaces the sample data
+- [x] `DEPARTMENTS` is exported from `src/types.ts` only. The old `ADVISERS`
+      option list was removed (errata #48): the adviser is typed as plain text
 
 **Cannot be verified until step 03** (no Firebase project yet): that the seed
 actually writes 21 documents once your account is `STAFF`.
