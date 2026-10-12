@@ -128,6 +128,7 @@ by the security rules once they are published, by design.
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
 | `title` | string | `"Biodiversity Assessment..."` | from PDF or manual |
+| `authors` | array\<string\> | `["Juan Dela Cruz", "Maria Santos"]` | required on Register; older records read as `[]` |
 | `abstract` | string | long text | auto-extracted by pdf.js (step 06) |
 | `keywords` | array\<string\> | `["biodiversity", "Cagayan River"]` | auto-extracted, editable |
 | `department` | string | `"Biology"` | must be one of `DEPARTMENTS` |
@@ -310,6 +311,7 @@ then.
 ```json
 {
   "title": "Biodiversity Assessment of Macro-invertebrates in Cagayan River",
+  "authors": ["Juan Dela Cruz", "Maria Santos"],
   "abstract": "This study assessed the biodiversity of macro-invertebrates…",
   "keywords": ["biodiversity", "macroinvertebrates", "Cagayan River", "water quality"],
   "department": "Biology",
