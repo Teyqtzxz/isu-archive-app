@@ -92,7 +92,14 @@ export function subscribeToTheses(
           // locally; without this it reads as null and sorts to the bottom.
           // Every record reads as POSTED, including ones saved as ARCHIVED,
           // NEEDS_REVIEW or DRAFT before the review step was removed.
-          .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }), status: "POSTED" }) as Thesis)
+          // Records saved before the authors field existed have none: read as [].
+          .map((d) => {
+            const data = d.data({ serverTimestamps: "estimate" });
+            return {
+              id: d.id, ...data, status: "POSTED",
+              authors: Array.isArray(data.authors) ? data.authors : [],
+            } as Thesis;
+          })
           // Never compare registeredAt directly — it is a three-way union, and
           // Timestamp.valueOf() is a string. registeredAtISO handles all shapes.
           .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a))),

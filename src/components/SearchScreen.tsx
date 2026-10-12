@@ -5,6 +5,15 @@ import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import type { RankedThesis } from "../summary";
 import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
 
+/** registeredAt as e.g. "October 12, 2026", or a placeholder for old records without one. */
+function formatPosted(t: Thesis): string {
+  const iso = registeredAtISO(t);
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d.getTime())
+    ? d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "Not recorded";
+}
+
 export function SearchScreen({
   theses, role, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
 }: {
@@ -263,12 +272,31 @@ export function SearchScreen({
                 {showPreview && (
                   <div className="animate-slide-up preview-box">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      <span className="overline-label" style={{ marginBottom: 0 }}>Abstract</span>
+                      <span className="overline-label" style={{ marginBottom: 0 }}>Study Details</span>
                       <a href={t.driveLink} target="_blank" rel="noreferrer" className="drive-btn">
                         <Icon name="external" size={13} />
                         Open in Drive
                       </a>
                     </div>
+                    <dl className="study-details">
+                      <dt>Author{t.authors.length === 1 ? "" : "s"}</dt>
+                      <dd>{t.authors.length > 0
+                        ? t.authors.join("; ")
+                        : <span className="study-details-empty">Not recorded</span>}</dd>
+                      <dt>Adviser</dt>
+                      <dd>{t.adviser}</dd>
+                      <dt>Department</dt>
+                      <dd>{t.department}</dd>
+                      <dt>Academic Year</dt>
+                      <dd>{t.year}</dd>
+                      <dt>Date Posted</dt>
+                      <dd>{formatPosted(t)}</dd>
+                      {t.keywords.length > 0 && <>
+                        <dt>Keywords</dt>
+                        <dd>{t.keywords.join(", ")}</dd>
+                      </>}
+                    </dl>
+                    <span className="overline-label">Abstract</span>
                     <p className="preview-text">{t.abstract}</p>
                   </div>
                 )}

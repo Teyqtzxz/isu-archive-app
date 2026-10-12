@@ -26,6 +26,9 @@ export type ThesisStatus = "POSTED";
 export interface Thesis {
   id: string;
   title: string;
+  /** Author names in citation order. Records saved before this field existed
+   *  read as [] (data.ts), so display code must handle an empty list. */
+  authors: string[];
   department: string;
   year: number;
   adviser: string;
