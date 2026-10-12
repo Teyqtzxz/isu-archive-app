@@ -11,17 +11,17 @@
 //
 // It writes documents the way the app will, using the same shapes and the same
 // server clock, so the seeded archive ranks identically to a real one.
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import type { AccountRole, Thesis } from "./types";
+import type { AccountRole, Thesis, ThesisStatus } from "./types";
 
 /**
  * What goes into a `theses` document, minus the two fields Firestore owns:
  * `id` is the document id, `registeredAt` is a serverTimestamp().
  *
  * `status` stays ThesisStatus by virtue of coming off Thesis, so a typo or a
- * lowercase value here is a compile error rather than a document that no badge,
- * filter or isPending() call will ever match.
+ * lowercase value here is a compile error rather than a document with a status
+ * the app does not know.
  *
  * No `driveFileId` here. That field belongs to the Step 06 Drive-link parsing,
  * and adding it now would mean writing an empty value into every seeded
@@ -31,7 +31,7 @@ type ThesisToSeed = Omit<Thesis, "id" | "registeredAt">;
 
 /** 21 records: the prototype's 8, plus 13 written so BM25 has a corpus worth
  *  ranking. All ten departments appear, so the department filter has something
- *  to filter and status is spread across all three values. */
+ *  to filter. All are POSTED, the only status since the review step was removed. */
 const THESES_TO_SEED: ThesisToSeed[] = [
   {
     title: "Biodiversity Assessment of Macro-invertebrates in Cagayan River Tributaries of Isabela Province",
@@ -41,7 +41,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Dr. Maria Santos",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -52,7 +52,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Engr. Jose Reyes",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -63,7 +63,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Dr. Anna Cruz",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -74,7 +74,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2023,
     adviser: "Dr. Roberto Dela Cruz",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -85,7 +85,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Engr. Liza Pagulayan",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -96,7 +96,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2023,
     adviser: "Dr. Carmen Villanueva",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "DRAFT",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -107,7 +107,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Prof. Elena Bulan",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -118,7 +118,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2023,
     adviser: "Dr. Paulo Mendoza",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "NEEDS_REVIEW",
+    status: "POSTED",
     registeredBy: "",
   },
 
@@ -131,7 +131,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Dr. Carmen Villanueva",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -142,7 +142,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Engr. Divina Grace Ochoa",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -153,7 +153,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Engr. Divina Grace Ochoa",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "NEEDS_REVIEW",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -164,7 +164,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Prof. Liza Tiangson",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -175,7 +175,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Prof. Liza Tiangson",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -186,7 +186,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Prof. Elena Bulan",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -197,7 +197,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Dr. Paulo Mendoza",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -208,7 +208,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Dr. Roberto Dela Cruz",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "DRAFT",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -219,7 +219,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Engr. Liza Pagulayan",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "NEEDS_REVIEW",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -230,7 +230,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Dr. Anna Cruz",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -241,7 +241,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Dr. Maria Santos",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "ARCHIVED",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -252,7 +252,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2025,
     adviser: "Engr. Jose Reyes",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "NEEDS_REVIEW",
+    status: "POSTED",
     registeredBy: "",
   },
   {
@@ -263,7 +263,7 @@ const THESES_TO_SEED: ThesisToSeed[] = [
     year: 2024,
     adviser: "Dr. Maria Santos",
     driveLink: "https://drive.google.com/file/d/REPLACE/view",
-    status: "DRAFT",
+    status: "POSTED",
     registeredBy: "",
   },
 ];
@@ -286,7 +286,7 @@ export async function seedTheses(): Promise<number> {
     await addDoc(collection(db, "theses"), {
       ...rest,
       // Read from the list, never passed in by a caller. The type on
-      // THESES_TO_SEED already guarantees it is one of STATUSES.
+      // THESES_TO_SEED already guarantees it is a ThesisStatus.
       status,
       // The server's clock, not the client's. "This Month" and newest-first
       // sorting are only correct if we do not trust browser clocks.
@@ -323,6 +323,24 @@ export async function removeDuplicateTheses(): Promise<number> {
   return deleted;
 }
 
+/**
+ * Rewrite every thesis saved as ARCHIVED, NEEDS_REVIEW or DRAFT (before the
+ * review step was removed) as POSTED. Returns how many were changed. The app
+ * already shows them all as Posted (data.ts), so this only tidies what the
+ * Firebase console shows. Staff only (rules). Safe to re-run. From devtools:
+ *
+ *   const m = await import("/src/seed.ts"); await m.markAllPosted();
+ */
+export async function markAllPosted(): Promise<number> {
+  const status: ThesisStatus = "POSTED";
+  let changed = 0;
+  for (const d of (await getDocs(collection(db, "theses"))).docs) {
+    if (d.data().status === status) continue;
+    await updateDoc(d.ref, { status });
+    changed++;
+  }
+  return changed;
+}
 
 /**
  * Set a user's role and department.

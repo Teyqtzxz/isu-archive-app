@@ -59,7 +59,7 @@ export function LoginScreen() {
         </div>
 
         <h1 className="login-h1">
-          Thesis Archive
+          Research Study E-Library
         </h1>
         <p className="login-sub-title">
           Isabela State University
@@ -74,8 +74,8 @@ export function LoginScreen() {
         <div className="info-pill">
           <Icon name="info" size={16} />
           <p>
-            Search and read the university's thesis archive. Research Department
-            staff can also register new theses.
+            Search and read the university's research studies. Research Department
+            staff can also register and post new ones.
           </p>
         </div>
 

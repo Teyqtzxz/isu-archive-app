@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
-import { DEPARTMENTS, STATUSES, registeredAtISO } from "../types";
+import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import type { RankedThesis } from "../summary";
-import { ISUSeal, StatusBadge, DeptBadge, STATUS_LABELS, Icon } from "./shared";
+import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
 
 export function SearchScreen({
   theses, role, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
@@ -34,7 +34,6 @@ export function SearchScreen({
 
   const [deptFilter, setDeptFilter] = useState(initialDepartment ?? (role === "staff" ? defaultDepartment : ""));
   const [yearFilter, setYearFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,9 +48,8 @@ export function SearchScreen({
     let f = theses;
     if (deptFilter) f = f.filter(t => t.department === deptFilter);
     if (yearFilter) f = f.filter(t => t.year === parseInt(yearFilter));
-    if (statusFilter) f = f.filter(t => t.status === statusFilter);
     return f;
-  }, [theses, deptFilter, yearFilter, statusFilter]);
+  }, [theses, deptFilter, yearFilter]);
 
   const index = useMemo(() => buildIndex(filtered), [filtered]);
 
@@ -89,11 +87,10 @@ export function SearchScreen({
 
   const maxScore = Math.max(...results.map(r => r.score), 0.01);
   const allYears = Array.from(new Set(theses.map(t => t.year))).sort((a, b) => b - a);
-  const hasActiveFilters = deptFilter || yearFilter || statusFilter;
+  const hasActiveFilters = deptFilter || yearFilter;
   const activeChips: { label: string; clear: () => void }[] = [
     ...(deptFilter ? [{ label: deptFilter, clear: () => setDeptFilter("") }] : []),
     ...(yearFilter ? [{ label: yearFilter, clear: () => setYearFilter("") }] : []),
-    ...(statusFilter ? [{ label: STATUS_LABELS[statusFilter as keyof typeof STATUS_LABELS], clear: () => setStatusFilter("") }] : []),
   ];
   const typing = query.trim() !== debouncedQuery.trim();
 
@@ -109,9 +106,9 @@ export function SearchScreen({
             </button>
             <ISUSeal size={28} />
             <div className="search-topbar-title">
-              {role === "staff" ? "Search Archive" : "ISU Thesis Archive"}
+              {role === "staff" ? "Search E-Library" : "ISU Research Study E-Library"}
             </div>
-            <span className="count-pill">{theses.length} theses</span>
+            <span className="count-pill">{theses.length} studies</span>
             <button onClick={onSignOut} className="header-signout">
               <Icon name="logout" size={16} />
               Sign Out
@@ -123,7 +120,7 @@ export function SearchScreen({
               <span className="search-bar-icon"><Icon name="search" size={18} /></span>
               <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search by title, keyword or abstract…"
-                aria-label="Search theses"
+                aria-label="Search studies"
                 className="search-input" />
               {query && (
                 <button onClick={() => setQuery("")} className="search-clear" aria-label="Clear search">
@@ -151,16 +148,8 @@ export function SearchScreen({
               <option value="">All Years</option>
               {allYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            {role === "staff" && <span className="filter-divider" aria-hidden="true" />}
-            {role === "staff" && STATUSES.map(s => (
-              <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
-                aria-pressed={statusFilter === s}
-                className={`btn-pill${statusFilter === s ? " btn-pill-active" : ""}`}>
-                {STATUS_LABELS[s]}
-              </button>
-            ))}
             {hasActiveFilters && (
-              <button onClick={() => { setDeptFilter(""); setYearFilter(""); setStatusFilter(""); }}
+              <button onClick={() => { setDeptFilter(""); setYearFilter(""); }}
                 className="btn-clear">
                 <Icon name="x" size={14} />
                 Clear filters
@@ -192,7 +181,7 @@ export function SearchScreen({
             ) : searchQuery ? (
               <>{results.length} result{results.length !== 1 ? "s" : ""} for <em>“{searchQuery}”</em></>
             ) : (
-              <>{results.length} {results.length === 1 ? "thesis" : "theses"}{hasActiveFilters ? " match the filters" : ", newest first"}</>
+              <>{results.length} {results.length === 1 ? "study" : "studies"}{hasActiveFilters ? " match the filters" : ", newest first"}</>
             )}
           </div>
           {ticked.length > 0 && (
@@ -208,16 +197,16 @@ export function SearchScreen({
         {theses.length === 0 ? (
           <div className="card empty-state" style={{ padding: "56px 20px" }}>
             <div className="empty-state-icon"><Icon name="book" size={22} /></div>
-            <div className="empty-state-title">The archive is empty</div>
-            <div className="empty-state-text">No theses have been registered yet.</div>
+            <div className="empty-state-title">The e-library is empty</div>
+            <div className="empty-state-text">No studies have been registered yet.</div>
           </div>
         ) : results.length === 0 && !typing && (
           <div className="card empty-state" style={{ padding: "56px 20px" }}>
             <div className="empty-state-icon"><Icon name="search" size={22} /></div>
-            <div className="empty-state-title">No theses found</div>
+            <div className="empty-state-title">No studies found</div>
             <div className="empty-state-text">Try different keywords, adjust filters, or check spelling.</div>
             {hasActiveFilters && (
-              <button onClick={() => { setDeptFilter(""); setYearFilter(""); setStatusFilter(""); }}
+              <button onClick={() => { setDeptFilter(""); setYearFilter(""); }}
                 className="btn btn-outline-green btn-sm" style={{ marginTop: 14 }}>
                 Clear filters
               </button>

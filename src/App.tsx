@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import "./App.css";
-import type { NewThesis, Role, Screen, StaffTab, Thesis, ThesisStatus } from "./types";
+import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
 import { auth } from "./firebase";
 import {
-  getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses, updateThesisStatus,
+  getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses,
 } from "./data";
 import { LoginScreen } from "./components/LoginScreen";
 import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
@@ -91,24 +91,15 @@ export default function App() {
       (list) => { setTheses(list); setThesesLoaded(true); setDataError(null); },
       (err) => {
         console.error("[data] could not load theses", err);
-        setDataError("Could not load the thesis archive. Check your connection and reload the page.");
+        setDataError("Could not load the e-library. Check your connection and reload the page.");
       },
     ); // the returned unsubscribe is the cleanup — no leaked listener per role change
   }, [role]);
 
   // Rejects on failure so RegisterForm can show the error and stay open.
-  async function handleSave(thesis: NewThesis, status: ThesisStatus) {
-    await saveThesis(thesis, status);
-    setToast(status === "ARCHIVED" ? "Thesis registered!" : "Saved — marked Needs Review");
-  }
-
-  function handleMarkArchived(id: string) {
-    updateThesisStatus(id, "ARCHIVED")
-      .then(() => setToast("Marked as Archived"))
-      .catch((err) => {
-        console.error("[data] could not update status", err);
-        setToast("Could not update the status. Try again.");
-      });
+  async function handleSave(thesis: NewThesis) {
+    await saveThesis(thesis);
+    setToast("Study posted!");
   }
 
   // Every Sign Out button only asks; the dialog's "Sign Out" really signs out.
@@ -147,7 +138,7 @@ export default function App() {
           className={`data-banner ${dataError ? "data-banner--error" : "data-banner--loading"}`}>
           {dataError
             ? <><Icon name="alert" size={16} />{dataError}</>
-            : <><span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.2)", borderTopColor: "var(--isu-green)" }} />Loading the thesis archive…</>}
+            : <><span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.2)", borderTopColor: "var(--isu-green)" }} />Loading the e-library…</>}
         </div>
       )}
 
@@ -160,8 +151,7 @@ export default function App() {
           activeTab={staffTab}
           onTabChange={setStaffTab}
           onSave={handleSave}
-          onMarkArchived={handleMarkArchived}
-          onSearch={() => goSearch()}
+          onSearch={goSearch}
           onSignOut={handleSignOut}
         />
       )}

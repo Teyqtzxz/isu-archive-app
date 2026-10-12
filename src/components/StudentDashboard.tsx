@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
+import { countByDepartment } from "../stats";
 import { ISUSeal, DeptBadge, Icon, initialsOf } from "./shared";
+import { DepartmentStats } from "./DepartmentStats";
 
 export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onSignOut }: {
   theses: Thesis[];
   account: { displayName: string; email: string };
-  onSearch: (q: string) => void;
+  /** department: undefined or "" = all departments. */
+  onSearch: (q: string, department?: string) => void;
   /** Open the search screen filtered to one department (not a text search for its name). */
   onBrowseDepartment: (department: string) => void;
   onSignOut: () => void;
@@ -29,6 +32,9 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
     .sort((a, b) => registeredAtISO(b).localeCompare(registeredAtISO(a)))
     .slice(0, 6);
 
+  // Shown on the department chips, so a student sees which ones have theses.
+  const deptCounts = new Map(countByDepartment(theses).map(r => [r.department, r.count]));
+
   function handleSearch() {
     if (heroQuery.trim()) onSearch(heroQuery);
   }
@@ -40,7 +46,7 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
         <div className="header-inner">
           <ISUSeal size={36} />
           <div className="header-brand">
-            <div className="header-title">ISU Thesis Archive</div>
+            <div className="header-title">ISU Research Study E-Library</div>
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
           <button onClick={onSignOut} className="header-signout">
@@ -76,7 +82,7 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
         <section className="hero-section">
           <h1 className="hero-h1">Discover ISU Research</h1>
           <p className="hero-sub">
-            Search archived theses from every department and year, ranked by relevance.
+            Search posted studies from every department and year, ranked by relevance.
           </p>
 
           <div className="hero-search">
@@ -88,7 +94,7 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
                 onChange={e => setHeroQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
                 placeholder="Search by topic, keyword or title…"
-                aria-label="Search theses"
+                aria-label="Search studies"
                 className="search-input-lg"
               />
             </div>
@@ -104,17 +110,29 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
               run a text search for the department's name, which missed theses that
               never use those words and caught ones from other departments that do. */}
           <div className="chip-row">
-            <div className="chip-row-inner" role="group" aria-label="Browse theses">
+            <div className="chip-row-inner" role="group" aria-label="Browse studies">
               <button onClick={() => onSearch("")} className="chip">
                 Recent
               </button>
               {DEPARTMENTS.map(d => (
                 <button key={d} onClick={() => onBrowseDepartment(d)} className="chip">
                   {d}
+                  <span className="chip-count">{deptCounts.get(d) ?? 0}</span>
                 </button>
               ))}
             </div>
           </div>
+
+          <section className="glance-section">
+            <div className="section-head">
+              <h2 className="section-title">E-Library at a glance</h2>
+            </div>
+            <DepartmentStats
+              theses={theses}
+              onSelectDepartment={onBrowseDepartment}
+              onSelectKeyword={(k, d) => onSearch(k, d)}
+            />
+          </section>
 
           {/* Recent theses */}
           <section>
@@ -128,8 +146,8 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
             {recent.length === 0 ? (
               <div className="card empty-state">
                 <div className="empty-state-icon"><Icon name="book" size={22} /></div>
-                <div className="empty-state-title">No theses yet</div>
-                <div className="empty-state-text">Archived theses will appear here.</div>
+                <div className="empty-state-title">No studies yet</div>
+                <div className="empty-state-text">Posted studies will appear here.</div>
               </div>
             ) : (
               <div className="recent-grid">

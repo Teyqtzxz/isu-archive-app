@@ -21,7 +21,7 @@ export function SignOutDialog({ onConfirm, onCancel }: { onConfirm: () => void; 
         aria-labelledby="signout-title" aria-describedby="signout-desc">
         <div className="confirm-icon"><Icon name="logout" size={20} /></div>
         <h2 className="confirm-title" id="signout-title">Sign out?</h2>
-        <p className="confirm-desc" id="signout-desc">You will need to sign in with your ISU Google account again to use the archive.</p>
+        <p className="confirm-desc" id="signout-desc">You will need to sign in with your ISU Google account again to use the e-library.</p>
         <div className="confirm-actions">
           <button ref={cancelBtn} onClick={onCancel} className="btn btn-outline-green confirm-btn">Cancel</button>
           <button onClick={onConfirm} className="btn confirm-btn confirm-btn-danger">Sign Out</button>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import type { NewThesis, StaffTab, Thesis, ThesisStatus } from "../types";
-import { isPending, registeredAtISO } from "../types";
+import type { NewThesis, StaffTab, Thesis } from "../types";
+import { registeredAtISO } from "../types";
 import { ISUSeal, StatusBadge, DeptBadge, Icon, initialsOf, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
+import { DepartmentStats } from "./DepartmentStats";
 
 /** Who is signed in, for the header, welcome card and settings. */
 export interface StaffAccount {
@@ -18,7 +19,6 @@ export function StaffDashboard({
   activeTab,
   onTabChange,
   onSave,
-  onMarkArchived,
   onSearch,
   onSignOut,
 }: {
@@ -26,9 +26,9 @@ export function StaffDashboard({
   account: StaffAccount;
   activeTab: StaffTab;
   onTabChange: (t: StaffTab) => void;
-  onSave: (thesis: NewThesis, status: ThesisStatus) => Promise<void>;
-  onMarkArchived: (id: string) => void;
-  onSearch: () => void;
+  onSave: (thesis: NewThesis) => Promise<void>;
+  /** department: undefined = the default filter (own department), "" = all. */
+  onSearch: (q?: string, department?: string) => void;
   onSignOut: () => void;
 }) {
   // Staff see their own department's theses on the dashboard. A client-side
@@ -40,10 +40,11 @@ export function StaffDashboard({
   const name = account.displayName || account.email;
 
   const thisMonthPrefix = new Date().toISOString().slice(0, 7); // "2026-09"
+  const thisYearPrefix = thisMonthPrefix.slice(0, 4); // "2026"
   const stats = {
     total: mine.length,
-    pending: mine.filter(isPending).length,
     thisMonth: mine.filter(t => registeredAtISO(t).startsWith(thisMonthPrefix)).length,
+    thisYear: mine.filter(t => registeredAtISO(t).startsWith(thisYearPrefix)).length,
   };
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -60,13 +61,14 @@ export function StaffDashboard({
     { id: "dashboard", label: "Dashboard", icon: "grid" },
     { id: "register", label: "Register", icon: "plus" },
     { id: "search", label: "Search", icon: "search" },
+    { id: "statistics", label: "Statistics", icon: "chart" },
     { id: "settings", label: "Settings", icon: "settings" },
   ];
 
   const STAT_CARDS: { label: string; value: number; icon: IconName; tone: string }[] = [
-    { label: dept ? "Department theses" : "Total theses", value: stats.total, icon: "book", tone: "green" },
-    { label: "Pending review", value: stats.pending, icon: "clock", tone: "yellow" },
-    { label: "Added this month", value: stats.thisMonth, icon: "calendar", tone: "blue" },
+    { label: dept ? "Department Studies" : "Total Studies", value: stats.total, icon: "book", tone: "green" },
+    { label: "Added this month", value: stats.thisMonth, icon: "clock", tone: "yellow" },
+    { label: "Added this year", value: stats.thisYear, icon: "calendar", tone: "blue" },
   ];
 
   return (
@@ -76,18 +78,9 @@ export function StaffDashboard({
         <div className="header-inner">
           <ISUSeal size={36} />
           <div className="header-brand">
-            <div className="header-title">Thesis Archive · Staff</div>
+            <div className="header-title">Research Study E-Library · Staff</div>
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
-          <button
-            className="icon-btn"
-            onClick={() => onTabChange("dashboard")}
-            aria-label={stats.pending > 0 ? `${stats.pending} theses pending review` : "No theses pending review"}
-            title={stats.pending > 0 ? `${stats.pending} pending review` : "Nothing pending review"}
-          >
-            <Icon name="bell" size={20} />
-            {stats.pending > 0 && <span className="dot-notif">{stats.pending > 9 ? "9+" : stats.pending}</span>}
-          </button>
           <button onClick={onSignOut} className="header-signout">
             <Icon name="logout" size={16} />
             Sign Out
@@ -175,13 +168,13 @@ export function StaffDashboard({
               {/* Recent theses */}
               <div className="card">
                 <div className="card-title-row">
-                  <span className="card-title">Recent theses</span>
+                  <span className="card-title">Recent studies</span>
                   <span className="card-meta">{mine.length} total</span>
                 </div>
                 {mine.length === 0 && (
                   <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="book" size={22} /></div>
-                    <div className="empty-state-title">{dept ? `No ${dept} theses yet` : "No theses in the archive yet"}</div>
+                    <div className="empty-state-title">{dept ? `No ${dept} studies yet` : "No studies in the e-library yet"}</div>
                     <div className="empty-state-text">Register one to get started.</div>
                   </div>
                 )}
@@ -196,12 +189,6 @@ export function StaffDashboard({
                       <span>{t.year}</span>
                       <span aria-hidden="true">·</span>
                       <span>Added {registeredAtISO(t).slice(0, 10)}</span>
-                      {isPending(t) && (
-                        <button onClick={() => onMarkArchived(t.id)} className="btn btn-outline-green btn-sm list-row-action">
-                          <Icon name="check" size={14} />
-                          Mark as Archived
-                        </button>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -212,11 +199,11 @@ export function StaffDashboard({
                 <div className="action-grid">
                   <button onClick={() => onTabChange("register")} className="btn btn-primary action-btn">
                     <Icon name="plus" size={18} />
-                    Register thesis
+                    Register study
                   </button>
-                  <button onClick={onSearch} className="btn btn-outline-blue action-btn">
+                  <button onClick={() => onSearch()} className="btn btn-outline-blue action-btn">
                     <Icon name="search" size={18} />
-                    Search archive
+                    Search e-library
                   </button>
                 </div>
               </div>
@@ -228,7 +215,19 @@ export function StaffDashboard({
           <div className="register-wrap">
             <RegisterForm
               onBack={() => onTabChange("dashboard")}
-              onSave={async (thesis, status) => { await onSave(thesis, status); onTabChange("dashboard"); }}
+              onSave={async thesis => { await onSave(thesis); onTabChange("dashboard"); }}
+            />
+          </div>
+        )}
+
+        {/* Every department, not just `mine`: the point is to compare them. */}
+        {activeTab === "statistics" && (
+          <div className="animate-fade-in">
+            <DepartmentStats
+              theses={theses}
+              highlightDept={dept}
+              onSelectDepartment={d => onSearch("", d)}
+              onSelectKeyword={(k, d) => onSearch(k, d)}
             />
           </div>
         )}

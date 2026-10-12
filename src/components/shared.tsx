@@ -13,6 +13,7 @@ const ICON_PATHS = {
   search: "M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z",
   grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  chart: "M4 20h16M7 16v-5M12 16V6M17 16v-8",
   building: "M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1",
   user: "M20 21a8 8 0 10-16 0M12 13a5 5 0 100-10 5 5 0 000 10z",
   mail: "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM3 7l9 6 9-6",
@@ -61,23 +62,14 @@ export function ISUSeal({ size = 40 }: { size?: number }) {
   );
 }
 
-/** Human-readable text for each status. Shared with the search filter pills so
- *  the badge and the filter can never disagree. */
+/** Human-readable text for each status. */
 export const STATUS_LABELS: Record<ThesisStatus, string> = {
-  ARCHIVED: "Archived",
-  NEEDS_REVIEW: "Needs Review",
-  DRAFT: "Draft",
+  POSTED: "Posted",
 };
 
 export function StatusBadge({ status }: { status: ThesisStatus }) {
-  // CSS class names are left lowercase in App.css; only the enum keys changed.
-  const cls = {
-    ARCHIVED: "status-archived",
-    DRAFT: "status-pending",
-    NEEDS_REVIEW: "status-needs-review",
-  }[status];
   return (
-    <span className={`status-badge ${cls}`}>
+    <span className="status-badge status-posted">
       <span className="status-dot" aria-hidden="true" />
       {STATUS_LABELS[status]}
     </span>

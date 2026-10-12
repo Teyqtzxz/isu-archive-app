@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ExtractionState, NewThesis, ThesisStatus } from "../types";
+import type { ExtractionState, NewThesis } from "../types";
 import { DEPARTMENTS } from "../types";
 import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
 import { DeptBadge, Icon } from "./shared";
@@ -16,7 +16,7 @@ const cleanAdviser = (name: string) => name.trim().replace(/\s+/g, " ");
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
-  onSave: (thesis: NewThesis, status: ThesisStatus) => Promise<void>;
+  onSave: (thesis: NewThesis) => Promise<void>;
 }) {
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
   const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
@@ -44,8 +44,8 @@ export function RegisterForm({ onBack, onSave }: {
     // reason given until a Drive link was typed — even with a PDF already chosen.
     if (!form.driveLink.trim()) {
       setError(pdfFile
-        ? "Paste the thesis's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full thesis."
-        : "Please paste the Google Drive link of the thesis PDF.");
+        ? "Paste the study's Google Drive link too. The PDF is read from this computer, but the link is saved so students can open the full study."
+        : "Please paste the Google Drive link of the study PDF.");
       return;
     }
     const missing = [
@@ -103,10 +103,8 @@ export function RegisterForm({ onBack, onSave }: {
   }
 
   async function handleSave() {
-    // The button decides the status (docs/02 §4): "Confirm & Save" after a
-    // successful read → ARCHIVED; "Save Manually" after a failed one →
-    // NEEDS_REVIEW, so it shows up under Pending Review.
-    const status: ThesisStatus = extractState === "success" ? "ARCHIVED" : "NEEDS_REVIEW";
+    // "Confirm & Save" and "Save Manually" both post the study: staff have
+    // already checked the details here, so there is no later review step.
     setSaveError("");
     setSaving(true);
     try {
@@ -114,9 +112,9 @@ export function RegisterForm({ onBack, onSave }: {
         title: form.title, department: form.department,
         year: parseInt(form.year), adviser: cleanAdviser(form.adviser), abstract, keywords,
         driveLink: form.driveLink,
-      }, status);
+      });
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Could not save the thesis. Try again.");
+      setSaveError(e instanceof Error ? e.message : "Could not save the study. Try again.");
       setSaving(false);
     }
   }
@@ -150,7 +148,7 @@ export function RegisterForm({ onBack, onSave }: {
       {/* Form card */}
       {(extractState === "idle" || extractState === "extracting") && (
         <div className="card card-pad-xl card-accent card-mb">
-          <h2 className="form-title">Register a thesis</h2>
+          <h2 className="form-title">Register a study</h2>
           <p className="form-sub">Paste the Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
 
           {/* Drive link */}
@@ -203,7 +201,7 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Title */}
           <div className="field-mb">
             <label className="field-label">Title <span className="field-req">*</span></label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full thesis title" disabled={extractState === "extracting"} className="input" />
+            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
           </div>
 
           {/* Dept + Year */}
