@@ -36,7 +36,7 @@ export function RegisterForm({ onBack, onSave }: {
   const steps = [
     { label: "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
     { label: "Processing", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
-    { label: "Review & Save", active: extractState === "success" || extractState === "needs_review", done: false },
+    { label: "Save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
 
   async function handleSubmit() {
@@ -273,7 +273,7 @@ export function RegisterForm({ onBack, onSave }: {
             </div>
             <div>
               <div className={`status-title ${extractState === "success" ? "status-title-success" : "status-title-review"}`}>
-                {extractState === "success" ? "Details filled in. Please review:" : "Could not read PDF completely. Please fill in:"}
+                {extractState === "success" ? "Details filled in:" : "Could not read PDF completely. Please fill in:"}
               </div>
               <div className="status-sub">
                 {extractState === "success" ? "Abstract and keywords extracted — edit if needed" : "Manual entry required for abstract and keywords"}

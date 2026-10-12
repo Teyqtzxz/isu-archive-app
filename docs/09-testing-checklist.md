@@ -77,7 +77,7 @@ matters most.
 - [ ] Clicking "Read PDF & continue" with no Drive link (or a missing title /
       department / adviser) shows a message naming what is missing. The adviser
       is a plain text box; an adviser of only spaces counts as missing
-- [ ] Real text-based PDF → PROCESSING → READY TO REVIEW, on localhost **and**
+- [ ] Real text-based PDF → PROCESSING → DETAILS FILLED IN, on localhost **and**
       on the deployed URL (the Drive API key must allow both — `06` §0)
 - [ ] A file shared as "Restricted" → NEEDS MANUAL ENTRY with the "Anyone with
       the link" message
