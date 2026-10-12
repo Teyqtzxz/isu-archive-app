@@ -23,7 +23,7 @@ Also already done, in the same sitting as the split:
 - `npm run build` now runs `tsc --noEmit` first, so a type error fails the build.
 
 - The status enum was migrated to uppercase (`02` §5) in one coordinated commit.
-- Step 02 (schema + 21-thesis seed), step 03 (sign-in, roles, rules), step 04
+- Step 02 (schema + a 21-thesis seed, since removed), step 03 (sign-in, roles, rules), step 04
   (live data, theme, header) are merged. `src/firebase.ts` holds the real
   config for project `isu-archive-9253b`.
 
@@ -58,7 +58,7 @@ wrong one. That includes creating the Drive API key for C (`06` §0).
 
 ### B — Search & Intelligence
 **Files:** see the table
-**Docs:** 05, 07 (the 21 seed theses are already written, in A's `seed.ts`)
+**Docs:** 05, 07 (no seed data: the sample theses were removed on 2026-10-12)
 
 BM25, the debounce, filters, and the extractive summary.
 
@@ -168,7 +168,7 @@ Decide these now, not in a panic.
 |---|---|
 | **Drive blocks the PDF download (CORS)** | Direct Drive links are blocked by the browser, so `06` downloads through the Drive API with a key. C runs the day-1 spike (`06` §0) before building. Files must still be "Anyone with the link → Viewer". The `needs_review` manual-entry state covers any failure — rehearse that path too |
 | **Google sign-in is one account per browser profile** | Use a normal window for one account and incognito for the other. Have all three sign in once so three user docs exist |
-| **Only 8 sample theses** | Resolved — `seed.ts` has 21 |
+| **Only 8 sample theses** | Resolved, then superseded: all sample theses removed on the professor's request (2026-10-12); real studies only |
 | **`onSnapshot` reads the whole collection** | Fine for hundreds of docs. Only a problem in the thousands — note it, do not build for it |
 | **Someone rebuilds the Figma UI** | `01` §5: never rebuild, only replace data sources. `shared.tsx` and the CSS are off-limits to everyone except C |
 | **A branch sits unmerged for days** | A merges daily; everyone runs `git pull origin main` daily. Enforce it. |

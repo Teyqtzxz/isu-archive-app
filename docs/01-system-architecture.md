@@ -59,7 +59,7 @@ the user's browser. Firebase only provides identity + storage of thesis records.
 │  pdf.js reads PDF ──▶ auto-fill ◀───└── "View Summary" → Combined Summary  │
 │      │ abstract + keywords                (extractive, [n] citations)      │
 │      ▼                                    │                                │
-│  staff reviews → Confirm & Save ─────────► SEARCH INDEX + FIRESTORE        │
+│  staff checks → Confirm & Save (posted) ─► SEARCH INDEX + FIRESTORE        │
 │                                                                            │
 └──────────────────────────────┬─────────────────────────────────────────────┘
                                │
@@ -95,7 +95,8 @@ Staff Dashboard → "Register New Thesis"
    → Drive API downloads the PDF → pdf.js reads the first pages → regex finds Abstract + Keywords
    → state = READY TO REVIEW (editable form)   OR
      state = NEEDS MANUAL ENTRY (fallback)
-   → staff reviews → Confirm & Save
+   → staff checks the details → Confirm & Save, or Save Manually (abstract required)
+   → posted at once: status POSTED, no review queue
    → saved to Firestore: theses/{id}
    → dashboard updates automatically (Firestore realtime)
 ```
@@ -131,17 +132,18 @@ and fake behaviour.**
 | BM25 scoring | `tokenize()`, `bm25Score()` | ✅ real |
 | Prefix/substring matching | `findMatchScore()` → `0.8` prefix, `0.6` substring | ✅ real |
 | "Why this rank?" breakdown | — | ❌ removed 2026-09-30 (group decision) |
-| Department/year/status filters | `SearchScreen` | ✅ done |
-| Register processing states | `RegisterForm` (`extractState`) | ⚠️ driven by a **random** `setTimeout` |
+| Department/year filters | `SearchScreen` | ✅ done (status filter removed 2026-10-12) |
+| Department statistics | `stats.ts`, `DepartmentStats` | ✅ done (PR #22) |
+| Register processing states | `RegisterForm` (`extractState`) | ✅ driven by the real PDF read (step 06) |
 | Data | `subscribeToTheses` / `saveThesis` in `data.ts` | ✅ live Firestore (step 04). `DEPARTMENTS` lives in `types.ts` |
 | Login | `LoginScreen` | ✅ Google sign-in, ISU only (step 03) |
-| PDF extraction | `MOCK_ABSTRACT` + `Math.random() > 0.3` | ❌ → pdf.js (step 06) |
-| Summary | one static template string | ❌ → extractive algorithm (step 07) |
+| PDF extraction | `extractPdf.ts` (pdf.js) | ✅ real (step 06) |
+| Summary | `summary.ts` (MMR over BM25) | ✅ real (step 07) |
 | 300ms debounce | `SearchScreen` | ✅ built (step 05) |
 | Theme + responsive header | `index.css`, `App.css` | ✅ done (step 04 Parts 3–4) |
-| Status values | uppercase `STATUSES` enum in `types.ts` | ✅ migrated (`02` §5) |
-| Schema | `registeredBy` / `registeredAt` + `registeredAtISO()`, 21-thesis `seed.ts` | ✅ done (step 02) |
-| PDF download | direct Drive fetch in the old spec | ❌ → Google Drive API with an API key (step 06) — the direct fetch is blocked by CORS |
+| Status values | one value, `POSTED` (`ThesisStatus` in `types.ts`) | ✅ review step removed 2026-10-12; old records read as POSTED |
+| Schema | `registeredBy` / `registeredAt` + `registeredAtISO()`, `seed.ts` (its 21 sample theses removed 2026-10-12) | ✅ done (step 02) |
+| PDF download | Google Drive API with an API key, or a PDF from this computer | ✅ real (step 06) |
 
 The `App.tsx` module split is done (commit `c5644d4`) — see `04-frontend.md` Part 1.
 

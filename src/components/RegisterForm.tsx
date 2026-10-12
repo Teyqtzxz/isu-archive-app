@@ -105,6 +105,12 @@ export function RegisterForm({ onBack, onSave }: {
   async function handleSave() {
     // "Confirm & Save" and "Save Manually" both post the study: staff have
     // already checked the details here, so there is no later review step.
+    // That makes this the last check: search ranks studies on the abstract,
+    // so a study posted without one would almost never be found.
+    if (!abstract.trim()) {
+      setSaveError("Please fill in: Abstract. Copy it from the PDF. Search uses it to find this study.");
+      return;
+    }
     setSaveError("");
     setSaving(true);
     try {

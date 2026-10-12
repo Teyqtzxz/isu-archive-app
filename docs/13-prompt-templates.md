@@ -161,7 +161,7 @@ A and C work simultaneously here. Their files do not overlap, so no conflict.
 | Owner | **B** |
 | Branch | `person-b-search` |
 | Doc | `05-search-ranking.md` |
-| Already done | §1 (the move to `src/search.ts`), §6 (performance) and §7 (seed data). All marked done - **do not let the AI redo them** |
+| Already done | §1 (the move to `src/search.ts`), §6 (performance) and §7 (seed data, since removed). All marked done - **do not let the AI redo them** |
 
 **Block 3:**
 
@@ -179,8 +179,8 @@ A and C work simultaneously here. Their files do not overlap, so no conflict.
 - Relevance reads **~97%, not 100%**. That is deliberate.
 
 **Coordinate:** A needs an `onSignOut` prop on `SearchScreen` for step 03 —
-add it when A asks. The seed data is already done (21 theses in `src/seed.ts`,
-A's file); do not edit it.
+add it when A asks. There is no seed data: the sample theses were removed on
+the professor's request (2026-10-12) — do not add any back.
 
 ---
 

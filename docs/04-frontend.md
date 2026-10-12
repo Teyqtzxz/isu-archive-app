@@ -210,7 +210,13 @@ did `(b.registeredAt ?? 0).valueOf() - …`. A Firestore `Timestamp.valueOf()`
 returns a *string*, so the subtraction is `NaN` and the list comes out in
 arbitrary order. `registeredAtISO()` handles all three shapes.
 
-**Status review.** A `NEEDS_REVIEW` row in the staff dashboard table gets one
+> **Superseded on 2026-10-12 (errata #50).** The review step was removed on
+> the professor's request: every saved study is `POSTED`, and `ARCHIVED`,
+> `NEEDS_REVIEW`, `DRAFT`, `isPending()`, `STATUSES`, the status filter and
+> "Mark as Archived" no longer exist. Text below that mentions them is history.
+> The current rules are in `00-AI-PREAMBLE.md` ("Status — one value").
+
+**Status review (removed 2026-10-12).** A `NEEDS_REVIEW` row in the staff dashboard table gets one
 small "Mark as Archived" button (A owns `StaffDashboard`) that calls
 `updateThesisStatus(id, "ARCHIVED")`. Without it a manually entered thesis can
 never leave "Pending Review". The rules already allow staff updates.
@@ -368,9 +374,8 @@ Only if time allows. See `08-deployment.md` §4.
 - [ ] `grep -rn "firebase/firestore" src/components/` returns nothing
 - [ ] Add a document in the Firestore console → it appears in the UI without a refresh
 - [ ] Registering a thesis writes a document and shows a toast
-- [ ] "Pending Review" goes up by 1 after a **Save Manually** (proves status is
-      passed in, not hardcoded)
-- [ ] "Mark as Archived" on that row brings it back down by 1
+- [ ] ~~"Pending Review" goes up by 1 after a Save Manually; "Mark as Archived"
+      brings it back down~~ — both removed 2026-10-12 (errata #50)
 - [ ] A newly saved thesis appears at the **top** of the list immediately, not
       the bottom (proves the `serverTimestamps: "estimate"` sort)
 - [ ] The staff badge shows the signed-in user's department, not "CAS"

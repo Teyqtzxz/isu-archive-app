@@ -1,11 +1,13 @@
 # 00 — README (Master Index)
 
-**ISU Thesis Archive Search** — development docs for a thesis archive search app
-at Isabela State University, Echague Campus.
+**ISU Research Study E-Library** (working name: ISU Thesis Archive Search) —
+development docs for a research study search app at Isabela State University,
+Echague Campus. It stores theses and capstones; the screens call both "studies".
 
-Staff register theses by pasting a Google Drive link; the app reads the PDF in the
-browser and auto-fills the abstract and keywords. Staff and students then search
-with BM25 ranking and read a combined extractive summary of the top results.
+Staff register studies by pasting a Google Drive link; the app reads the PDF in
+the browser and auto-fills the abstract and keywords, and saving posts the study.
+Staff and students then search with BM25 ranking, read a combined extractive
+summary of the results they tick, and see department statistics.
 
 ---
 
@@ -59,11 +61,13 @@ Steps 06 and 07 are independent — take whichever you prefer.
 
 The app is **not** a blank project. Working today:
 
-- 6 screens as React components, one file per screen, with the ISU theme
-- Google sign-in (ISU accounts only), STAFF / STUDENT roles, security rules
-- Live Firestore data; staff register theses and mark them archived
+- Every screen as a React component, one file per screen, with the ISU theme
+- Google sign-in (ISU accounts only), STAFF / STUDENT roles, security rules,
+  "Sign out?" confirmation
+- Live Firestore data; staff register studies, which are posted at once
 - Real BM25 over a prebuilt corpus index, prefix + substring matching, 300ms
-  debounce, department / year / status filters
+  debounce, department / year filters
+- Department statistics (studies per department, top keywords)
 
 What is still fake:
 
@@ -92,7 +96,8 @@ Verified against the code on 2026-09-30.
 | 04 Theme + safe-area | C | ☑ merged — PR #9. Real-phone check still worth doing |
 | 05 Debounce + filters | B | ☑ done — PRs #10, #11 |
 | 06 pdf.js extraction | C | ☑ done — PRs #14–#16 + second fix round; checked by script on ten real theses and by registering one through the app (abstract matched word for word, `06` status) |
-| 07 Extractive summary | B | ☑ done — PRs #12, #13; §6 checked in the browser 2026-10-02 |
+| 07 Extractive summary | B | ☑ done — PRs #12, #13, #19, #20 (one sentence per ticked study); §6 checked in the browser 2026-10-02 |
+| Professor's feedback | all | ☑ done — PRs #21, #22: adviser as text, sign-out confirmation, department statistics, rename to ISU Research Study E-Library, review step removed (errata #48–#50) |
 | 08 Deployed | C | ☐ |
 | 09 QA passed | C | ☐ |
 
@@ -103,15 +108,18 @@ Verified against the code on 2026-09-30.
 - ☑ Sign in with an ISU Google account (`@isu.edu.ph` only)
 - ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☑ Sign out from every screen
-- ☑ Staff registers a thesis by pasting a Google Drive link
+- ☑ Staff registers a study by pasting a Google Drive link (or reads the PDF from this computer)
 - ☑ System reads the PDF (first 15 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06)
 - ◐ Fallback to manual entry if the PDF cannot be read — scanned PDFs, sharing
   problems and bad links now show the reason (step 06)
-- ☑ Staff reviews → Confirm & Save → stored in Firestore
-- ☑ Statuses: ARCHIVED / NEEDS_REVIEW (+ "Mark as Archived"); DRAFT reserved, see `02` §4
+- ☑ Staff checks the details → Confirm & Save (or Save Manually, abstract
+  required) → posted in Firestore
+- ☑ One status: POSTED. The review step was removed (professor, 2026-10-12)
 - ☑ Search: BM25, prefix + substring, 300ms debounce
 - ~~"Why this rank?" term-by-term breakdown~~ — removed 2026-09-30 (group decision)
-- ☑ Filters: Department / Year / Status; all ten departments + removable chips
+- ☑ Filters: Department / Year; all ten departments + removable chips
+- ☑ Department statistics: studies per department, top keywords (staff Statistics tab, student dashboard)
+- ☑ "Sign out?" confirmation on every Sign Out
 - ☑ Click a result title → abstract preview → "Open in Drive"
 - ☑ Combined summary of ticked results, extractive (MMR over BM25), with `[n]` citations (step 07)
 - ☑ Responsive headers with safe-area handling

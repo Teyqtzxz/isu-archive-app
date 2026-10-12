@@ -205,7 +205,8 @@ now-unused output.
 - Active filters render as chips with an X
 - "Clear filters" returns to the full list
 
-Read the option lists from `DEPARTMENTS` and `STATUSES` in `src/types.ts` rather
+(The Status filter was removed on 2026-10-12 with the review step — errata #50.)
+Read the option lists from `DEPARTMENTS` in `src/types.ts` rather
 than hardcoding option arrays in the component. (Today the department dropdown
 derives its options from the loaded theses — `allDepts` in `SearchScreen.tsx` —
 so a department with no theses yet is missing. Switch it to `DEPARTMENTS`.)
@@ -302,10 +303,14 @@ If the collection ever grows past roughly a thousand, move the index into a
 
 ## 7. Seed data
 
-## ✅ DONE — `src/seed.ts` has 21 theses (step 02). It is A's file; do not edit it.
+## ⚠️ REMOVED (2026-10-12) — the sample theses are gone
 
-The prototype had 8 sample theses; the seed now has 21. The reasoning, kept for
-the record:
+The 21 sample theses were deleted on the professor's request: the e-library
+holds real studies only (`02` §6). The measurements in this file were taken
+on them and stay valid as a record. Do not add sample data back to test
+search; test on the real studies staff have posted.
+
+Why there were 21 rather than the prototype's 8, kept for the record:
 
 Eight documents give BM25 almost nothing to discriminate between, the relevance
 percentages all look similar, and the combined summary in step 07 has nothing to
@@ -328,10 +333,10 @@ actually have something to match against.
       not 100% — that is deliberate, see §4
 - [ ] Searching `ion` returns **no results** ("No theses found"). If it returns
       every thesis, the `length >= 4` guard in `findMatchScore` was lost
-- [ ] Department / Year / Status filters combine with the query and with each other
+- [ ] Department / Year filters combine with the query and with each other
 - [ ] Active filters appear as removable chips; "Clear filters" resets everything
 - [ ] Staff see their own department preselected; students see "All Departments"
-- [ ] Students do not see the Status filter
+- [ ] Nobody sees a Status filter (removed 2026-10-12)
 - [ ] Ranking is **identical** before and after your change — run the same
       queries on `main` and on your branch and compare
 - [ ] An archive with zero theses shows the empty state and does not print `NaN`

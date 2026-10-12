@@ -370,18 +370,20 @@ admin access and bypasses the rules:
 in the browser under the rules, and the rules forbid changing `role` — which is
 exactly the protection you want. It is only useful against the emulator.
 
-**Seeding order.** `seedTheses()` writes to `theses`, which requires `STAFF`.
-So: sign in → promote yourself in the console → sign out and back in → then,
-on the dev server (`npm run dev`), in the browser devtools console:
+**No sample data (2026-10-12).** The 21 made-up sample studies that
+`seedTheses()` used to write were removed on the professor's request, and
+`seedTheses()` with them: the e-library holds real studies only. To delete the
+samples from a database that still has them — every one has the fake Drive
+link `.../file/d/REPLACE/view`, which no real study has — sign in as `STAFF`,
+then on the dev server (`npm run dev`), in the browser devtools console:
 
 ```js
-const m = await import("/src/seed.ts"); await m.seedTheses();   // → 21
+const m = await import("/src/seed.ts"); await m.removeSampleStudies();   // → how many were deleted
 ```
 
 `seed.ts` is not part of the app bundle, so this `import()` is how you load it —
-typing `seedTheses()` on its own fails. It skips titles that already exist, so
-re-running it is harmless (the first version did not, and a double run left 42
-documents — `removeDuplicateTheses()` in the same file cleans that up). Run it before promoting and every write is denied.
+typing `removeSampleStudies()` on its own fails. Re-running it deletes 0. It
+needs `STAFF`: run it before promoting yourself and every delete is denied.
 
 **You will need at least two accounts** to test roles properly. Google sign-in
 uses one account per browser profile, so use a normal window for one account and

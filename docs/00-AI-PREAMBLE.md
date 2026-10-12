@@ -12,20 +12,29 @@ Copy everything between the rules below.
 
 <!-- ===== BEGIN PREAMBLE — copy from here ===== -->
 
-You are helping develop **ISU Thesis Archive Search**, a web app for the Research
-Department of Isabela State University — Echague Campus.
+You are helping develop **ISU Research Study E-Library**, a web app for the
+Research Department of Isabela State University — Echague Campus. (Its working
+name was "ISU Thesis Archive Search"; the professor renamed it on 2026-10-12.)
+
+**Words on screen vs words in code.** The UI says **study / studies** (theses
+*and* capstones are stored) and **E-Library**, never "thesis", "theses" or
+"archive". The code keeps its original names on purpose — `Thesis`,
+`NewThesis`, `saveThesis`, the Firestore collection `theses`, `ThesisStatus` —
+because renaming a collection would orphan every stored record. Do not rename
+identifiers, and do not put "thesis" or "archive" back into on-screen text.
 
 ## The system
 
-Staff register archived theses by pasting a Google Drive link; the app reads the
-PDF in the browser and auto-fills the abstract and keywords. Staff and students
-then search the archive with BM25 ranking and read a combined extractive summary
-of the top results.
+Staff register research studies by pasting a Google Drive link; the app reads
+the PDF in the browser and auto-fills the abstract and keywords, and saving
+**posts** the study at once (there is no review queue). Staff and students then
+search the e-library with BM25 ranking, read a combined extractive summary of
+the results they tick, and see department statistics.
 
 | Role | Can do |
 |------|--------|
-| `STAFF` (Research Department staff) | Register theses, search, manage |
-| `STUDENT` | Search and view only — read-only |
+| `STAFF` (Research Department staff) | Register and post studies, search, statistics |
+| `STUDENT` | Search, view and statistics — read-only |
 
 ## Hard architecture constraint
 
@@ -50,8 +59,8 @@ pdf.js (`pdfjs-dist`) · `oxfmt`
 ## Canonical types (`src/types.ts`)
 
 ```typescript
-export const STATUSES = ["ARCHIVED", "NEEDS_REVIEW", "DRAFT"] as const;
-export type ThesisStatus = (typeof STATUSES)[number];
+/** The one legal status. Everything staff register is posted at once. */
+export type ThesisStatus = "POSTED";
 
 export interface Thesis {
   id: string;
@@ -69,12 +78,8 @@ export interface Thesis {
 
 export type Role = "staff" | "student";
 export type Screen = "login" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
-export type StaffTab = "dashboard" | "register" | "search" | "settings";
+export type StaffTab = "dashboard" | "register" | "search" | "statistics" | "settings";
 export type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
-
-export function isPending(t: Pick<Thesis, "status">): boolean {
-  return t.status === "NEEDS_REVIEW" || t.status === "DRAFT";
-}
 
 /** registeredAt as a sortable ISO string, whatever shape it arrived in. null → "" (sorts last). */
 export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string;
@@ -84,31 +89,37 @@ export const DEPARTMENTS = [ /* the ten strings below */ ] as const;
 /** Stored role on users/{uid}. Uppercase; separate from the lowercase routing `Role`. */
 export type AccountRole = "STAFF" | "STUDENT";
 
-/** What the register form hands to saveThesis(): the server adds id, registeredBy, registeredAt. */
+/** What the register form hands to saveThesis(): saveThesis adds status (always
+ *  POSTED); the server adds id, registeredBy, registeredAt. */
 export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
 ```
 
-This is what `src/types.ts` exports today (step 02 is merged). **Never compare or
+This is what `src/types.ts` exports today. **Never compare or
 subtract `registeredAt` directly** — it is a three-way union. Sort and compare
 through `registeredAtISO()`.
 
 `users.department` must be one of `DEPARTMENTS` (or `""`), never a college code
 like `"CAS"` — staff filters compare it against `Thesis.department`.
 
-### The status enum — three traps
+### Status — one value, and four traps
 
-1. **`Thesis.status` is UPPERCASE.** The only legal values are `ARCHIVED`,
-   `NEEDS_REVIEW`, `DRAFT`. Never write `"archived"` or `"pending"`. Get the
-   values from `STATUSES`, never from a hand-written array literal.
-2. **`ExtractionState` is a different thing and stays lowercase.** It is
-   `"idle" | "extracting" | "success" | "needs_review"` and is UI workflow
-   state, not stored data. It merely shares a word with `NEEDS_REVIEW`.
-   Uppercasing it "for consistency" is a wrong cleanup.
-3. **Never build a status label inline.** Display text lives in
-   `STATUS_LABELS` in `src/components/shared.tsx`, and both the badge and the
-   search filter pills read it. The old code had `s.charAt(0).toUpperCase() +
-   s.slice(1)`, which turns `"ARCHIVED"` into `"ARCHIVED"` — all caps, in the
-   middle of the staff UI.
+There is no review step any more (professor's decision, 2026-10-12): only
+Research Department staff register, so a saved study is **posted** at once.
+
+1. **`POSTED` is the only status.** There is no `ARCHIVED`, `NEEDS_REVIEW`,
+   `DRAFT`, `isPending()`, `STATUSES`, status filter, "Pending review" stat or
+   "Mark as Archived" button — all were removed on purpose. Do not bring any of
+   them back.
+2. **Old records still hold old values.** Records saved before the change may
+   store `ARCHIVED`, `NEEDS_REVIEW` or `DRAFT`. `subscribeToTheses()` in
+   `data.ts` reads every record as `POSTED`, so nothing else needs to handle
+   them. `markAllPosted()` in `seed.ts` rewrites them in the database.
+3. **`ExtractionState` is a different thing and stays lowercase.** Its
+   `"needs_review"` means "the PDF could not be read, type the abstract
+   yourself" — UI workflow state, not a stored status. Do not rename it. Staff
+   must still type an abstract before "Save Manually" posts the study.
+4. **Never build a status label inline.** Display text lives in
+   `STATUS_LABELS` in `src/components/shared.tsx`.
 
 ## Target file layout
 
@@ -116,28 +127,35 @@ like `"CAS"` — staff filters compare it against `Thesis.department`.
 src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in, user profile,
-                        live theses, saveThesis, updateThesisStatus
+                        live theses (all read as POSTED), saveThesis
                         (adviser is typed freely: no option list) ✅ EXISTS
   firebase.ts         ← app, auth, db — real config for project
                         isu-archive-9253b (committed on purpose) ✅ EXISTS
-  seed.ts             ← one-off seed script, 21 theses; skips
-                        existing titles; removeDuplicateTheses() ✅ EXISTS
+  seed.ts             ← devtools maintenance helpers, NO sample
+                        data (removed on the professor's request —
+                        never add fake studies back):
+                        removeSampleStudies(), removeDuplicateTheses(),
+                        markAllPosted()                           ✅ EXISTS
   index.css           ← Tailwind + design tokens (ISU colours,
                         greys, radii, shadows) + safe-area vars  ✅ EXISTS
   App.css             ← all component styles, read the tokens    ✅ EXISTS
   search.ts           ← pure: tokenize, findMatchScore, docTextOf,
                         SearchIndex, buildIndex, computeDocFreq,
                         bestFieldFor, bm25Score                  ✅ EXISTS
+  summary.ts          ← pure: extractive summary, MMR over BM25,
+                        one sentence per ticked study (step 07)   ✅ EXISTS
+  extractPdf.ts       ← pure: Drive API download or a local file +
+                        pdf.js text extraction (step 06)          ✅ EXISTS
+  stats.ts            ← pure: countByDepartment, topKeywords      ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
     shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast,
                         STATUS_LABELS, Icon, initialsOf          ✅ EXISTS
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
-    SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx  ✅ EXIST
-  ─── not created yet ───
-  summary.ts          ← pure: extractive summarisation (step 07)
-  extractPdf.ts       ← pure: Drive API download + pdf.js text extraction (step 06)
+    SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
+    DepartmentStats.tsx (staff Statistics tab + student dashboard)
+    SignOutDialog.tsx ("Sign out?" confirmation)                 ✅ EXIST
 
 firestore.rules       ← project root, not src/ — ISU-only, role immutable,
                         theses writes staff-only; pasted into the console ✅ EXISTS
@@ -157,7 +175,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts` and `extractPdf.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts` and `stats.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -168,14 +186,17 @@ Real, working — **do not rewrite**:
 - Fuzzy prefix/substring: `findMatchScore()` → `1.0` exact, `0.8` prefix,
   `0.6` substring (only for query terms of 4+ characters)
 - Relevance % normalised to the top score, capped at 97% by design
-- 300ms search debounce, department/year/status filters with removable chips
+- 300ms search debounce, department/year filters with removable chips
   (step 05)
-- Google sign-in (ISU accounts only), role routing, session restore, sign-out,
-  and `firestore.rules` (step 03)
-- Live Firestore data, save with status, "Mark as Archived", staff department
-  (step 04)
+- Google sign-in (ISU accounts only), role routing, session restore, sign-out
+  with a "Sign out?" confirmation, and `firestore.rules` (step 03)
+- Live Firestore data, save (always POSTED), staff department (step 04)
+- PDF reading from Drive or from this computer, with manual entry when it fails
+  (step 06); the extractive summary (step 07)
+- Department statistics: studies per department and top keywords (staff
+  Statistics tab, student dashboard)
 - The theme, responsive header and icon set (step 04 Parts 3–4)
-- All six screens' UI, one file per screen in `src/components/`
+- Every screen's UI, one file per screen in `src/components/`
 
 Three things in there are **deliberate and must survive a refactor** — each one
 was a bug that was fixed, and each is easy to "clean up" back into a bug:
@@ -186,11 +207,8 @@ was a bug that was fixed, and each is easy to "clean up" back into a bug:
 | `queryTerm.length >= 4` before a substring match | Without it, 2–3 letter terms match inside almost every word: `ion` hits all 21 seed theses and `dr` matched `hydrological`. (4+ letter terms like `rate` still match mid-word by design.) |
 | `avgDocLen` falls back to `1` on an empty corpus | Otherwise an empty archive yields `NaN`, and `NaN > 0` is false, so every result silently disappears. |
 
-Fake, must be replaced:
-- `RegisterForm` `setTimeout` + `MOCK_ABSTRACT` + `Math.random() > 0.3` → pdf.js
-  (step 06). Saving is already real — only the PDF reading is fake.
-- `CombinedSummaryPanel` static template string, and its Copy / Export buttons
-  → extractive algorithm with Close only (step 07)
+Nothing in the app is fake any more: the mock PDF reader and the template
+summary were replaced in steps 06 and 07.
 
 ## Rules
 
@@ -198,7 +216,8 @@ Fake, must be replaced:
    Doc 01 §5 is the authority on this.
 2. **`src/data.ts` is the only module that imports `firebase/firestore`.** If a
    component needs data, it calls a function in `data.ts`.
-3. **Status is always passed in**, never hardcoded inside a save function.
+3. **Status is set in one place:** `saveThesis()` writes `POSTED`. Never add a
+   second status or a review queue unless the group decides so first.
 4. **Firestore security rules are the security boundary.** Never write a rule that
    lets a user modify their own `role`.
 5. **Graceful degradation is a feature, not an error.** If a PDF cannot be read, the
