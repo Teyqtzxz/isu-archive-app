@@ -303,10 +303,14 @@ If the collection ever grows past roughly a thousand, move the index into a
 
 ## 7. Seed data
 
-## ✅ DONE — `src/seed.ts` has 21 theses (step 02). It is A's file; do not edit it.
+## ⚠️ REMOVED (2026-10-12) — the sample theses are gone
 
-The prototype had 8 sample theses; the seed now has 21. The reasoning, kept for
-the record:
+The 21 sample theses were deleted on the professor's request: the e-library
+holds real studies only (`02` §6). The measurements in this file were taken
+on them and stay valid as a record. Do not add sample data back to test
+search; test on the real studies staff have posted.
+
+Why there were 21 rather than the prototype's 8, kept for the record:
 
 Eight documents give BM25 almost nothing to discriminate between, the relevance
 percentages all look similar, and the combined summary in step 07 has nothing to

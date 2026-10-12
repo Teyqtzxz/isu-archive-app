@@ -142,7 +142,7 @@ and fake behaviour.**
 | 300ms debounce | `SearchScreen` | ✅ built (step 05) |
 | Theme + responsive header | `index.css`, `App.css` | ✅ done (step 04 Parts 3–4) |
 | Status values | one value, `POSTED` (`ThesisStatus` in `types.ts`) | ✅ review step removed 2026-10-12; old records read as POSTED |
-| Schema | `registeredBy` / `registeredAt` + `registeredAtISO()`, 21-thesis `seed.ts` | ✅ done (step 02) |
+| Schema | `registeredBy` / `registeredAt` + `registeredAtISO()`, `seed.ts` (its 21 sample theses removed 2026-10-12) | ✅ done (step 02) |
 | PDF download | Google Drive API with an API key, or a PDF from this computer | ✅ real (step 06) |
 
 The `App.tsx` module split is done (commit `c5644d4`) — see `04-frontend.md` Part 1.

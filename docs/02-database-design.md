@@ -15,7 +15,8 @@
 - `registeredAtISO()` was added to `types.ts` (beyond this spec): the only
   correct way to sort or compare `registeredAt`, which is a three-way union.
 - `DEPARTMENTS` moved from `data.ts` to `types.ts`; there is one copy.
-- `src/seed.ts` holds 21 theses across all ten departments and all three statuses.
+- `src/seed.ts` held 21 made-up sample theses. **They were removed on
+  2026-10-12** (professor's request: no dummy data); see §6.
 - `src/firebase.ts` was added afterwards with placeholder config, because
   `seed.ts` imports it and `npm run build` failed without it.
 
@@ -219,7 +220,14 @@ than re-declared. `src/types.ts` now holds the one `Thesis` interface.
 
 ## 6. `src/seed.ts`
 
-## ✅ DONE — the real file is `src/seed.ts` (21 theses). Read it, not this sketch.
+## ⚠️ SAMPLE DATA REMOVED (2026-10-12) — historical section
+
+On the professor's request the e-library holds **real studies only**. The 21
+sample theses and `seedTheses()` were deleted from `src/seed.ts`, which now
+holds only maintenance helpers: `removeSampleStudies()` (deletes the samples
+from a database that still has them — `03` §8), `removeDuplicateTheses()`,
+`markAllPosted()` and `setMyRole()`. **Do not add sample or dummy studies
+back.** The rest of this section is kept as a record of how seeding worked.
 
 The sketch below is the shape it follows. An earlier version of this snippet
 put `driveFileId: ""` in each record; that field is not on `Thesis` until step
