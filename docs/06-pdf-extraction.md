@@ -191,7 +191,7 @@ async function readPdfText(driveLink: string): Promise<string> {
   const res = await fetch(fileUrl);
   if (res.status === 403 || res.status === 404) {
     throw new Error(
-      "Could not open that file. Make sure it is shared as 'Anyone with the link → Viewer'.",
+      "This file is protected, so it can't be read from Google Drive. Choose the PDF from this computer instead.",
     );
   }
   if (!res.ok) throw new Error(`Google Drive returned an error (${res.status}). Try again.`);
@@ -401,9 +401,20 @@ Do not touch it; this step only replaces the fake extraction. Keep the
 
 The download goes through the Drive API (§0), which allows browser requests.
 It only works for files shared as **"Anyone with the link → Viewer"**: a
-restricted file returns 403 and §4 reports it as a sharing problem. Reading
+restricted file returns 403 and §4 reports it as protected. Reading
 private files would need each staff member to grant Drive access via OAuth — out
-of scope; ask Research staff to share the PDFs.
+of scope.
+
+**Protected files (professor's feedback, 2026-10-12).** Students read the whole
+study in Google's view-only viewer but must not download it, so each study PDF
+is shared as **Isabela State University → Viewer** with "People who can
+download, copy, print" set to **Editors** (checklist in `08` §7b). Such
+no-download (and Restricted) files **cannot be read through the Drive API**, so
+for them the 403 message is:
+"This file is protected, so it can't be read from Google Drive. Choose the PDF
+from this computer instead." Choosing the PDF from this computer is therefore
+the **normal** path; the Drive download is still tried when no PDF is chosen,
+and works for files that are not protected.
 
 Do **not** switch back to `drive.google.com/uc?…` or
 `drive.usercontent.google.com/download?…`. Those send no CORS headers; the
@@ -422,11 +433,13 @@ be bypassed (no CAPTCHA solving); it clears on its own, and another network (e.g
 hotspot) is not affected. During testing, avoid re-downloading the same file over and over; in
 the demo, register each thesis once and have the manual-entry path ready.
 
-**Backup source: a PDF from this computer (added 2026-10-04, after the block above).** Under
-the Drive link, **"Choose PDF from this computer"** lets staff pick the thesis PDF from their own
-laptop; `extractFromFile()` hands it to the same pdf.js + regex pipeline, so no Drive download
-happens and a Drive block cannot stop auto-fill. The Drive link is still required and saved —
-students need it for "Open in Drive". Files over 100 MB or not ending in `.pdf` are refused.
+**Main source: a PDF from this computer (added 2026-10-04 as a backup; the main path since
+2026-10-12).** Above the Drive link, **"Choose PDF from this computer"** lets staff pick the
+study PDF from their own laptop; `extractFromFile()` hands it to the same pdf.js + regex
+pipeline, so no Drive download happens and neither a Drive block nor a protected file can stop
+auto-fill. The Drive link is still required and saved — it is what students open ("Read full
+study", view-only) and what staff open ("Open in Drive"). Files over 100 MB or not ending in
+`.pdf` are refused.
 
 **Back and Edit details.** The form has **"← Back to dashboard"**; the review screen has
 **"← Edit details"**, which returns to the form with every field kept. Continuing again with the
@@ -463,7 +476,9 @@ each abstract actually starts, and adjust `MAX_PAGES` if 15 is not enough.
       refuses an empty abstract, then posts once one is typed (`status: "POSTED"`)
 - [ ] An abstract containing the word "background" or "introduction" mid-text is
       **not** cut short
-- [ ] A file shared as "Restricted" shows the "Anyone with the link" message
+- [ ] A view-only study file (ISU → Viewer, download limited to Editors) shows "This file is protected, so it can't be
+      read from Google Drive. Choose the PDF from this computer instead."
+- [ ] Choosing that same PDF from this computer fills in the abstract and keywords
 - [ ] `grep -rn "drive.usercontent" src/` returns nothing
 - [ ] A garbage link shows a specific error message and does not crash
 - [ ] A non-Drive URL is rejected before any download starts

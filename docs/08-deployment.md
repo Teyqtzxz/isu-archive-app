@@ -245,6 +245,34 @@ domains** (§4b) and to the Drive API key's website restrictions (`06` §0). No
 code changes. If the
 campus does not provide a domain, skip this entirely.
 
+### 7b. Protecting the study files (staff checklist)
+
+Students read the whole study in Google's **view-only** viewer ("Read full
+study") with their ISU Google account, and get no Download, Print or Copy. The
+app only shows the link — the real protection is how each PDF is shared in
+Google Drive. For every study PDF:
+
+- [ ] **Owner** is the Research Department's ISU Google account (not a
+      student's or a staff member's personal account)
+- [ ] **Share → General access = "Isabela State University" → Viewer**
+- [ ] **Share → ⚙ Settings → "People who can download, copy, print…" = Editors**
+- [ ] **Share → ⚙ Settings → "Allow editors to change permissions and share" = off**
+- [ ] Add other Research Department staff as Editors only if they need it
+      (Editors **can** download)
+- [ ] **Never** "Anyone with the link" — that lets anyone outside ISU open it
+- [ ] When registering, choose the PDF **from this computer**: a view-only file
+      cannot be read through the Drive API (`06` §7)
+
+**How to check.** Open the study's link **as a student** (or in an Incognito
+window, signed in with a student ISU account). The owner and Editors always see
+Download, so checking from the owner's own account proves nothing. The student
+should see the PDF with **no Download / Print** buttons; a non-ISU Google
+account should be asked to sign in or request access.
+
+**Honest limit.** View-only stops downloading, printing and copying text in
+Google's viewer. It **cannot** stop screenshots or someone photographing the
+screen — no web app can.
+
 ---
 
 ## 8. Verification

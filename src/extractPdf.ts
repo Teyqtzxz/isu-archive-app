@@ -126,7 +126,7 @@ async function downloadDrivePdf(driveLink: string): Promise<ArrayBuffer> {
     const body = await res.text().catch(() => "");
     if (/rateLimit|quota/i.test(body)) throw new Error(DRIVE_BUSY);
     throw new Error(
-      "Could not open that file. Make sure it is shared as 'Anyone with the link → Viewer'.",
+      "This file is protected, so it can't be read from Google Drive. Choose the PDF from this computer instead.",
     );
   }
   if (!res.ok) throw new Error(`Google Drive returned an error (${res.status}). Try again.`);
