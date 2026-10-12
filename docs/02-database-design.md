@@ -141,6 +141,12 @@ by the security rules once they are published, by design.
 
 ### Status flow
 
+> **Superseded on 2026-10-12 (errata #50).** The review step was removed on
+> the professor's request: every saved study is `POSTED`, and `ARCHIVED`,
+> `NEEDS_REVIEW`, `DRAFT`, `isPending()`, `STATUSES`, the status filter and
+> "Mark as Archived" no longer exist. Text below that mentions them is history.
+> The current rules are in `00-AI-PREAMBLE.md` ("Status — one value").
+
 A pasted-but-unsaved thesis lives only in the form and is **never written to
 Firestore**. The status is decided by which button the staff member pressed:
 

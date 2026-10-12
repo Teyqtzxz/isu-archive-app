@@ -366,6 +366,13 @@ with no explanation, which is indistinguishable from a broken app.
 
 ### Save with the right status
 
+> **Superseded on 2026-10-12 (errata #50).** The review step was removed on
+> the professor's request: every saved study is `POSTED`, and `ARCHIVED`,
+> `NEEDS_REVIEW`, `DRAFT`, `isPending()`, `STATUSES`, the status filter and
+> "Mark as Archived" no longer exist. Text below that mentions them is history.
+> The current rules are in `00-AI-PREAMBLE.md` ("Status — one value"). Both buttons now post (`POSTED`), and "Save Manually" requires an
+> abstract.
+
 | Button | Status |
 |--------|--------|
 | "Confirm & Save" | `ARCHIVED` |
@@ -451,9 +458,9 @@ each abstract actually starts, and adjust `MAX_PAGES` if 15 is not enough.
 - [ ] Keyword chips contain **only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF that writes `KEY WORDS:` with a space parses correctly
 - [ ] Staff can edit the abstract and add/remove keyword chips
-- [ ] "Confirm & Save" writes a document with `status: "ARCHIVED"`
-- [ ] A scanned/image-only PDF → NEEDS MANUAL ENTRY, empty fields, "Save Manually" works
-- [ ] "Save Manually" writes a document with `status: "NEEDS_REVIEW"`
+- [ ] "Confirm & Save" writes a document with `status: "POSTED"`
+- [ ] A scanned/image-only PDF → NEEDS MANUAL ENTRY, empty fields; "Save Manually"
+      refuses an empty abstract, then posts once one is typed (`status: "POSTED"`)
 - [ ] An abstract containing the word "background" or "introduction" mid-text is
       **not** cut short
 - [ ] A file shared as "Restricted" shows the "Anyone with the link" message

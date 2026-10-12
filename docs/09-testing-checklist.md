@@ -48,22 +48,25 @@ matters most.
 - [ ] A non-ISU Google account reading `theses` → **denied** (the rules enforce
       the domain, not just the login screen — `03` §7)
 - [ ] STUDENT never sees the Register form or the staff tabs
-- [ ] STAFF sees Dashboard / Register / Search / Settings + their department badge
+- [ ] STAFF sees Dashboard / Register / Search / Statistics / Settings + their department badge
 - [ ] Student default filter is "All Departments"; staff default is their department
 
 ## 3. Staff dashboard
 
-- [ ] Stats count real data: Total Theses (dept) / Pending Review / This Month
-- [ ] Pending Review = `NEEDS_REVIEW` + `DRAFT`, via the `isPending` helper
-- [ ] **Registering via "Save Manually" makes the Pending Review count go up by 1**
-      — this proves status is passed in rather than hardcoded
-- [ ] Recent Theses lists only the staff member's department, and the badge
+- [ ] Stats count real data: Department Studies / Added this month / Added this year
+- [ ] There is **no** "Pending review" card, bell, status filter or "Mark as
+      Archived" button — the review step was removed (errata #50)
+- [ ] Recent studies lists only the staff member's department, and the badge
       shows that department (not a hardcoded "CAS")
-- [ ] Badges: ARCHIVED green · NEEDS REVIEW yellow · DRAFT gray
-- [ ] **Every** status badge renders — an unstyled badge means an enum mismatch
-- [ ] Rows are newest first — a just-saved thesis appears at the top at once
-- [ ] "Mark as Archived" on a NEEDS REVIEW row turns it ARCHIVED and Pending
-      Review drops by 1
+- [ ] Every study shows a green "Posted" badge — also records saved before the
+      change as Archived / Needs Review / Draft
+- [ ] Rows are newest first — a just-saved study appears at the top at once
+- [ ] **Statistics tab:** one bar per department (zeros included), the bars add
+      up to the total, and the staff member's own department says "(mine)"
+- [ ] Clicking a bar opens Search filtered to that department; clicking a
+      keyword searches it (in the department picked in the keyword box)
+- [ ] Student dashboard: department chips show counts, and "E-Library at a
+      glance" shows the same two cards
 - [ ] An empty database shows an empty state, not a crash
 
 ## 4. Register thesis (PDF auto-fill)
@@ -83,9 +86,11 @@ matters most.
 - [ ] **Keyword chips contain only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF using `KEY WORDS:` with a space parses correctly
 - [ ] Staff can edit the abstract and add/remove keyword chips
-- [ ] "Confirm & Save" → toast → document with `status: "ARCHIVED"` → top of table
-- [ ] Scanned/image-only PDF → NEEDS MANUAL ENTRY → "Save Manually" works and
-      writes `status: "NEEDS_REVIEW"`
+- [ ] "Confirm & Save" → "Study posted!" toast → document with `status: "POSTED"`
+      → top of the list
+- [ ] Scanned/image-only PDF → NEEDS MANUAL ENTRY → "Save Manually" with an
+      **empty** abstract shows "Please fill in: Abstract" and saves nothing
+- [ ] After typing the abstract, "Save Manually" writes `status: "POSTED"`
 - [ ] Garbage link → specific error message, no crash
 - [ ] Non-Drive URL is rejected before any download starts
 
@@ -99,9 +104,9 @@ matters most.
 - [ ] Empty query → all theses, newest first
 - [ ] "Relevance: XX%" shows, and the top result shows the highest percentage
       (it is capped just under 100% by design — that is intentional)
-- [ ] Department / Year / Status combine with the query and each other
+- [ ] Department / Year combine with the query and each other
 - [ ] Active filters show as removable chips; "Clear filters" resets everything
-- [ ] Students do not see the Status filter
+- [ ] Nobody sees a Status filter (removed 2026-10-12)
 - [ ] Results change as you type, and stop updating once you pause
 
 ## 6. Abstract preview
