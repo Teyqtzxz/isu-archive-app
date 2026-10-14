@@ -58,15 +58,50 @@ matters most.
       Archived" button — the review step was removed (errata #50)
 - [ ] Recent studies lists only the staff member's department, and the badge
       shows that department (not a hardcoded "CAS")
-- [ ] Every study shows a green "Posted" badge — also records saved before the
-      change as Archived / Needs Review / Draft
+- [ ] Recent studies rows have **no** status badge (every study is posted;
+      Search results still show the green "Posted" badge, also for records
+      saved before the change as Archived / Needs Review / Draft)
 - [ ] Rows are newest first — a just-saved study appears at the top at once
+- [ ] Each Recent studies row shows, in this order: title; authors (full names,
+      at most 2, then "+N more", e.g. "Jan Rhyanne Acosta, Luigi Mindanao +1
+      more"); "Adviser: …"; department badge and academic year; up to 3 keyword
+      chips; "Posted Oct 12, 2026". An older study with no authors has no author
+      line (not "Not recorded"); a study with no keywords has no chip row
+- [ ] Clicking a Recent studies row (or Tab + Enter on it) opens Search with
+      **that** study's Study Details expanded and scrolled into view below the
+      search bar, briefly flashed yellow, with no search text and "All
+      departments"
 - [ ] **Statistics tab:** one bar per department (zeros included), the bars add
       up to the total, and the staff member's own department says "(mine)"
 - [ ] Clicking a bar opens Search filtered to that department; clicking a
       keyword searches it (in the department picked in the keyword box)
 - [ ] Student dashboard: department chips show counts, and "E-Library at a
       glance" shows the same two cards
+- [ ] Student dashboard "Recently added" cards show the same details as the
+      staff Recent studies rows, in the same order: title, authors (at most 2,
+      "+N more"), "Adviser: …", department badge + year, up to 3 keyword chips,
+      "Posted Oct 12, 2026" — the same date as "Date Posted" in Study Details
+      (which spells the month out: "October 12, 2026")
+- [ ] **"View details"** opens Search at **that** study: its Study Details are
+      already expanded and scrolled into view (not hidden under the search bar),
+      the card flashes yellow, and the search box is empty — try it on the 3rd
+      or 6th card, and on two studies whose titles start with the same words.
+      The phone keyboard does not pop up
+- [ ] After "View details", Back, then "View all" or a department chip: the
+      list opens at the top with nothing expanded or flashing
+- [ ] **Scroll position — every move starts at the top.** Scroll the dashboard
+      down first each time, then: student — Search button, "View all", a
+      department chip, a bar or keyword in "E-Library at a glance"; staff — the
+      Search tab, "Search e-library", and each tab (Dashboard, Register,
+      Statistics, Settings). Each opens at the **top** of the page. Back from
+      Search (scrolled down) to either dashboard also opens at the top
+- [ ] **…except opening a study:** with the dashboard scrolled down, "View
+      details" / a staff row still lands on that study (Study Details open,
+      just below the search bar), and on Search a summary citation still
+      scrolls to its study
+- [ ] On a phone (360 px wide): a long title stops after 3 lines, long author
+      names and advisers after 2 lines, a long keyword chip ends with "…", and
+      the cards still swipe sideways with no part of the page scrolling sideways
 - [ ] An empty database shows an empty state, not a crash
 
 ## 4. Register thesis (PDF auto-fill)

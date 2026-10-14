@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { NewThesis, StaffTab, Thesis } from "../types";
 import { registeredAtISO } from "../types";
-import { ISUSeal, StatusBadge, DeptBadge, Icon, initialsOf, type IconName } from "./shared";
+import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
 
@@ -20,6 +20,7 @@ export function StaffDashboard({
   onTabChange,
   onSave,
   onSearch,
+  onOpenStudy,
   onSignOut,
 }: {
   theses: Thesis[];
@@ -29,6 +30,8 @@ export function StaffDashboard({
   onSave: (thesis: NewThesis) => Promise<void>;
   /** department: undefined = the default filter (own department), "" = all. */
   onSearch: (q?: string, department?: string) => void;
+  /** Open the search screen at this study, with its Study Details expanded. */
+  onOpenStudy: (thesisId: string) => void;
   onSignOut: () => void;
 }) {
   // Staff see their own department's theses on the dashboard. A client-side
@@ -178,20 +181,31 @@ export function StaffDashboard({
                     <div className="empty-state-text">Register one to get started.</div>
                   </div>
                 )}
-                {mine.slice(0, 6).map(t => (
-                  <div key={t.id} className="list-row row-hover">
-                    <div className="list-row-top">
-                      <p className="list-row-title clamp-2">{t.title}</p>
-                      <StatusBadge status={t.status} />
-                    </div>
-                    <div className="list-row-meta">
-                      <DeptBadge dept={t.department} small />
-                      <span>{t.year}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>Added {registeredAtISO(t).slice(0, 10)}</span>
-                    </div>
-                  </div>
-                ))}
+                {/* No status badge: every study is POSTED. The whole row opens the
+                    study, as "View details" does on the student dashboard. */}
+                {mine.slice(0, 6).map(t => {
+                  const authors = authorsPreview(t.authors);
+                  return (
+                    <button key={t.id} type="button" onClick={() => onOpenStudy(t.id)}
+                      className="list-row list-row-btn row-hover">
+                      <span className="list-row-title clamp-2">{t.title}</span>
+                      <span className="study-brief">
+                        {authors && <span className="study-brief-authors clamp-2">{authors}</span>}
+                        <span className="study-brief-line clamp-2">Adviser: {t.adviser}</span>
+                      </span>
+                      <span className="list-row-meta">
+                        <DeptBadge dept={t.department} small />
+                        <span>{t.year}</span>
+                      </span>
+                      {t.keywords.length > 0 && (
+                        <span className="study-brief-kws">
+                          {t.keywords.slice(0, 3).map(kw => <span key={kw} className="kw-mini kw-mini--clip">{kw}</span>)}
+                        </span>
+                      )}
+                      {registeredAtISO(t) && <span className="study-brief-line">Posted {formatPosted(t, "short")}</span>}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Quick actions */}

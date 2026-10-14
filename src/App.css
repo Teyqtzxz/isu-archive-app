@@ -630,6 +630,30 @@ select.input {
 .list-row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
 .list-row-title { font-size: 14px; font-weight: 600; color: var(--isu-blue); margin: 0; flex: 1; line-height: 1.45; }
 .list-row-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
+/* A whole dashboard row that opens the study (staff "Recent studies"). */
+.list-row-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gray-100);
+  cursor: pointer;
+}
+.list-row-btn:last-child { border-bottom: none; }
+.list-row-btn:focus-visible { outline: 2px solid var(--isu-green); outline-offset: -2px; }
+
+/* Authors / adviser / keywords / posted date on the dashboards' recent studies.
+   min-width: 0 and overflow-wrap keep long names from widening a phone card. */
+.study-brief { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.study-brief-authors { font-size: 13px; color: var(--gray-700); margin: 0; overflow-wrap: anywhere; }
+.study-brief-line { font-size: 12px; color: var(--text-muted); margin: 0; overflow-wrap: anywhere; }
+.study-brief-kws { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.kw-mini--clip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); }
 .empty-state-icon {
@@ -904,10 +928,13 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0; /* a long keyword or name must not widen the card past its column */
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .carousel-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
-.carousel-title { font-size: 14px; font-weight: 600; color: var(--isu-blue); line-height: 1.45; margin: 0; flex: 1; }
+.carousel-title { font-size: 14px; font-weight: 600; color: var(--isu-blue); line-height: 1.45; margin: 0; }
+/* Cards in one grid row stretch to the same height; the button stays at the bottom. */
+.carousel-card > .btn { margin-top: auto; }
 .carousel-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
 
 .page-foot { margin-top: 40px; text-align: center; font-size: 13px; color: var(--text-muted); }
