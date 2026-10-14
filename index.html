@@ -6,6 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title><!-- figma:title --></title>
     <!-- figma:head-end -->
+    <!-- Theme before first paint, so a dark page never flashes white. Same key
+         and values as src/theme.ts; anything else (or blocked storage) = "system". -->
+    <script>
+      (function () {
+        var t;
+        try { t = localStorage.getItem("isu-theme"); } catch (e) {}
+        document.documentElement.setAttribute("data-theme", t === "light" || t === "dark" ? t : "system");
+      })();
+    </script>
+    <!-- Dark page canvas while the stylesheet loads (index.css has the colours). -->
+    <style>
+      :root[data-theme="dark"] { color-scheme: dark; }
+      @media (prefers-color-scheme: dark) { :root[data-theme="system"] { color-scheme: dark; } }
+    </style>
   </head>
   <body>
     <!-- figma:body-start -->

@@ -33,6 +33,9 @@ const ICON_PATHS = {
   trash: "M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6",
   layers: "M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5",
   alert: "M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z",
+  sun: "M12 17a5 5 0 100-10 5 5 0 000 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
+  moon: "M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z",
+  monitor: "M4 4h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zM8 20h8M12 16v4",
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;
@@ -52,16 +55,17 @@ export function initialsOf(name: string, email: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
+// The seal is the logo: the same brand colours in both themes.
 export function ISUSeal({ size = 40 }: { size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0,
-      background: "linear-gradient(135deg, #006439 60%, #004d2b 100%)",
-      border: `${size > 36 ? 2 : 1.5}px solid rgba(247,208,0,0.55)`,
-      boxShadow: "0 2px 8px rgba(0,100,57,0.25)",
+      background: "linear-gradient(135deg, var(--isu-green) 60%, var(--isu-green-mid) 100%)",
+      border: `${size > 36 ? 2 : 1.5}px solid rgba(var(--isu-yellow-rgb), 0.55)`,
+      boxShadow: "0 2px 8px rgba(var(--isu-green-rgb), 0.25)",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      <span style={{ fontWeight: 800, color: "#F7D000", fontSize: size * 0.38, letterSpacing: "-0.5px", lineHeight: 1 }}>ISU</span>
+      <span style={{ fontWeight: 800, color: "var(--isu-yellow)", fontSize: size * 0.38, letterSpacing: "-0.5px", lineHeight: 1 }}>ISU</span>
     </div>
   );
 }
@@ -125,8 +129,8 @@ export function Toast({ message, onClose }: { message: string; onClose: () => vo
   return (
     <div className="animate-toast isu-toast" role="status" aria-live="polite">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.2)" />
-        <path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M7 12.5l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       {message}
     </div>

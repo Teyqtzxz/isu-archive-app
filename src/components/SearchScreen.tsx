@@ -7,6 +7,7 @@ import { splitSentences, type RankedThesis } from "../summary";
 import { apaReference } from "../citation";
 import { abstractSnippet } from "../snippet";
 import { ISUSeal, DeptBadge, Icon, formatPosted, authorsPreviewParts, highlightKw } from "./shared";
+import { ThemeToggle } from "./ThemeToggle";
 
 /** The Drive link opened as the e-library account. With several Google accounts in one
  *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
@@ -163,6 +164,7 @@ export function SearchScreen({
               {role === "staff" ? "Search E-Library" : "ISU Research Study E-Library"}
             </div>
             <span className="count-pill">{theses.length} studies</span>
+            <ThemeToggle />
             <button onClick={onSignOut} className="header-signout">
               <Icon name="logout" size={16} />
               Sign Out

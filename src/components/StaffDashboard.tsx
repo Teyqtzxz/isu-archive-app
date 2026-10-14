@@ -4,6 +4,7 @@ import { registeredAtISO } from "../types";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
+import { ThemePicker, ThemeToggle } from "./ThemeToggle";
 
 /** Who is signed in, for the header, welcome card and settings. */
 export interface StaffAccount {
@@ -93,6 +94,7 @@ export function StaffDashboard({
             <div className="header-title">Research Study E-Library · Staff</div>
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
+          <ThemeToggle />
           <button onClick={onSignOut} className="header-signout">
             <Icon name="logout" size={16} />
             Sign Out
@@ -279,6 +281,13 @@ export function StaffDashboard({
                 </div>
               </div>
             ))}
+            <div className="settings-row">
+              <span className="settings-icon"><Icon name="moon" size={18} /></span>
+              <div style={{ minWidth: 0 }}>
+                <div className="settings-label">Theme</div>
+                <ThemePicker />
+              </div>
+            </div>
             <button onClick={onSignOut} className="btn-danger-soft">
               <Icon name="logout" size={16} />
               Sign Out

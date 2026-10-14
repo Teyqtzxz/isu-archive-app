@@ -466,7 +466,7 @@ export function RegisterForm({ study, onBack, onSave }: {
           <div className={`status-bar ${extractState === "success" ? "status-bar-success" : "status-bar-review"}`}>
             <div className={`status-icon ${extractState === "success" ? "status-icon-success" : "status-icon-review"}`}>
               {extractState === "success"
-                ? <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                ? <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 : <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
               }
             </div>

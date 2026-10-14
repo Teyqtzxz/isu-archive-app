@@ -207,7 +207,7 @@ export default function App() {
           className={`data-banner ${dataError ? "data-banner--error" : "data-banner--loading"}`}>
           {dataError
             ? <><Icon name="alert" size={16} />{dataError}</>
-            : <><span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(0,100,57,0.2)", borderTopColor: "var(--isu-green)" }} />Loading the e-library…</>}
+            : <><span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(var(--accent-rgb), 0.2)", borderTopColor: "var(--accent)" }} />Loading the e-library…</>}
         </div>
       )}
 
