@@ -43,6 +43,12 @@ lines of routing and state; steps 03–04 later added the auth and data wiring).
 
 ## 2. `src/types.ts`
 
+> **Superseded on 2026-10-12 (errata #50).** `STATUSES`, `isPending()` and the
+> three statuses below were removed: `ThesisStatus` is now the single value
+> `"POSTED"`, and `Thesis` also has `authors: string[]` (errata #55). The
+> current types are in `00-AI-PREAMBLE.md` ("Canonical types"). This section is
+> the history of step 02 — do not restore what it says to keep.
+
 Extend the file that is already there. These types are the contract for the whole
 app.
 
@@ -135,11 +141,9 @@ by the security rules once they are published, by design.
 | `year` | number | `2024` | academic year |
 | `adviser` | string | `"Dr. Maria Santos"` | |
 | `driveLink` | string | `https://drive.google.com/...` | the share link staff pasted |
-| `driveFileId` | string | `"1ABC..."` | parsed from `driveLink`. Added to `Thesis` in step 06, not before |
-| `status` | string | `"ARCHIVED"` | one of `STATUSES` |
+| `status` | string | `"POSTED"` | the only value (`ThesisStatus`). Records saved before 2026-10-12 may hold `"ARCHIVED"`, `"NEEDS_REVIEW"` or `"DRAFT"`; `data.ts` reads them as `POSTED` |
 | `registeredBy` | string | `"uid_of_staff"` | who saved it |
 | `registeredAt` | timestamp | — | when saved |
-| `extractedAt` | timestamp | — | when the PDF was read. Optional; step 06 |
 
 ### Status flow
 
@@ -158,9 +162,13 @@ Firestore**. The status is decided by which button the staff member pressed:
 | `NEEDS_REVIEW` | staff pressed "Save Manually" (PDF unreadable or scanned) |
 | `DRAFT` | **reserved.** No button produces it yet; it exists in seed data so the badge, filter and `isPending()` stay exercised. Do not invent a "Save Draft" button unless the group decides to |
 
-`department`, `year` and `status` are used as filter values, so their strings
-must be identical everywhere. Always read them from `DEPARTMENTS` / `STATUSES`
-rather than retyping them.
+`department` and `year` are used as filter values, so their strings must be
+identical everywhere. Always read departments from `DEPARTMENTS` rather than
+retyping them. (Status was a filter too until 2026-10-12.)
+
+Not stored, although earlier drafts listed them: `driveFileId` is worked out
+from `driveLink` when needed (`driveFileId()` in `extractPdf.ts`), and
+`extractedAt` was never added.
 
 ---
 
@@ -318,7 +326,7 @@ then.
   "year": 2024,
   "adviser": "Dr. Maria Santos",
   "driveLink": "https://drive.google.com/file/d/1ABC…/view",
-  "status": "ARCHIVED",
+  "status": "POSTED",
   "registeredBy": "staffUid123",
   "registeredAt": "2026-01-10T08:00:00.000Z"
 }
