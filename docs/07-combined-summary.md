@@ -4,6 +4,9 @@
 browser on 2026-10-02. The summariser uses MMR rather than the §3 points system — see §7.
 **Changed 2026-10-07 (group decision):** the summary has **one sentence per ticked thesis**,
 with no upper limit, and never quotes a thesis twice (was: at most 4 sentences) — see §7.
+**Changed 2026-10-14 (professor's request):** the `[n]` chips are now **APA 7 in-text
+citations**, `(Acosta & Mindanao, 2026)`, and "Sources" is "References", an APA 7 reference list —
+see §8. Where §1–§5 below say `[n]` or "chip", read the APA citation.
 **Owner:** B · **Depends on:** 05 · **Next:** 08
 
 **Prompt to your AI:**
@@ -266,12 +269,13 @@ Worth knowing before you demo, because a teacher may probe:
 - [ ] Every sentence is traceable to an abstract you can find in the results
 - [ ] Adviser names survive splitting — a summary sentence containing
       "Dr. …" or "Fig. …" is not truncated to "…" or "3"
-- [ ] Citation chips correspond to visible rank: tick results #2 and #5 and the
-      chips read `[2]` and `[5]`
+- [ ] Each sentence ends with the APA in-text citation of the study it came
+      from — `(Surname, Year)`, `(A & B, Year)`, or `(A et al., Year)` for 3+
+      authors — placed before the sentence's final period (§8)
 - [ ] Ticking 7 results summarises from all 7 (no silent top-5 cap)
 - [ ] Tick 3, then apply a filter that hides one: the button reads
       `View Summary (2)`
-- [ ] Tapping a chip closes the panel and scrolls to that result
+- [ ] Tapping a citation closes the panel and scrolls to that result
 - [ ] Query words are highlighted in yellow
 - [ ] An empty or non-matching query falls back gracefully instead of showing
       nothing
@@ -345,6 +349,36 @@ that, and that is out of scope.
 - Result cards show their rank (`1.`, `2.`…) so a `[n]` chip can be traced by eye.
 - `App.tsx` (A's file): `summaryData` type → `RankedThesis[]`, plus a
   `citeJump` state passed to `SearchScreen` as `jumpTo` for the chip scroll.
+
+---
+
+## 8. APA 7 citations (2026-10-14, professor's request)
+
+The numbered chips `[2]`, `[5]` were replaced:
+
+| Before | Now |
+|---|---|
+| `…was effective. [2]` | `…was effective (Acosta & Mindanao, 2026).` |
+| Sources: `2  Title (2026) · Dr. Adviser` | References (APA 7 format): `Acosta, J. R., & Mindanao, L. (2026). *Title* [Unpublished research study]. Isabela State University – Echague Campus.` |
+
+- **In-text:** 1 author `(Acosta, 2026)`; 2 `(Acosta & Mindanao, 2026)`; 3 or more
+  `(Acosta et al., 2026)`. Surnames come from `splitName()` in `citation.ts`, so
+  `Dela Cruz`, `De los Santos` and `Sta. Maria` stay whole and `Jr.` is dropped.
+- The citation goes **inside** the sentence, before its final period, as APA
+  requires. It is still a button: tapping it closes the panel and scrolls to that
+  study, exactly as the chip did (`onCiteJump`). It is styled as an inline green
+  link (`.cite-chip`), because a filled chip holding "(… et al., 2026)" was heavy.
+- Two different studies that would read the same (same first author and year)
+  get APA's letters, ordered by title: `(Santos, 2026a)`, `(Santos, 2026b)` —
+  `apaInTextLabels()`.
+- A study with no authors recorded is cited by the first words of its title in
+  italics, `(*Flood risk mapping of…*, 2026)`, and listed as "*Title* (2026).
+  Authors not recorded." in the references.
+- **References** (heading just "References"; every entry is APA 7) are sorted
+  alphabetically (APA order), no longer by rank. The
+  rank numbers on the result cards stay; they no longer appear in the panel.
+- `summary.ts` logic is unchanged: it still returns `sourceIndex` (the rank), which the
+  panel maps to the study id and then to its citation.
 
 ---
 

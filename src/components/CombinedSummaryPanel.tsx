@@ -1,6 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { tokenize } from "../search";
 import { summarise, type RankedThesis } from "../summary";
+import { apaInTextLabels, apaReference, apaReferenceText, inTextString } from "../citation";
 import { Icon } from "./shared";
 
 export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
@@ -11,6 +12,17 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
   const sources = useMemo(() => [...theses].sort((a, b) => a.rank - b.rank), [theses]);
   const sentences = useMemo(() => summarise(sources, query), [sources, query]);
   const idByRank = new Map(sources.map(s => [s.rank, s.thesis.id]));
+  // APA 7 in-text citations, e.g. (Acosta & Mindanao, 2026). Built over all the
+  // ticked studies at once so two that would read the same get 2026a / 2026b.
+  const inText = useMemo(() => apaInTextLabels(sources.map(s => s.thesis)), [sources]);
+  // APA 7 reference list: alphabetical by first author. Studies with no authors
+  // recorded have no reference (citation.ts) and sort by title after them.
+  const references = useMemo(() => [...sources].sort((a, b) => {
+    const ka = apaReferenceText(a.thesis);
+    const kb = apaReferenceText(b.thesis);
+    if (!ka !== !kb) return ka ? -1 : 1;
+    return (ka || a.thesis.title).localeCompare(kb || b.thesis.title);
+  }), [sources]);
 
   const keywords = Array.from(new Set(sources.flatMap(s => s.thesis.keywords))).slice(0, 8);
 
@@ -65,15 +77,22 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
             <p className="summary-note">These abstracts are too short to summarise.</p>
           ) : (
             <p className="summary-text">
-              {sentences.map((s, i) => (
-                <span key={i}>
-                  {highlightKw(s.text)}{" "}
-                  <button className="cite-chip" onClick={() => onCiteJump(idByRank.get(s.sourceIndex)!)}
-                    aria-label={`Go to result ${s.sourceIndex}`}>
-                    [{s.sourceIndex}]
-                  </button>{" "}
-                </span>
-              ))}
+              {sentences.map((s, i) => {
+                const id = idByRank.get(s.sourceIndex)!;
+                const cite = inText.get(id)!;
+                // APA puts the citation inside the sentence, before its final
+                // punctuation: "…was effective (Acosta, 2026)."
+                const m = s.text.match(/^([\s\S]*?)([.?!]+["”’)]?)?$/)!;
+                return (
+                  <span key={i}>
+                    {highlightKw(m[1])}{" "}
+                    <button className="cite-chip" onClick={() => onCiteJump(id)}
+                      aria-label={`Go to the study cited as ${inTextString(cite)}`}>
+                      ({cite.italic ? <em>{cite.who}</em> : cite.who}, {cite.year})
+                    </button>{m[2] ?? ""}{" "}
+                  </span>
+                );
+              })}
             </p>
           )}
           {/* One result is not a summary of several studies; say so (docs/07 §5). */}
@@ -81,15 +100,19 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
             <p className="summary-note">Only one result is selected, so the summary is its most relevant sentence.</p>
           )}
 
-          {/* Citations: numbered by the rank shown on the search screen */}
+          {/* Reference list, in APA 7 format, for the in-text citations above */}
           <div className="sources-box">
-            <div className="overline-label">Sources</div>
-            {sources.map(({ thesis: t, rank }) => (
-              <div key={t.id} className="source-row">
-                <span className="source-num">{rank}</span>
-                <span className="source-text">{t.title} ({t.year}) · {t.adviser}</span>
-              </div>
-            ))}
+            <div className="overline-label">References</div>
+            {references.map(({ thesis: t }) => {
+              const ref = apaReference(t);
+              return (
+                <p key={t.id} className="source-text apa-ref">
+                  {ref
+                    ? <>{ref.lead}<em>{ref.title}</em>{ref.tail}</>
+                    : <><em>{t.title}</em> ({t.year}). <span className="study-details-empty">Authors not recorded.</span></>}
+                </p>
+              );
+            })}
           </div>
 
           {/* Keyword highlights */}

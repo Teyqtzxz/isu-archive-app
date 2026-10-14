@@ -153,6 +153,10 @@ src/
   extractPdf.ts       ← pure: Drive API download or a local file +
                         pdf.js text extraction (step 06)          ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords      ✅ EXISTS
+  citation.ts         ← pure: APA 7 — splitName, apaName,
+                        apaReference, apaInText, apaInTextLabels;
+                        examples in citation.check.ts
+                        (node src/citation.check.ts)              ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -181,7 +185,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts` and `stats.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts` and `citation.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -201,6 +205,8 @@ Real, working — **do not rewrite**:
   (step 06); the extractive summary (step 07)
 - Department statistics: studies per department and top keywords (staff
   Statistics tab, student dashboard)
+- APA 7 citations (`citation.ts`): a full reference in Study Details, and
+  in-text citations plus an APA reference list in the combined summary
 - The theme, responsive header and icon set (step 04 Parts 3–4)
 - Every screen's UI, one file per screen in `src/components/`
 
@@ -215,6 +221,25 @@ was a bug that was fixed, and each is easy to "clean up" back into a bug:
 
 Nothing in the app is fake any more: the mock PDF reader and the template
 summary were replaced in steps 06 and 07.
+
+### APA 7 citations — the format is the professor's
+
+```
+Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research study]. Isabela State University – Echague Campus.
+(Acosta, 2026) · (Acosta & Mindanao, 2026) · (Acosta et al., 2026)
+```
+
+- The title is kept **exactly as typed** (no sentence-case conversion) and set
+  in italics; the year is the study's Academic Year (`year`). No URL.
+- Names are split by `splitName()`: the last word is the surname, together
+  with any particles before it (`Dela Cruz`, `De los Santos`, `Sta. Maria`);
+  suffixes stay after the initials (`Rizal, J., Jr.`). A name typed as
+  `Surname, Given` is taken as written.
+- Study Details starts with a **"Citation"** row (APA 7 format); the summary's
+  list is headed **"References"** (APA 7 format). A study with no authors
+  recorded shows **"Not recorded"**, never a reference without authors.
+- Never build a citation inline: use `citation.ts`, and add an example to
+  `citation.check.ts` for any naming rule you change.
 
 ## Rules
 

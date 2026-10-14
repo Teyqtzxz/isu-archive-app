@@ -125,9 +125,19 @@ matters most.
 ## 6. Abstract preview
 
 - [ ] Clicking (or tapping) a result title expands the full abstract under it
-- [ ] Above the abstract, "Study Details" shows Authors, Adviser, Department,
-      Academic Year, Date Posted and Keywords
-- [ ] An older study saved without authors shows "Not recorded" for Authors
+- [ ] Above the abstract, "Study Details" shows, in this order: **Citation**,
+      Authors, Adviser, Department, Date Posted and Keywords
+- [ ] The first row, **Citation**, is in APA 7 format, e.g. `Acosta, J. R., &
+      Mindanao, L. (2026). *Title* [Unpublished research study]. Isabela State
+      University – Echague Campus.` — title in italics and exactly as typed, year =
+      Academic Year, wrapped lines indented (hanging indent)
+- [ ] There is **no Academic Year row** (the year is in the citation); Authors
+      still shows the full names
+- [ ] Multi-word surnames and suffixes: a study by "Juan Dela Cruz" and
+      "Jose Rizal Jr." reads `Dela Cruz, J., & Rizal, J., Jr. (…)`
+- [ ] An older study saved without authors shows "Not recorded" for Citation and
+      for Authors, and **does** show the Academic Year row, after Department
+- [ ] **[auto]** `node src/citation.check.ts` ends with "All passed."
 - [ ] **Staff:** the preview shows "Open in Drive" (green outline)
 - [ ] **Staff:** "Open in Drive" opens in a new tab
 - [ ] **Student:** the preview shows **"Read full study"** (no "Open in Drive")
@@ -157,9 +167,12 @@ matters most.
 - [ ] Sentences are **real sentences from the top results**, and they change when
       the query changes
 - [ ] Every sentence is traceable to an abstract in the results
-- [ ] Citation chips correspond to visible rank — tick #2 and #5, chips read
-      `[2]` and `[5]`
-- [ ] Tapping a chip closes the panel and scrolls to that result
+- [ ] Each sentence ends with an APA in-text citation before its period:
+      `(Acosta, 2026)`, `(Acosta & Mindanao, 2026)`, and `(Acosta et al., 2026)`
+      for a study with 3+ authors — no `[n]` numbers anywhere in the panel
+- [ ] Tapping a citation closes the panel and scrolls to that study
+- [ ] "References" lists every ticked study as a full APA 7 reference,
+      alphabetical by first author
 - [ ] Query words are highlighted in ISU yellow
 - [ ] Action bar has **Close only**
 - [ ] Close returns to Search

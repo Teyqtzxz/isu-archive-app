@@ -57,7 +57,7 @@ the user's browser. Firebase only provides identity + storage of thesis records.
 │      │ paste Drive link            │                                       │
 │      ▼                              ├── click title → Abstract Preview     │
 │  pdf.js reads PDF ──▶ auto-fill ◀───└── "View Summary" → Combined Summary  │
-│      │ abstract + keywords                (extractive, [n] citations)      │
+│      │ abstract + keywords                (extractive, APA citations)      │
 │      ▼                                    │                                │
 │  staff checks → Confirm & Save (posted) ─► SEARCH INDEX + FIRESTORE        │
 │                                                                            │
@@ -115,7 +115,7 @@ Any search bar → query
 ```
 Search screen → tick results → "View Summary (N)"
    → take the N ticked theses' abstracts, in rank order
-   → extractive sentence scoring (BM25 + MMR) → one sentence per ticked thesis, with [n] citations
+   → extractive sentence scoring (BM25 + MMR) → one sentence per ticked thesis, with APA 7 in-text citations
    → show in slide-up panel → Close only
 ```
 
