@@ -189,6 +189,16 @@ src/
                         apply (data-theme on <html>); examples
                         and the dark-palette contrast checks in
                         theme.check.ts (node src/theme.check.ts)  ✅ EXISTS
+  similarity.ts       ← pure: TF-IDF vectors (title 3, keywords 2,
+                        abstract 1; common words dropped) +
+                        cosine similarity → 0–100% and shared key
+                        terms: buildSimilarityIndex, similarStudies,
+                        buildOriginalityIndex + originalityCheck
+                        (overall or abstract-only, higher wins),
+                        similarityLevel, THRESHOLDS; examples in
+                        similarity.check.ts
+                        (node src/similarity.check.ts); method in
+                        docs/14-similarity.md                     ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -229,7 +239,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts` and `snippet.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts` and `similarity.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -266,6 +276,9 @@ Real, working — **do not rewrite**:
 - The theme, responsive header and icon set (step 04 Parts 3–4)
 - Dark mode: Light / Dark / System (default System, follows the device
   live), remembered per device, applied before first paint (errata #63)
+- Document similarity, TF-IDF + cosine (`similarity.ts`, errata #64): the
+  originality check on the Register / Edit save step and "Similar studies"
+  in Study Details
 - Every screen's UI, one file per screen in `src/components/`
 
 Four things in there are **deliberate and must survive a refactor** — each one
@@ -299,6 +312,30 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   recorded shows **"Not recorded"**, never a reference without authors.
 - Never build a citation inline: use `citation.ts`, and add an example to
   `citation.check.ts` for any naming rule you change.
+
+### Similarity — originality check and similar studies (`docs/14`)
+
+- Computed in the browser from the studies already loaded; nothing is stored
+  and `firestore.rules`, `data.ts` and search ranking are not involved. The
+  vectors are built once per data change (`useMemo`), never per keystroke.
+- **Save step (Register and Edit study):** the study as it will be saved vs
+  every stored study (Edit: never itself), at most 3 matches, each scored
+  overall **and by abstract alone** — the higher score sets the level and is
+  shown with its reason ("Abstract 100% similar" / "91% similar overall"),
+  so a copied abstract under a new title is still caught: **≥ 80%**
+  "Possible duplicate — this study may already be registered" + the checkbox
+  **"I checked — register anyway"**, which must be ticked before Confirm &
+  Save / Save Manually / Save changes; **50–79%** "Very similar study found";
+  **30–49%** "Related studies". "Show details" opens the match inside the
+  warning (the form is never left); "Open in Drive" opens a new tab.
+- **Study Details (staff and students):** "Similar studies", the top 3 other
+  studies at **≥ 15%** (overall score), each opening that study (the same jump as "View
+  details"; search words and filters that hide it are cleared). None → no
+  section.
+- Both show **"Shared key terms"** (`SharedTerms` in `shared.tsx`).
+- Change a threshold or word rule only in `similarity.ts`, with an example in
+  `similarity.check.ts`. It is a screening aid, not a plagiarism verdict:
+  paraphrasing is not caught (`docs/14` §5).
 
 ### Input validation — one module, one example per rule
 

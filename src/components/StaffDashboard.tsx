@@ -148,7 +148,8 @@ export function StaffDashboard({
         {/* Edit study: the Register form in edit mode, keyed so another study starts fresh. */}
         {editing && onEditSave && onEditCancel && (
           <div className="register-wrap">
-            <RegisterForm key={editing.id} study={editing} onBack={onEditCancel} onSave={onEditSave} />
+            <RegisterForm key={editing.id} study={editing} theses={theses} viewerEmail={account.email}
+              onBack={onEditCancel} onSave={onEditSave} />
           </div>
         )}
 
@@ -246,6 +247,8 @@ export function StaffDashboard({
         {!editing && activeTab === "register" && (
           <div className="register-wrap">
             <RegisterForm
+              theses={theses}
+              viewerEmail={account.email}
               onBack={() => onTabChange("dashboard")}
               onSave={async thesis => { await onSave(thesis); onTabChange("dashboard"); }}
             />

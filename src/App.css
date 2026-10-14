@@ -1485,6 +1485,43 @@ p.apa-ref:last-child { margin-bottom: 0; }
 .keywords-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .key-term { font-size: 12px; font-weight: 500; color: var(--text-body); background: var(--warn-soft); border: 1px solid rgba(var(--isu-yellow-rgb), 0.45); border-radius: var(--radius-full); padding: 2px 10px; }
 
+/* ─── Similarity (similarity.ts) ───────────────────────────── */
+/* "Shared key terms" of a match: the key-term chips of the summary. */
+.sim-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.sim-terms-label { font-size: 12px; color: var(--text-muted); }
+/* Originality check on the Register save step: one box per level, each match
+   on its own card (surface), so the text sits on the usual card colours. */
+.sim-box { border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 12px; }
+.sim-box--duplicate { background: var(--danger-soft); border: 1px solid rgba(var(--danger-rgb), 0.35); }
+.sim-box--warn { background: var(--warn-soft); border: 1px solid rgba(var(--isu-yellow-rgb), 0.55); }
+.sim-box--info { background: var(--accent-soft); border: 1px solid rgba(var(--accent-rgb), 0.2); }
+.sim-box-heading { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.sim-box-heading svg { flex-shrink: 0; }
+.sim-box--duplicate .sim-box-heading { color: var(--error-text); }
+.sim-box--warn .sim-box-heading { color: var(--warn-text); }
+.sim-box--info .sim-box-heading { color: var(--accent); }
+.sim-match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
+.sim-match + .sim-match { margin-top: 8px; }
+.sim-match-title { font-size: 14px; font-weight: 600; color: var(--title-text); line-height: 1.45; overflow-wrap: anywhere; }
+.sim-match-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sim-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+.sim-confirm {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer;
+}
+.sim-confirm input { width: 16px; height: 16px; accent-color: var(--accent-fill); flex-shrink: 0; }
+.sim-confirm-hint { text-align: center; }
+/* "Similar studies" at the bottom of Study Details. */
+.sim-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--divider); }
+.sim-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.sim-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.sim-link {
+  background: none; border: none; padding: 0; font: inherit; font-size: 14px; font-weight: 600; text-align: left;
+  color: var(--accent); cursor: pointer; overflow-wrap: anywhere;
+}
+.sim-link:hover { text-decoration: underline; }
+
 .sheet-action { padding: 14px 24px; border-top: 1px solid var(--divider); display: flex; gap: 8px; }
 .btn-close {
   flex: 1;
