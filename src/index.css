@@ -6,6 +6,8 @@
    ============================================================ */
 
 :root {
+  color-scheme: light;
+
   /* ISU Corporate Visual Identity — never change these values (docs/00). */
   --isu-green: #006439;
   --isu-green-light: #F0F8F4;
@@ -33,12 +35,81 @@
   --gray-700: #333B38;
   --gray-900: #151A18;
 
-  --surface: #FFFFFF;
+  /* Semantic tokens. Components read these, never a brand hex or a grey
+     directly, so dark mode can swap them (docs/00 "Theme tokens"). These
+     light values are the app's look before dark mode existed — keep them. */
   --page-bg: var(--gray-50);
+  --surface: #FFFFFF;
+  --surface-raised: var(--gray-50);   /* info pill, keyword chips, menu hover, disabled input */
+  --surface-hover: var(--gray-25);    /* row hover, abstract preview, sources box */
+  --input-bg: var(--surface);
   --border: var(--gray-200);
+  --border-strong: var(--gray-300);   /* inputs, chips, buttons */
+  --divider: var(--gray-100);         /* lines between rows */
+  --fill-muted: var(--gray-100);      /* bar track, progress track, empty-state icon */
+  --fill-strong: var(--gray-200);     /* sheet handle, a step line still to do */
   --text: var(--gray-900);
+  --text-body: var(--gray-700);
+  --text-secondary: var(--gray-600);
   --text-muted: var(--gray-500);
   --text-subtle: var(--gray-400);
+
+  /* Green: --accent for text, links, icons, borders and focus; --accent-fill
+     for solid buttons, with --on-fill text. */
+  --accent-rgb: 0, 100, 57;
+  --accent: var(--isu-green);
+  --accent-fill: var(--isu-green);
+  --accent-fill-hover: var(--isu-green-mid);
+  --accent-soft: var(--isu-green-light);
+  --accent-soft-hover: #E3F1EA;
+  --bar-fill: var(--isu-green);
+  --on-fill: #FFFFFF;
+  --on-fill-rgb: 255, 255, 255;
+
+  /* The green header and the student hero. */
+  --header-bg: var(--isu-green);
+  --hero-from: var(--isu-green);
+  --hero-to: var(--isu-green-mid);
+  --tab-active: var(--isu-yellow);
+  --header-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), 0 4px 12px -6px rgba(0, 64, 37, 0.45);
+  --hero-input-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.45);
+  --yellow-btn-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.35);
+  --yellow-hover: #FFDB1F;
+
+  /* Study titles and the department badge (ISU blue). */
+  --blue-rgb: 35, 48, 91;
+  --title-text: var(--isu-blue);
+  --badge-text: var(--isu-blue);
+  --badge-bg: var(--isu-blue-light);
+
+  /* Yellow tints: keyword chips, the "type it yourself" bar, query highlights. */
+  --warn-soft: var(--isu-yellow-light);
+  --warn-text: var(--isu-yellow-ink);
+  --highlight-bg: var(--isu-yellow-light);
+
+  /* Red: --danger for text, icons and borders; --error-text for messages. */
+  --danger-rgb: 205, 32, 43;
+  --danger: var(--isu-red);
+  --error-text: var(--isu-red-ink);
+  --danger-soft: var(--isu-red-light);
+  --danger-fill: var(--isu-red);
+  --danger-fill-hover: var(--isu-red-ink);
+
+  --toast-bg: var(--gray-900);
+  --toast-text: #FFFFFF;
+  --backdrop: rgba(15, 23, 20, 0.5);
+  --scroll-thumb: var(--gray-300);
+  --scroll-thumb-hover: var(--gray-400);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236B7571' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --select-arrow-sm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%236B7571' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+
+  /* The same in both themes: the ISU seal and Google's logo. */
+  --isu-green-rgb: 0, 100, 57;
+  --isu-yellow-rgb: 247, 208, 0;
+  --google-blue: #4285F4;
+  --google-green: #34A853;
+  --google-yellow: #FBBC05;
+  --google-red: #EA4335;
 
   /* Shape and depth. */
   --radius-sm: 6px;
@@ -49,7 +120,8 @@
   --shadow-sm: 0 1px 3px rgba(21, 26, 24, 0.08), 0 1px 2px rgba(21, 26, 24, 0.04);
   --shadow-md: 0 6px 16px -4px rgba(21, 26, 24, 0.10), 0 2px 4px -2px rgba(21, 26, 24, 0.05);
   --shadow-lg: 0 20px 40px -12px rgba(21, 26, 24, 0.22);
-  --focus-ring: 0 0 0 3px rgba(0, 100, 57, 0.28);
+  --shadow-overlay: var(--shadow-lg); /* dialogs and the toast, which have no border */
+  --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
 
   /* Layout. */
   --container: 1120px;
@@ -67,6 +139,150 @@
 @media (min-width: 640px)  { :root { --header-h: 60px; --gutter: 24px; } }
 @media (min-width: 1024px) { :root { --header-h: 64px; --gutter: 32px; } }
 @media (min-width: 1366px) { :root { --container: 1200px; } }
+
+/* ─── Dark theme ─────────────────────────────────────────────
+   data-theme on <html> is "light", "dark" or "system" (src/theme.ts; set
+   before first paint by the script in index.html). "system" — or no
+   attribute — follows the device. Only semantic tokens change; the ISU brand
+   tokens keep their values. The two blocks below must stay identical
+   (theme.check.ts checks it, and the contrast of every text pair). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page-bg: #0E1412;
+  --surface: #161E1B;
+  --surface-raised: #1D2723;
+  --surface-hover: #1A2320;
+  --input-bg: #1D2723;
+  --border: #2B3632;
+  --border-strong: #3A4742;
+  --divider: #232D29;
+  --fill-muted: #212A26;
+  --fill-strong: #34403B;
+  --text: #E7EDEA;
+  --text-body: #E7EDEA;
+  --text-secondary: #9DABA5;
+  --text-muted: #9DABA5;
+  --text-subtle: #85928D;
+
+  --accent-rgb: 95, 211, 154;
+  --accent: #5FD39A;
+  --accent-fill: #0F7A4A;
+  --accent-fill-hover: #0C6A40;
+  --accent-soft: #183328;
+  --accent-soft-hover: #1E3D30;
+  --bar-fill: #5FD39A;
+
+  --header-bg: #0B3D28;
+  --hero-from: #0B3D28;
+  --hero-to: #072A1B;
+  --tab-active: #5FD39A;
+  --header-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --hero-input-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.5);
+  --yellow-btn-shadow: 0 2px 6px -3px rgba(0, 0, 0, 0.5);
+
+  --blue-rgb: 169, 187, 245;
+  --title-text: #A9BBF5;
+  --badge-text: #A9BBF5;
+  --badge-bg: #1E2844;
+
+  --warn-soft: #2C2A12;
+  --warn-text: #F7D000;
+  --highlight-bg: rgba(247, 208, 0, 0.30);
+
+  --danger-rgb: 255, 107, 107;
+  --danger: #FF6B6B;
+  --error-text: #FF6B6B;
+  --danger-soft: #3A1D1F;
+  --danger-fill: #D13438;
+  --danger-fill-hover: #B82D31;
+
+  --toast-bg: #2B3632;
+  --toast-text: #E7EDEA;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --scroll-thumb: #3A4742;
+  --scroll-thumb-hover: #4C5A55;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239DABA5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --select-arrow-sm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%239DABA5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+
+  /* Much softer shadows; borders do the separating. Dialogs and the toast get
+     a 1px ring instead of a border, so their size does not change. */
+  --shadow-xs: 0 0 0 0 transparent;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 28px -12px rgba(0, 0, 0, 0.6);
+  --shadow-overlay: 0 0 0 1px #2B3632, 0 12px 28px -12px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+
+    --page-bg: #0E1412;
+    --surface: #161E1B;
+    --surface-raised: #1D2723;
+    --surface-hover: #1A2320;
+    --input-bg: #1D2723;
+    --border: #2B3632;
+    --border-strong: #3A4742;
+    --divider: #232D29;
+    --fill-muted: #212A26;
+    --fill-strong: #34403B;
+    --text: #E7EDEA;
+    --text-body: #E7EDEA;
+    --text-secondary: #9DABA5;
+    --text-muted: #9DABA5;
+    --text-subtle: #85928D;
+
+    --accent-rgb: 95, 211, 154;
+    --accent: #5FD39A;
+    --accent-fill: #0F7A4A;
+    --accent-fill-hover: #0C6A40;
+    --accent-soft: #183328;
+    --accent-soft-hover: #1E3D30;
+    --bar-fill: #5FD39A;
+
+    --header-bg: #0B3D28;
+    --hero-from: #0B3D28;
+    --hero-to: #072A1B;
+    --tab-active: #5FD39A;
+    --header-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+    --hero-input-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.5);
+    --yellow-btn-shadow: 0 2px 6px -3px rgba(0, 0, 0, 0.5);
+
+    --blue-rgb: 169, 187, 245;
+    --title-text: #A9BBF5;
+    --badge-text: #A9BBF5;
+    --badge-bg: #1E2844;
+
+    --warn-soft: #2C2A12;
+    --warn-text: #F7D000;
+    --highlight-bg: rgba(247, 208, 0, 0.30);
+
+    --danger-rgb: 255, 107, 107;
+    --danger: #FF6B6B;
+    --error-text: #FF6B6B;
+    --danger-soft: #3A1D1F;
+    --danger-fill: #D13438;
+    --danger-fill-hover: #B82D31;
+
+    --toast-bg: #2B3632;
+    --toast-text: #E7EDEA;
+    --backdrop: rgba(0, 0, 0, 0.6);
+    --scroll-thumb: #3A4742;
+    --scroll-thumb-hover: #4C5A55;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239DABA5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    --select-arrow-sm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%239DABA5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+
+    /* Much softer shadows; borders do the separating. Dialogs and the toast get
+       a 1px ring instead of a border, so their size does not change. */
+    --shadow-xs: 0 0 0 0 transparent;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px -6px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 28px -12px rgba(0, 0, 0, 0.6);
+    --shadow-overlay: 0 0 0 1px #2B3632, 0 12px 28px -12px rgba(0, 0, 0, 0.6);
+  }
+}
 
 @theme inline {
   --color-isu-green: var(--isu-green);
@@ -100,13 +316,13 @@ body,
   box-shadow: var(--focus-ring);
 }
 
-::selection { background: rgba(0, 100, 57, 0.18); }
+::selection { background: rgba(var(--accent-rgb), 0.18); }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: var(--gray-400); background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: padding-box; }
 
 html { scroll-behavior: smooth; }
 
@@ -149,4 +365,4 @@ html { scroll-behavior: smooth; }
 }
 
 /* Keyword highlight in the combined summary (docs/07 §4). */
-.keyword-highlight { background: var(--isu-yellow-light); box-shadow: inset 0 -2px 0 var(--isu-yellow); border-radius: 2px; padding: 0 2px; color: inherit; }
+.keyword-highlight { background: var(--highlight-bg); box-shadow: inset 0 -2px 0 var(--isu-yellow); border-radius: 2px; padding: 0 2px; color: inherit; }

@@ -375,6 +375,40 @@ matters most.
 - [ ] Colours: green `#006439` primary · blue `#23305B` secondary · yellow
       `#F7D000` warning · red `#CD202B` error
 
+## 8b. Dark mode
+
+- [ ] **[auto]** `node src/theme.check.ts` → All passed (choice rules, the two
+      dark blocks identical, every dark text pair ≥ 4.5:1)
+- [ ] **[auto]** `grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx`
+      prints nothing
+- [ ] **Light looks exactly as before**: compare each screen with `main`
+- [ ] The moon/sun button is in every header (staff, student, search) and in
+      the top-right corner of the login screen; one click flips Light ↔ Dark,
+      and the icon changes (moon in light, sun in dark)
+- [ ] Staff Settings → Theme and the student avatar menu → Theme show Light /
+      Dark / System; the choice and the header button always agree; the student
+      menu stays open while choosing
+- [ ] Keyboard: Tab reaches the picker, arrow keys move between the three
+      options, the focus ring is visible
+- [ ] **System follows the device**: choose System, then switch Windows
+      (Settings → Personalisation → Colours → Light/Dark) or DevTools →
+      Rendering → *prefers-color-scheme*; the app changes at once, no reload
+- [ ] **Remembered**: choose Dark, reload → still dark; close and reopen the
+      tab → still dark. Another browser/device keeps its own choice
+- [ ] **No white flash** on reload in dark (watch the very first frame)
+- [ ] Storage blocked (Chrome → site settings → block cookies and site data
+      for localhost): the toggle still works for the visit, no error
+- [ ] Every screen in dark, readable, nothing white left: login (and its
+      error box), staff dashboard, Register (all steps, PDF reading, success
+      and "type it yourself" bars, field errors, keyword chips, the
+      department select), Edit study, Statistics bars and keyword chips,
+      Settings, student dashboard (hero, chips, cards, at a glance), Search
+      (filters, active chips, result cards, highlights, ticked card, Study
+      Details, Edit/Delete), the summary panel (highlights, citations,
+      References, key terms), the Delete and Sign out dialogs, toasts
+- [ ] Native controls match: select lists, checkboxes, scrollbars, the
+      browser's autofill and spell-check menus are dark too
+
 ## 9. Empty states and errors
 
 - [ ] No search results → "No theses found / Try different keywords…"
@@ -407,6 +441,9 @@ grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validati
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
+node src/search.check.ts                               # expect: All passed.
+node src/theme.check.ts                                # expect: All passed.
+grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
 grep -n "const extractive" src/components/CombinedSummaryPanel.tsx   # expect: no output

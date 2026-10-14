@@ -5,6 +5,7 @@ import { countByDepartment } from "../stats";
 import { SEARCH_MAX, cleanQuery } from "../validation";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted } from "./shared";
 import { DepartmentStats } from "./DepartmentStats";
+import { ThemePicker, ThemeToggle } from "./ThemeToggle";
 
 export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onOpenStudy, onSignOut }: {
   theses: Thesis[];
@@ -55,6 +56,7 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
             <div className="header-title">ISU Research Study E-Library</div>
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
+          <ThemeToggle />
           <button onClick={onSignOut} className="header-signout">
             <Icon name="logout" size={16} />
             Sign Out
@@ -72,6 +74,11 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
                   <div className="dropdown-name">{name}</div>
                   <div className="dropdown-sub">{account.email}</div>
                   <div className="dropdown-sub">Student · read-only access</div>
+                </div>
+                {/* Choosing a theme keeps the menu open (a click anywhere else closes it). */}
+                <div className="dropdown-theme" onClick={e => e.stopPropagation()}>
+                  <div className="dropdown-label">Theme</div>
+                  <ThemePicker />
                 </div>
                 <button role="menuitem" onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
                   <Icon name="logout" size={16} />

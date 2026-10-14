@@ -183,6 +183,12 @@ src/
                         input rules and their messages; examples
                         in validation.check.ts
                         (node src/validation.check.ts)            ✅ EXISTS
+  theme.ts            ← Light / Dark / System: parseChoice,
+                        resolveTheme, toggledChoice (pure) +
+                        read/save (localStorage, try/catch) and
+                        apply (data-theme on <html>); examples
+                        and the dark-palette contrast checks in
+                        theme.check.ts (node src/theme.check.ts)  ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -199,7 +205,11 @@ src/
     ConfirmDialog.tsx (the one "Are you sure?" dialog: Cancel
                       focused, red confirm, Escape/backdrop =
                       Cancel — never copy it, reuse it)
-    SignOutDialog.tsx ("Sign out?", built on ConfirmDialog)      ✅ EXIST
+    SignOutDialog.tsx ("Sign out?", built on ConfirmDialog)
+    ThemeToggle.tsx   (moon/sun button in every header and on the
+                      login screen; ThemePicker = Light / Dark /
+                      System in staff Settings and the student
+                      account menu; useTheme keeps them in step)  ✅ EXIST
 
 firestore.rules       ← project root, not src/ — ISU-only, role immutable,
                         theses writes staff-only; pasted into the console ✅ EXISTS
@@ -254,6 +264,8 @@ Real, working — **do not rewrite**:
 - APA 7 citations (`citation.ts`): a full reference in Study Details, and
   in-text citations plus an APA reference list in the combined summary
 - The theme, responsive header and icon set (step 04 Parts 3–4)
+- Dark mode: Light / Dark / System (default System, follows the device
+  live), remembered per device, applied before first paint (errata #63)
 - Every screen's UI, one file per screen in `src/components/`
 
 Four things in there are **deliberate and must survive a refactor** — each one
@@ -360,6 +372,56 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
 ```
 
 Never change these. They are from the ISU Corporate Visual Identity Manual.
+
+## Theme tokens and dark mode
+
+**Rule: never hard-code a colour.** No hex, `rgb()`, `white` or brand token
+for a text, background or border colour in `App.css` or a component; use the
+semantic tokens in `index.css`. A brand token (`--isu-*`) is only for a fill
+that looks the same in both themes (the seal, the brand stripe, the yellow
+button, the avatars, the role chip). This check must print nothing:
+
+```bash
+grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx
+```
+
+| Token | Use | Light | Dark |
+|---|---|---|---|
+| `--page-bg` | page | `--gray-50` | `#0E1412` |
+| `--surface` | cards, dialogs | `#FFFFFF` | `#161E1B` |
+| `--surface-raised` · `--input-bg` | raised bits, inputs | `--gray-50` · `--surface` | `#1D2723` |
+| `--surface-hover` | row hover, preview, sources box | `--gray-25` | `#1A2320` |
+| `--border` · `--border-strong` · `--divider` | borders, input borders, row lines | `--gray-200` · `300` · `100` | `#2B3632` · `#3A4742` · `#232D29` |
+| `--fill-muted` · `--fill-strong` | tracks, empty icons · handles | `--gray-100` · `200` | `#212A26` · `#34403B` |
+| `--text` · `--text-body` | headings · body text | `--gray-900` · `700` | `#E7EDEA` |
+| `--text-secondary` · `--text-muted` | secondary · meta | `--gray-600` · `500` | `#9DABA5` |
+| `--text-subtle` | placeholders, optional | `--gray-400` | `#85928D` |
+| `--accent` | green text, links, active, focus, borders | `--isu-green` | `#5FD39A` |
+| `--accent-fill` (+ `-hover`) | green buttons, `--on-fill` text | `--isu-green` | `#0F7A4A` |
+| `--accent-soft` | green tint behind `--accent` | `--isu-green-light` | `#183328` |
+| `--header-bg` · `--tab-active` | header, hero · active tab line | `--isu-green` · `--isu-yellow` | `#0B3D28` · `#5FD39A` |
+| `--title-text` · `--badge-text` on `--badge-bg` | study titles · department badge | `--isu-blue` on `--isu-blue-light` | `#A9BBF5` on `#1E2844` |
+| `--warn-text` on `--warn-soft` | keyword chips, review bar | `--isu-yellow-ink` on `--isu-yellow-light` | `#F7D000` on `#2C2A12` |
+| `--highlight-bg` | query words in `<mark>` (normal text colour) | `--isu-yellow-light` | `rgba(247, 208, 0, 0.30)` |
+| `--danger` · `--error-text` | red text, icons · messages | `--isu-red` · `--isu-red-ink` | `#FF6B6B` |
+| `--danger-fill` (+ `-hover`) | red buttons, white text | `--isu-red` | `#D13438` |
+| `--toast-bg` · `--backdrop` · `--shadow-*` | toast · dialog backdrop · depth | as before | `#2B3632` · darker · much softer |
+
+`--accent-rgb`, `--danger-rgb`, `--blue-rgb`, `--on-fill-rgb` hold the same
+colours as numbers for see-through tints: `rgba(var(--accent-rgb), 0.2)`.
+
+- Dark values live in `index.css` under `:root[data-theme="dark"]` and, for
+  System on a dark device, the identical block in
+  `@media (prefers-color-scheme: dark)`. Add a token to `:root` (light) and to
+  **both** dark blocks; `node src/theme.check.ts` fails if the blocks differ
+  or a text pair is under 4.5:1. Add a pair there for any new text colour.
+- The light values are the app's original look. Never change them for dark
+  mode's sake; add a token instead.
+- `color-scheme` is set with the theme, so native inputs, selects,
+  checkboxes and scrollbars match.
+- The choice is in `localStorage` under `isu-theme` (`light` / `dark`; none =
+  System). The inline script in `index.html` sets `data-theme` before first
+  paint and must keep the same key and values as `theme.ts`.
 
 ## Safe-area / responsive header
 
