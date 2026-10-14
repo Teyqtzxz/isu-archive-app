@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { countByDepartment } from "../stats";
+import { SEARCH_MAX, cleanQuery } from "../validation";
 import { ISUSeal, DeptBadge, Icon, initialsOf } from "./shared";
 import { DepartmentStats } from "./DepartmentStats";
 
@@ -36,7 +37,10 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
   const deptCounts = new Map(countByDepartment(theses).map(r => [r.department, r.count]));
 
   function handleSearch() {
-    if (heroQuery.trim()) onSearch(heroQuery);
+    // Trimmed, cut to SEARCH_MAX; junk with no letter or digit does nothing,
+    // as a blank box does.
+    const q = cleanQuery(heroQuery);
+    if (q) onSearch(q);
   }
 
   return (
@@ -93,6 +97,7 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
                 value={heroQuery}
                 onChange={e => setHeroQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
+                maxLength={SEARCH_MAX}
                 placeholder="Search by topic, keyword or title…"
                 aria-label="Search studies"
                 className="search-input-lg"

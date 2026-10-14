@@ -3,7 +3,10 @@
 // abstract and keywords with regex. Pure — no Firebase import.
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { driveFileId, pdfFileProblem, validateDriveLink } from "./validation";
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+// Moved to validation.ts with the other input rules; re-exported for old imports.
+export { driveFileId, validateDriveLink };
 
 /** Browser key from docs/06 §0. Restricted to our three sites and to the
  *  Drive API only; safe to commit (preamble rule 11). */
@@ -18,30 +21,11 @@ export const MAX_PAGES = 15;
 /** Fewer letters than this in the pages read → treat the PDF as scanned. */
 const MIN_TEXT_CHARS = 50;
 
-/** Accepts /file/d/{id}/view · /file/d/{id} · ?id={id} · /open?id={id} */
-export function driveFileId(link: string): string | null {
-  const m = link.match(/(?:file\/d\/|[?&]id=)([-\w]{25,})/);
-  return m ? m[1] : null;
-}
-
 /** The Drive API download URL — the only Drive endpoint that allows browser CORS. */
 export function driveLinkToFileUrl(link: string): string | null {
   const id = driveFileId(link);
   if (!id) return null;
   return `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${DRIVE_API_KEY}`;
-}
-
-/** Reject bad links before spending a PDF download on them. */
-export function validateDriveLink(link: string): string | null {
-  const trimmed = link.trim();
-  if (!trimmed) return "Please paste a Google Drive link.";
-  if (!/^https?:\/\/(drive|docs)\.google\.com\//i.test(trimmed)) {
-    return "That does not look like a Google Drive link.";
-  }
-  if (!driveLinkToFileUrl(trimmed)) {
-    return "Could not find a file id in that link. Make sure it is a shared file link.";
-  }
-  return null;
 }
 
 /** "Label: value" lines that some abstract pages print above the abstract
@@ -249,19 +233,13 @@ export async function extractFromDrive(
   return extractFromBytes(await downloadDrivePdf(driveLink));
 }
 
-/** Larger than any thesis PDF; stops someone picking a huge file by mistake. */
-const MAX_FILE_MB = 100;
-
 /** Backup source: a PDF picked from this computer. No Drive download, so a
  *  Drive outage or rate limit cannot stop auto-fill. */
 export async function extractFromFile(
   file: File,
 ): Promise<{ abstract: string; keywords: string[] }> {
-  if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
-    throw new Error("That file is not a PDF.");
-  }
-  if (file.size > MAX_FILE_MB * 1024 * 1024) {
-    throw new Error(`That PDF is larger than ${MAX_FILE_MB} MB. Please type the abstract and keywords.`);
-  }
+  // Not a PDF, empty, or over MAX_PDF_MB (validation.ts).
+  const problem = pdfFileProblem(file);
+  if (problem) throw new Error(problem.message);
   return extractFromBytes(await file.arrayBuffer());
 }

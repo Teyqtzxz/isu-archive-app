@@ -472,6 +472,15 @@ select.input {
 }
 .textarea:focus { border-color: var(--isu-green); box-shadow: var(--focus-ring); }
 
+/* Input validation (validation.ts): the field's border turns red and its
+   message sits under it, linked by aria-describedby. */
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"],
+.paste-btn[aria-invalid="true"] { border-color: var(--isu-red); }
+.field-error { font-size: 12px; color: var(--isu-red-ink); margin-top: 6px; line-height: 1.45; }
+/* Grey, not an error: a repeat that was skipped, a PDF too large to read. */
+.field-note  { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
 .form-grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
 @media (min-width: 560px) { .form-grid-2 { grid-template-columns: 1fr 1fr; } }
 

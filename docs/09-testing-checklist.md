@@ -74,15 +74,35 @@ matters most.
 - [ ] **[auto]** `grep -rn "MOCK_ABSTRACT\|Math.random" src/` returns nothing
 - [ ] **[auto]** `grep -rn "drive.usercontent" src/` returns nothing — downloads go
       through the Drive API
-- [ ] Clicking "Read PDF & continue" with no Drive link (or a missing title /
-      department / adviser) shows a message naming what is missing. The adviser
-      is a plain text box; an adviser of only spaces counts as missing
+- [ ] **[auto]** `node src/validation.check.ts` ends with "All passed."
+- [ ] Clicking "Read PDF & continue" with an empty form shows a red message
+      under **each** missing field (Drive link, Title, Authors, Department,
+      Adviser) and puts the cursor in the first one. An adviser of only spaces
+      counts as missing
+- [ ] With a screen reader (or dev tools), a field with a message has
+      `aria-invalid="true"` and `aria-describedby` pointing at that message
+- [ ] No message appears while typing; a message appears on leaving a field
+      with a bad value (e.g. Title `2024`), and clears as soon as it is fixed
 - [ ] "Authors" is required: with no author, "Read PDF & continue" shows
-      "Please fill in: Authors"
+      "Please add at least one author."
 - [ ] Authors are added one at a time as chips, each chip can be removed, and
-      adding the same name twice is ignored
+      adding the same name twice (any capitals) shows a grey "… is already in
+      the list." and adds nothing
+- [ ] Author `Dela Cruz` → "Type the author's full name, e.g. Juan Dela Cruz";
+      `J. Dela Cruz` and `Dela Cruz, Juan` are added; `Juan 2` is refused
+- [ ] Author `juan dela cruz` or `JUAN DELA CRUZ III` becomes `Juan Dela Cruz`
+      / `Juan Dela Cruz III`; `Juan dela Cruz` stays as typed
+- [ ] Adviser `Dr. Santos` → "Type the adviser's full name, e.g. Dr. Maria
+      Santos"; `Asst. Prof. Maria Santos, PhD` is accepted; `Santos, Maria` →
+      "After a comma, only a degree can follow: …"
 - [ ] A name typed in the Authors box but not yet added still counts when you
-      press "Read PDF & continue"
+      press "Read PDF & continue", after the same checks
+- [ ] Choosing a file that is not a PDF shows "That file is not a PDF." at once
+      and the file is not taken
+- [ ] Academic Year is a text box (number keypad on a phone) that starts at
+      this year; letters are ignored, pasting "Year 2019" gives "2019", and it
+      takes at most 4 digits. `201` → "Please type a 4-digit year, e.g. 2019.";
+      next year → "The year can't be later than …"; `1998` is saved as 1998
 - [ ] Real text-based PDF → PROCESSING → DETAILS FILLED IN, on localhost **and**
       on the deployed URL (the Drive API key must allow both — `06` §0)
 - [ ] A view-only study file (ISU → Viewer, download limited to Editors), no PDF
@@ -99,6 +119,11 @@ matters most.
 - [ ] **Keyword chips contain only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF using `KEY WORDS:` with a space parses correctly
 - [ ] Staff can edit the abstract and add/remove keyword chips
+- [ ] Keywords: `rice, soil` adds two chips; `2024` → "A keyword must contain
+      a word, not only numbers or symbols."; Add is disabled at 10 keywords
+- [ ] A keyword typed but not added is saved with the study
+- [ ] An abstract under 50 words → "The abstract looks too short (N words). …"
+      on leaving the box and on save; nothing is saved
 - [ ] "Confirm & Save" → "Study posted!" toast → document with `status: "POSTED"`
       → top of the list
 - [ ] Scanned/image-only PDF → NEEDS MANUAL ENTRY → "Save Manually" with an
@@ -114,6 +139,9 @@ matters most.
 - [ ] `Bio` surfaces **Biodiversity**, ~300ms after typing stops
 - [ ] `diver` also surfaces it
 - [ ] A single-character query does not search
+- [ ] A query of only symbols (`!!!`) shows all studies, with no error; on the
+      student dashboard, Search does nothing
+- [ ] Neither search box takes more than 100 characters
 - [ ] Empty query → all theses, newest first
 - [ ] "Relevance: XX%" shows, and the top result shows the highest percentage
       (it is capped just under 100% by design — that is intentional)
@@ -218,7 +246,8 @@ matters most.
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts   # expect: no output
+node src/validation.check.ts                           # expect: All passed.
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
 grep -n "const extractive" src/components/CombinedSummaryPanel.tsx   # expect: no output
