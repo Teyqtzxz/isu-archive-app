@@ -1,8 +1,7 @@
-import { useEffect, useMemo, type ReactNode } from "react";
-import { tokenize } from "../search";
+import { useEffect, useMemo } from "react";
 import { summarise, type RankedThesis } from "../summary";
 import { apaInTextLabels, apaReference, apaReferenceText, inTextString } from "../citation";
-import { Icon } from "./shared";
+import { Icon, highlightKw } from "./shared";
 
 export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
   theses: RankedThesis[]; query: string; onClose: () => void;
@@ -32,16 +31,6 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  // Wraps query words in <mark>. Builds React nodes rather than an HTML string,
-  // so abstract text is never parsed as HTML, and the original casing is kept.
-  function highlightKw(text: string): ReactNode {
-    const terms = tokenize(query);
-    if (terms.length === 0) return text;
-    const re = new RegExp(`\\b(${terms.join("|")})\\b`, "gi");
-    return text.split(re).map((part, i) =>
-      i % 2 === 1 ? <mark key={i} className="keyword-highlight">{part}</mark> : part);
-  }
 
   return (
     <div className="modal-overlay">
@@ -85,7 +74,7 @@ export function CombinedSummaryPanel({ theses, query, onClose, onCiteJump }: {
                 const m = s.text.match(/^([\s\S]*?)([.?!]+["”’)]?)?$/)!;
                 return (
                   <span key={i}>
-                    {highlightKw(m[1])}{" "}
+                    {highlightKw(m[1], query)}{" "}
                     <button className="cite-chip" onClick={() => onCiteJump(id)}
                       aria-label={`Go to the study cited as ${inTextString(cite)}`}>
                       ({cite.italic ? <em>{cite.who}</em> : cite.who}, {cite.year})

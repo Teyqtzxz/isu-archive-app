@@ -59,12 +59,12 @@ matters most.
 - [ ] Recent studies lists only the staff member's department, and the badge
       shows that department (not a hardcoded "CAS")
 - [ ] Recent studies rows have **no** status badge (every study is posted;
-      Search results still show the green "Posted" badge, also for records
-      saved before the change as Archived / Needs Review / Draft)
+      Search results have none either since errata #60)
 - [ ] Rows are newest first — a just-saved study appears at the top at once
-- [ ] Each Recent studies row shows, in this order: title; authors (full names,
-      at most 2, then "+N more", e.g. "Jan Rhyanne Acosta, Luigi Mindanao +1
-      more"); "Adviser: …"; department badge and academic year; up to 3 keyword
+- [ ] Each Recent studies row shows, in this order: title; the author line
+      (full names, at most 2, then "+N more", labelled "Author:" for one and
+      "Authors:" for two or more, e.g. "Authors: Jan Rhyanne Acosta, Luigi
+      Mindanao +1 more"); "Adviser: …"; department badge and academic year; up to 3 keyword
       chips; "Posted Oct 12, 2026". An older study with no authors has no author
       line (not "Not recorded"); a study with no keywords has no chip row
 - [ ] Clicking a Recent studies row (or Tab + Enter on it) opens Search with
@@ -78,8 +78,8 @@ matters most.
 - [ ] Student dashboard: department chips show counts, and "E-Library at a
       glance" shows the same two cards
 - [ ] Student dashboard "Recently added" cards show the same details as the
-      staff Recent studies rows, in the same order: title, authors (at most 2,
-      "+N more"), "Adviser: …", department badge + year, up to 3 keyword chips,
+      staff Recent studies rows, in the same order: title, "Author: …" /
+      "Authors: …" (at most 2, "+N more"), "Adviser: …", department badge + year, up to 3 keyword chips,
       "Posted Oct 12, 2026" — the same date as "Date Posted" in Study Details
       (which spells the month out: "October 12, 2026")
 - [ ] **"View details"** opens Search at **that** study: its Study Details are
@@ -184,6 +184,35 @@ matters most.
 - [ ] Active filters show as removable chips; "Clear filters" resets everything
 - [ ] Nobody sees a Status filter (removed 2026-10-12)
 - [ ] Results change as you type, and stop updating once you pause
+- [ ] Each result card shows, in this order: rank number and title (relevance %
+      on the right while searching); "Author: <name>" or "Authors: <names>" (full
+      names, at most 2, then "+N more"); department badge, year and "Adviser: <name>"; while searching, one
+      abstract snippet; up to 4 keyword chips. There is **no** green "Posted"
+      chip (every study is posted)
+- [ ] A study with one author reads "Author: …"; two or more read "Authors: …"
+      — here, on the student "Recently added" cards and on the staff "Recent
+      studies" rows alike, matching the Author/Authors row in Study Details
+- [ ] An older study saved without authors has **no** author line (not an empty
+      gap, not "Author:" alone, not "Not recorded")
+- [ ] Search `flood` (any word in an abstract): each result shows **one** short
+      line from its abstract, the sentence with the most query words, with
+      those words highlighted in ISU yellow — the same highlight as the combined
+      summary. A long sentence is cut with "…" at the cut end(s), never mid-word
+- [ ] Search `learn`: results whose abstract says "learning" show a snippet,
+      with the whole word **learning** highlighted — the same results and
+      snippets as searching `learning`. `Bio` highlights all of "Biodiversity"
+- [ ] Search `a flood`: "flood" is highlighted, the word "a" is **not** (in
+      the snippets and in the combined summary)
+- [ ] A result found only through its title or keywords (no query word in the
+      abstract) shows **no** snippet
+- [ ] Empty search box (newest-first list) → **no** snippets anywhere
+- [ ] **[auto]** `node src/snippet.check.ts` ends with "All passed."
+- [ ] **360px phone width:** a study with 3+ long author names, a long adviser
+      name (e.g. "Dr. Maria Concepcion Santos-Villanueva, PhD") and a long
+      snippet wraps inside its card — no sideways scrolling, nothing cut off at
+      the right edge
+- [ ] The checkbox, the Study Details panel (tap the title), citation-chip and
+      "View details" jumps (scroll + yellow flash) work exactly as before
 
 ## 6. Abstract preview
 
@@ -236,7 +265,8 @@ matters most.
 - [ ] Tapping a citation closes the panel and scrolls to that study
 - [ ] "References" lists every ticked study as a full APA 7 reference,
       alphabetical by first author
-- [ ] Query words are highlighted in ISU yellow
+- [ ] Query words are highlighted in ISU yellow — the whole word that starts
+      with one (`learn` marks "learning"); one-letter words like "a" are not
 - [ ] Action bar has **Close only**
 - [ ] Close returns to Search
 - [ ] No network request fires when the panel opens
@@ -283,6 +313,8 @@ grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
 grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
+node src/citation.check.ts                             # expect: All passed.
+node src/snippet.check.ts                              # expect: All passed.
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
 grep -n "const extractive" src/components/CombinedSummaryPanel.tsx   # expect: no output

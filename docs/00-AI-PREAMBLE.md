@@ -124,8 +124,9 @@ Research Department staff register, so a saved study is **posted** at once.
    `"needs_review"` means "the PDF could not be read, type the abstract
    yourself" — UI workflow state, not a stored status. Do not rename it. Staff
    must still type an abstract before "Save Manually" posts the study.
-4. **Never build a status label inline.** Display text lives in
-   `STATUS_LABELS` in `src/components/shared.tsx`.
+4. **No status is shown on screen.** Every study is posted, so there is no
+   status badge or label anywhere (`StatusBadge` and `STATUS_LABELS` were
+   removed from `shared.tsx`, errata #60). Do not add one back.
 
 ## Target file layout
 
@@ -153,6 +154,14 @@ src/
   extractPdf.ts       ← pure: Drive API download or a local file +
                         pdf.js text extraction (step 06)          ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords      ✅ EXISTS
+  snippet.ts          ← pure: abstractSnippet — the one abstract
+                        sentence on a search result card, from
+                        splitSentences() output — plus queryTerms /
+                        queryWordPattern, the word match highlightKw
+                        shares (prefix, as search: "learn" →
+                        "learning"; words under 2 letters ignored);
+                        examples in snippet.check.ts
+                        (node src/snippet.check.ts)               ✅ EXISTS
   citation.ts         ← pure: APA 7 — splitName, apaName,
                         apaReference, apaInText, apaInTextLabels;
                         examples in citation.check.ts
@@ -164,10 +173,11 @@ src/
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
-    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast,
-                        STATUS_LABELS, Icon, initialsOf,
+    shared.tsx        ← ISUSeal, DeptBadge, Toast, Icon, initialsOf,
                         formatPosted (the one "Posted" date
-                        format), authorsPreview                  ✅ EXISTS
+                        format), authorsPreview, highlightKw
+                        (query words in <mark>: the summary and
+                        the result snippet)                      ✅ EXISTS
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
@@ -191,7 +201,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts` and `citation.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts` and `snippet.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
