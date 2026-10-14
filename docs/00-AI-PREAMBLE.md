@@ -165,7 +165,9 @@ src/
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
     shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast,
-                        STATUS_LABELS, Icon, initialsOf          ✅ EXISTS
+                        STATUS_LABELS, Icon, initialsOf,
+                        formatPosted (the one "Posted" date
+                        format), authorsPreview                  ✅ EXISTS
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)

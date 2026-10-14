@@ -5,16 +5,7 @@ import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import { SEARCH_MAX, cleanQuery } from "../validation";
 import type { RankedThesis } from "../summary";
 import { apaReference } from "../citation";
-import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
-
-/** registeredAt as e.g. "October 12, 2026", or a placeholder for old records without one. */
-function formatPosted(t: Thesis): string {
-  const iso = registeredAtISO(t);
-  const d = iso ? new Date(iso) : null;
-  return d && !isNaN(d.getTime())
-    ? d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-    : "Not recorded";
-}
+import { ISUSeal, StatusBadge, DeptBadge, Icon, formatPosted } from "./shared";
 
 /** The Drive link opened as the e-library account. With several Google accounts in one
  *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
@@ -41,8 +32,9 @@ export function SearchScreen({
   defaultDepartment?: string;
   /** Open already filtered to this department (a department chip was tapped). Overrides the default. */
   initialDepartment?: string;
-  /** Set when a summary citation chip was tapped; `nonce` makes a repeat tap on the same chip fire again. */
-  jumpTo?: { thesisId: string; nonce: number } | null;
+  /** Set when a summary citation chip or a dashboard "View details" was tapped; `nonce` makes a
+   *  repeat tap on the same study fire again. `open` also expands that study's Study Details. */
+  jumpTo?: { thesisId: string; nonce: number; open?: boolean } | null;
   onCombinedSummary: (results: RankedThesis[], query: string) => void;
   onBack: () => void;
   onSignOut: () => void;
@@ -68,7 +60,8 @@ export function SearchScreen({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Not when arriving from "View details": on a phone the keyboard would cover the study.
+  useEffect(() => { if (!jumpTo?.open) inputRef.current?.focus(); }, []);
 
   // Filters narrow the candidate set, then the index is built from what survives.
   // N, doc-frequency and avgDocLen therefore all describe the same corpus — they
@@ -100,14 +93,31 @@ export function SearchScreen({
 
   // Citation chip → scroll to that result and flash it (docs/07 §4). The panel
   // is already closed by then, so the card is not hidden behind the overlay.
+  // Dashboard "View details" (open: true) also expands its Study Details first.
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<{ id: string; open: boolean } | null>(null);
   useEffect(() => {
     if (!jumpTo) return;
-    document.getElementById(`result-${jumpTo.thesisId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (jumpTo.open) setPreviewId(jumpTo.thesisId);
+    setScrollTarget({ id: jumpTo.thesisId, open: !!jumpTo.open });
     setFlashId(jumpTo.thesisId);
     const t = setTimeout(() => setFlashId(null), 1600);
     return () => clearTimeout(t);
   }, [jumpTo]);
+  // Scrolls in the render after the jump, so an expanded Study Details is already
+  // laid out. An opened card is aligned to its top: it can be taller than the screen.
+  // The top sits just below the sticky header (search box and filters), measured, not hardcoded.
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const card = document.getElementById(`result-${scrollTarget.id}`);
+    if (card && scrollTarget.open) {
+      const headerH = document.querySelector(".site-header")?.getBoundingClientRect().height ?? 0;
+      window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - headerH - 12, behavior: "smooth" });
+    } else {
+      card?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setScrollTarget(null);
+  }, [scrollTarget]);
 
   // The summary uses ticked results that are still visible, each with the rank
   // it is shown at, so the button count and the cited studies match the list.

@@ -1,6 +1,7 @@
 // Small presentational pieces used by more than one screen.
 import { useEffect } from "react";
-import type { ThesisStatus } from "../types";
+import type { Thesis, ThesisStatus } from "../types";
+import { registeredAtISO } from "../types";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -74,6 +75,24 @@ export function StatusBadge({ status }: { status: ThesisStatus }) {
       {STATUS_LABELS[status]}
     </span>
   );
+}
+
+/** registeredAt as e.g. "October 12, 2026" ("Oct 12, 2026" with month "short"), or
+ *  "Not recorded" for old records without one. Study Details and both dashboards use it. */
+export function formatPosted(t: Pick<Thesis, "registeredAt">, month: "long" | "short" = "long"): string {
+  const iso = registeredAtISO(t);
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d.getTime())
+    ? d.toLocaleDateString("en-US", { year: "numeric", month, day: "numeric" })
+    : "Not recorded";
+}
+
+/** Full names, at most `max`, then "+N more": "Jan Rhyanne Acosta, Luigi Mindanao +1 more".
+ *  No authors (older records read as []) → "", so the caller can leave the line out. */
+export function authorsPreview(authors: string[], max = 2): string {
+  const shown = authors.slice(0, max).join(", ");
+  const more = authors.length - max;
+  return more > 0 ? `${shown} +${more} more` : shown;
 }
 
 export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {

@@ -3,16 +3,18 @@ import type { Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { countByDepartment } from "../stats";
 import { SEARCH_MAX, cleanQuery } from "../validation";
-import { ISUSeal, DeptBadge, Icon, initialsOf } from "./shared";
+import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted } from "./shared";
 import { DepartmentStats } from "./DepartmentStats";
 
-export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onSignOut }: {
+export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onOpenStudy, onSignOut }: {
   theses: Thesis[];
   account: { displayName: string; email: string };
   /** department: undefined or "" = all departments. */
   onSearch: (q: string, department?: string) => void;
   /** Open the search screen filtered to one department (not a text search for its name). */
   onBrowseDepartment: (department: string) => void;
+  /** Open the search screen at this study, with its Study Details expanded. */
+  onOpenStudy: (thesisId: string) => void;
   onSignOut: () => void;
 }) {
   const [heroQuery, setHeroQuery] = useState("");
@@ -156,20 +158,33 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
               </div>
             ) : (
               <div className="recent-grid">
-                {recent.map(t => (
-                  <article key={t.id} className="carousel-card">
-                    <p className="carousel-title clamp-3">{t.title}</p>
-                    <div className="carousel-meta">
-                      <DeptBadge dept={t.department} small />
-                      <span>{t.year}</span>
-                    </div>
-                    <button onClick={() => onSearch(t.title.split(" ").slice(0, 4).join(" "))}
-                      className="btn btn-outline-green btn-sm" style={{ width: "100%", padding: "8px" }}>
-                      View details
-                      <Icon name="arrowRight" size={14} />
-                    </button>
-                  </article>
-                ))}
+                {recent.map(t => {
+                  const authors = authorsPreview(t.authors);
+                  return (
+                    <article key={t.id} className="carousel-card">
+                      <p className="carousel-title clamp-3">{t.title}</p>
+                      <div className="study-brief">
+                        {authors && <p className="study-brief-authors clamp-2">{authors}</p>}
+                        <p className="study-brief-line clamp-2">Adviser: {t.adviser}</p>
+                      </div>
+                      <div className="carousel-meta">
+                        <DeptBadge dept={t.department} small />
+                        <span>{t.year}</span>
+                      </div>
+                      {t.keywords.length > 0 && (
+                        <div className="study-brief-kws">
+                          {t.keywords.slice(0, 3).map(kw => <span key={kw} className="kw-mini kw-mini--clip">{kw}</span>)}
+                        </div>
+                      )}
+                      {registeredAtISO(t) && <p className="study-brief-line">Posted {formatPosted(t, "short")}</p>}
+                      <button onClick={() => onOpenStudy(t.id)}
+                        className="btn btn-outline-green btn-sm" style={{ width: "100%", padding: "8px" }}>
+                        View details
+                        <Icon name="arrowRight" size={14} />
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>

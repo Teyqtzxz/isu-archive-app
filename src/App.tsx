@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
@@ -35,7 +35,7 @@ export default function App() {
   // undefined = use the default (staff: own department, students: all).
   const [searchInitialDept, setSearchInitialDept] = useState<string | undefined>(undefined);
   const [summaryData, setSummaryData] = useState<{ theses: RankedThesis[]; query: string } | null>(null);
-  const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number } | null>(null);
+  const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number; open?: boolean } | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Stable, so the dialog's Escape listener is not re-added on every render.
   const cancelSignOut = useCallback(() => setConfirmSignOut(false), []);
@@ -96,6 +96,19 @@ export default function App() {
     ); // the returned unsubscribe is the cleanup — no leaked listener per role change
   }, [role]);
 
+  // Every screen and staff tab shares one page scroll, so each change starts at
+  // the top — except opening a study ("View details", a staff row): SearchScreen
+  // scrolls to it. A layout effect runs before every passive (useEffect) effect,
+  // child or parent, so this can never undo the jump's scroll; skipping it when a
+  // jump is pending also avoids a jump to the top first. (A summary citation does
+  // not change the screen, so it never gets here.) goSearch clears citeJump, so
+  // only openStudy arrives on Search with one set.
+  useLayoutEffect(() => {
+    if (screen === "search" && citeJump) return;
+    window.scrollTo(0, 0);
+    // citeJump is read, not a dependency: only a change of screen or tab scrolls.
+  }, [screen, staffTab]);
+
   // Rejects on failure so RegisterForm can show the error and stay open.
   async function handleSave(thesis: NewThesis) {
     await saveThesis(thesis);
@@ -116,6 +129,18 @@ export default function App() {
   function goSearch(q = "", department?: string) {
     setSearchInitialQuery(q);
     setSearchInitialDept(department);
+    // An old jump would otherwise fire again when the search screen remounts.
+    setCiteJump(null);
+    setScreen("search");
+  }
+
+  // Dashboard "View details": the search screen, every study listed (no query,
+  // all departments, so this one is surely there), with this study's Study
+  // Details open and scrolled into view — the same jump the summary citations use.
+  function openStudy(thesisId: string) {
+    setSearchInitialQuery("");
+    setSearchInitialDept("");
+    setCiteJump({ thesisId, nonce: Date.now(), open: true });
     setScreen("search");
   }
 
@@ -152,13 +177,14 @@ export default function App() {
           onTabChange={setStaffTab}
           onSave={handleSave}
           onSearch={goSearch}
+          onOpenStudy={openStudy}
           onSignOut={handleSignOut}
         />
       )}
 
       {screen === "student-dashboard" && (
         <StudentDashboard theses={theses} account={account} onSearch={goSearch}
-          onBrowseDepartment={dept => goSearch("", dept)} onSignOut={handleSignOut} />
+          onBrowseDepartment={dept => goSearch("", dept)} onOpenStudy={openStudy} onSignOut={handleSignOut} />
       )}
 
       {screen === "search" && role && (
