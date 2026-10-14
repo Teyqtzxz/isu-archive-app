@@ -2,7 +2,7 @@
 import { useEffect, type ReactNode } from "react";
 import type { Thesis } from "../types";
 import { registeredAtISO } from "../types";
-import { queryTerms, queryWordPattern } from "../snippet";
+import { highlightParts } from "../snippet";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -79,22 +79,35 @@ export function formatPosted(t: Pick<Thesis, "registeredAt">, month: "long" | "s
  *  Mindanao +1 more" (like "Adviser: …" and Study Details' Author/Authors row).
  *  No authors (older records read as []) → "", so the caller can leave the line out. */
 export function authorsPreview(authors: string[], max = 2): string {
-  if (authors.length === 0) return "";
-  const shown = authors.slice(0, max).join(", ");
+  const p = authorsPreviewParts(authors, max);
+  return p ? `${p.label}: ${p.names}${p.more}` : "";
+}
+
+/** authorsPreview() in pieces, so the search result card can highlight the
+ *  names alone (not "Authors" or "+1 more"): label "Author" / "Authors",
+ *  names "Jan Rhyanne Acosta, Luigi Mindanao", more " +1 more" or "".
+ *  No authors → null. */
+export function authorsPreviewParts(authors: string[], max = 2): { label: string; names: string; more: string } | null {
+  if (authors.length === 0) return null;
   const more = authors.length - max;
-  return `${authors.length === 1 ? "Author" : "Authors"}: ${more > 0 ? `${shown} +${more} more` : shown}`;
+  return {
+    label: authors.length === 1 ? "Author" : "Authors",
+    names: authors.slice(0, max).join(", "),
+    more: more > 0 ? ` +${more} more` : "",
+  };
 }
 
 /** Wraps each word in `text` that starts with a query word in <mark> ("learn"
  *  marks all of "learning"; words under 2 letters are ignored, as in search):
- *  the combined summary and the search result snippet. The rule is in snippet.ts.
- *  Builds React nodes rather than an HTML string, so abstract text is never
- *  parsed as HTML, and the original casing is kept. */
-export function highlightKw(text: string, query: string): ReactNode {
-  const terms = queryTerms(query);
-  if (terms.length === 0) return text;
-  return text.split(queryWordPattern(terms)).map((part, i) =>
-    i % 2 === 1 ? <mark key={i} className="keyword-highlight">{part}</mark> : part);
+ *  the combined summary, the search result snippet, and the author and adviser
+ *  lines on result cards. The rule is in snippet.ts (highlightParts). For
+ *  names, pass `skip` = isNameTitle (search.ts) so titles and degrees, which
+ *  search ignores, are never marked. Builds React nodes rather than an HTML
+ *  string, so abstract text is never parsed as HTML, and the original casing
+ *  is kept. */
+export function highlightKw(text: string, query: string, skip?: (word: string) => boolean): ReactNode {
+  return highlightParts(text, query, skip).map((p, i) =>
+    p.hit ? <mark key={i} className="keyword-highlight">{p.text}</mark> : p.text);
 }
 
 export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {

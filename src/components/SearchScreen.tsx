@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
-import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
+import { tokenize, buildIndex, computeDocFreq, bm25Score, relevancePercent, isNameTitle } from "../search";
 import { SEARCH_MAX, cleanQuery } from "../validation";
 import { splitSentences, type RankedThesis } from "../summary";
 import { apaReference } from "../citation";
 import { abstractSnippet } from "../snippet";
-import { ISUSeal, DeptBadge, Icon, formatPosted, authorsPreview, highlightKw } from "./shared";
+import { ISUSeal, DeptBadge, Icon, formatPosted, authorsPreviewParts, highlightKw } from "./shared";
 
 /** The Drive link opened as the e-library account. With several Google accounts in one
  *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
@@ -268,12 +268,12 @@ export function SearchScreen({
             results; fade it so it is not mistaken for the answer to what is typed. */}
         <div className={`results-list${typing ? " results-list--stale" : ""}`} aria-busy={typing}>
           {results.map(({ thesis: t, score }, i) => {
-            const pct = searchQuery && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
+            const pct = searchQuery && score > 0 ? relevancePercent(score, maxScore) : 0;
             const isSelected = selected.has(t.id);
             const showPreview = previewId === t.id;
             // APA 7 reference (citation.ts); null when no authors are recorded.
             const citation = showPreview ? apaReference(t) : null;
-            const authors = authorsPreview(t.authors);
+            const authors = authorsPreviewParts(t.authors);
             const snippet = snippets.get(t.id);
 
             return (
@@ -291,8 +291,15 @@ export function SearchScreen({
                           {t.title}
                         </h3>
                       </button>
-                      {/* No authors recorded (older records) → no line. */}
-                      {authors && <p className="result-authors">{authors}</p>}
+                      {/* No authors recorded (older records) → no line. While searching,
+                          the names are highlighted like the snippet, so a study found
+                          by an author's name shows why (search indexes authors).
+                          Titles and degrees are not searched, so never marked. */}
+                      {authors && (
+                        <p className="result-authors">
+                          {authors.label}: {highlightKw(authors.names, searchQuery, isNameTitle)}{authors.more}
+                        </p>
+                      )}
                     </div>
                     {pct > 0 && (
                       <div className="score-pill" title="Relevance, relative to the top result">
@@ -304,7 +311,7 @@ export function SearchScreen({
                   {/* No status badge: every study is POSTED. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, paddingLeft: 28 }}>
                     <DeptBadge dept={t.department} small />
-                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {t.adviser}</>}</span>
+                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {highlightKw(t.adviser, searchQuery, isNameTitle)}</>}</span>
                   </div>
 
                   {snippet && (

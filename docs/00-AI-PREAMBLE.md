@@ -30,7 +30,8 @@ Students read the whole study **view-only** in Google's viewer ("Read full study
 Staff register research studies by pasting a Google Drive link; the app reads
 the PDF in the browser and auto-fills the abstract and keywords, and saving
 **posts** the study at once (there is no review queue). Staff and students then
-search the e-library with BM25 ranking, read a combined extractive summary of
+search the e-library with BM25F ranking (title, keywords, authors, adviser,
+abstract and Academic Year, title weighted most), read a combined extractive summary of
 the results they tick, and see department statistics.
 
 | Role | Can do |
@@ -148,9 +149,13 @@ src/
   App.css             ← all component styles, read the tokens    ✅ EXISTS
   search.ts           ← pure: tokenize, findMatchScore, docTextOf,
                         SearchIndex, buildIndex, computeDocFreq,
-                        bestFieldFor, bm25Score                  ✅ EXISTS
+                        bestFieldFor, bm25Score (BM25F: field
+                        weights + year), textOnly,
+                        relevancePercent; examples in
+                        search.check.ts (node src/search.check.ts) ✅ EXISTS
   summary.ts          ← pure: extractive summary, MMR over BM25,
-                        one sentence per ticked study (step 07)   ✅ EXISTS
+                        one sentence per ticked study (step 07);
+                        scores sentences via textOnly() only      ✅ EXISTS
   extractPdf.ts       ← pure: Drive API download or a local file +
                         pdf.js text extraction (step 06)          ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords      ✅ EXISTS
@@ -159,7 +164,8 @@ src/
                         splitSentences() output — plus queryTerms /
                         queryWordPattern, the word match highlightKw
                         shares (prefix, as search: "learn" →
-                        "learning"; words under 2 letters ignored);
+                        "learning"; words under 2 letters ignored;
+                        ñ and accents are letters);
                         examples in snippet.check.ts
                         (node src/snippet.check.ts)               ✅ EXISTS
   citation.ts         ← pure: APA 7 — splitName, apaName,
@@ -175,9 +181,11 @@ src/
   components/
     shared.tsx        ← ISUSeal, DeptBadge, Toast, Icon, initialsOf,
                         formatPosted (the one "Posted" date
-                        format), authorsPreview, highlightKw
-                        (query words in <mark>: the summary and
-                        the result snippet)                      ✅ EXISTS
+                        format), authorsPreview (+ Parts),
+                        highlightKw (query words in <mark>: the
+                        summary, the result snippet, author
+                        names and adviser on result cards —
+                        names skip titles/degrees, isNameTitle)  ✅ EXISTS
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
@@ -207,11 +215,16 @@ import.** Keep them that way — it is what makes them testable and reviewable.
 ## What is real vs fake in the current code
 
 Real, working — **do not rewrite**:
-- BM25 scoring: `tokenize()`, `bm25Score()`, `docTextOf()` — in `src/search.ts`
+- BM25F scoring: `tokenize()`, `bm25Score()`, `docTextOf()` — in `src/search.ts`.
+  Fields and weights: title 3, keywords 2, authors 2, adviser 2, abstract 1;
+  a 4-digit query word also matches the Academic Year exactly (weight 3, and
+  it counts in df). Titles/degrees (Dr., Engr., PhD…) are not indexed in the
+  name fields. Tokens keep ñ and accents (`\p{L}`), not folded. `05` §3a
 - Corpus index: `buildIndex()`, `computeDocFreq()`, `bestFieldFor()` — in `src/search.ts`
 - Fuzzy prefix/substring: `findMatchScore()` → `1.0` exact, `0.8` prefix,
   `0.6` substring (only for query terms of 4+ characters)
 - Relevance % normalised to the top score, capped at 97% by design
+  (`relevancePercent()` in `search.ts`)
 - 300ms search debounce, department/year filters with removable chips
   (step 05)
 - Google sign-in (ISU accounts only), role routing, session restore, sign-out
@@ -226,14 +239,15 @@ Real, working — **do not rewrite**:
 - The theme, responsive header and icon set (step 04 Parts 3–4)
 - Every screen's UI, one file per screen in `src/components/`
 
-Three things in there are **deliberate and must survive a refactor** — each one
+Four things in there are **deliberate and must survive a refactor** — each one
 was a bug that was fixed, and each is easy to "clean up" back into a bug:
 
 | Rule | Why it exists |
 |------|---------------|
 | `bm25Score(query, thesis, docIndex, index, df)` takes an **index**, not a corpus | The corpus-taking version re-tokenised every document once per document per keystroke — quadratic. 461 ms → 6.3 ms at 200 theses. |
 | `queryTerm.length >= 4` before a substring match | Without it, 2–3 letter terms match inside almost every word: `ion` hits all 21 seed theses and `dr` matched `hydrological`. (4+ letter terms like `rate` still match mid-word by design.) |
-| `avgDocLen` falls back to `1` on an empty corpus | Otherwise an empty archive yields `NaN`, and `NaN > 0` is false, so every result silently disappears. |
+| `avgDocLen` (and each field's `avgFieldLen`) falls back to `1` on an empty corpus or an unfilled field | Otherwise an empty archive yields `NaN`, and `NaN > 0` is false, so every result silently disappears. |
+| `summary.ts` scores sentences with `textOnly(sentence)`, never `{ ...thesis, … }` | Search indexes authors, adviser and year; a copied thesis would make every sentence of a study "match" its author's name or year (errata #61). |
 
 Nothing in the app is fake any more: the mock PDF reader and the template
 summary were replaced in steps 06 and 07.

@@ -6,7 +6,8 @@
 // as search.ts) plus how central it is to the ticked theses as a group
 // (LexRank-style, Erkan & Radev, 2004). Sentences are then picked one at a
 // time, each penalised for repeating what was already picked.
-import { bm25Score, buildIndex, computeDocFreq, tokenize } from "./search";
+// "./search.ts" with its extension so `node src/search.check.ts` can load this file.
+import { bm25Score, buildIndex, computeDocFreq, textOnly, tokenize } from "./search.ts";
 import type { Thesis } from "./types";
 
 export interface SummarySentence {
@@ -92,17 +93,20 @@ function cosine(a: Map<string, number>, b: Map<string, number>): number {
 export function summarise(results: RankedThesis[], query: string): SummarySentence[] {
   const top = [...results].sort((a, b) => a.rank - b.rank);
 
-  const sentences: { text: string; sourceIndex: number; position: number; thesis: Thesis }[] = [];
+  const sentences: { text: string; sourceIndex: number; position: number }[] = [];
   for (const { thesis, rank } of top) {
     splitSentences(thesis.abstract).forEach((text, position) => {
-      sentences.push({ text, sourceIndex: rank, position, thesis });
+      sentences.push({ text, sourceIndex: rank, position });
     });
   }
   if (sentences.length === 0) return [];
 
   // Each sentence becomes a tiny "document" so the real BM25 from search.ts can
   // score it. BM25's length normalisation also handles over-long sentences.
-  const asDocs = sentences.map((s) => ({ ...s.thesis, title: "", keywords: [], abstract: s.text }));
+  // textOnly(): the sentence and nothing else. Search also reads authors,
+  // adviser and year; copying the thesis's would make every sentence of a
+  // study "match" its author's name or its year (docs/05 §3).
+  const asDocs = sentences.map((s) => textOnly(s.text));
   const index = buildIndex(asDocs);
   const terms = tokenize(query);
   const df = computeDocFreq(terms, index);

@@ -207,6 +207,33 @@ matters most.
       abstract) shows **no** snippet
 - [ ] Empty search box (newest-first list) → **no** snippets anywhere
 - [ ] **[auto]** `node src/snippet.check.ts` ends with "All passed."
+- [ ] **[auto]** `node src/search.check.ts` ends with "All passed." (field
+      weights, authors/adviser, year, ñ, the must-survive rules, and the
+      combined summary unchanged — `05` §3a)
+- [ ] Search an author's surname (e.g. `Acosta`): their study is found, and the
+      surname is highlighted in the "Author(s):" line. The label "Authors" and
+      "+N more" are never highlighted (try `auth` or `more`)
+- [ ] Search an adviser's surname (e.g. `Stone`): their studies are found, with
+      the surname highlighted after "Adviser:". `Dr. Stone` puts Stone's studies
+      first (others that only match "dr" in the abstract come far below)
+- [ ] Search `PhD` or `Engr`: studies are **not** found just because the
+      adviser has that title or degree
+- [ ] Search a year, e.g. `2024`: every study whose Academic Year is 2024 is
+      listed, even if no text says "2024". `202` does **not** list them by year
+- [ ] Search a word that is in one study's **title** and only in another
+      study's abstract: the title one ranks higher
+- [ ] Search `niño` (or a word with é/á): it finds studies containing that whole
+      word, and it is highlighted whole. It no longer finds studies through
+      "ni…" words
+- [ ] Search `Dr. Stone`: on Stone's studies only **Stone** is highlighted; on
+      Dr. Santos's (or any other) study, "Dr" is **not** highlighted after
+      "Adviser:". Same for `Engr`, `Prof`, `PhD`, `MSc` … — titles and degrees
+      are never highlighted in the author or adviser lines (they may still be in
+      the abstract snippet, where they are ordinary words)
+- [ ] Empty search box: author and adviser lines show with **no** highlight
+- [ ] Tick 2–3 results after searching an author's name and open the combined
+      summary: it quotes the same sentences as before this change (the name
+      does not make every sentence "match")
 - [ ] **360px phone width:** a study with 3+ long author names, a long adviser
       name (e.g. "Dr. Maria Concepcion Santos-Villanueva, PhD") and a long
       snippet wraps inside its card — no sideways scrolling, nothing cut off at

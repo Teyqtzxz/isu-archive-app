@@ -27,9 +27,25 @@ export function queryTerms(query: string): string[] {
  *  e.g. all of "Learning" for "learn". The word is capture group 1, so
  *  `text.split()` puts the matched words at the odd positions. `terms` must
  *  be non-empty and come from queryTerms(): tokenize() leaves only letters,
- *  digits and "_", so nothing in them needs escaping. */
+ *  digits and "_", so nothing in them needs escaping. A word character is
+ *  what tokenize() keeps — any Unicode letter (\p{L}, \p{M}), digit or "_" —
+ *  not JavaScript's \w, which is ASCII only: so "ni" marks all of "Niño", and
+ *  a word that starts with "é" can be marked at all. */
 export function queryWordPattern(terms: string[]): RegExp {
-  return new RegExp(`\\b((?:${terms.join("|")})\\w*)`, "gi");
+  return new RegExp(`(?<![\\p{L}\\p{M}\\d_])((?:${terms.join("|")})[\\p{L}\\p{M}\\d_]*)`, "giu");
+}
+
+/** `text` cut into plain and matched pieces, in order: what highlightKw()
+ *  wraps in <mark> is every piece with `hit: true`. A matched word for which
+ *  `skip` returns true stays plain — the result card passes isNameTitle()
+ *  (search.ts) for names, so "Dr. Stone" never marks the "Dr" of another
+ *  adviser: titles and degrees are not searched. */
+export function highlightParts(text: string, query: string, skip?: (word: string) => boolean): { text: string; hit: boolean }[] {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return [{ text, hit: false }];
+  return text.split(queryWordPattern(terms))
+    .map((part, i) => ({ text: part, hit: i % 2 === 1 && !skip?.(part) }))
+    .filter(p => p.text !== "");
 }
 
 /** The best sentence for `query`, cut to about `max` characters, or "" when

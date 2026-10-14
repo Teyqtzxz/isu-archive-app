@@ -3,6 +3,13 @@
 **Status:** ☑ DONE — merged in PRs #10 and #11 (branch `person-b-search`).
 **Owner:** B · **Depends on:** 04 · **Next:** 06 or 07
 
+> **Ranking changed on 2026-10-14 (errata #61, professor's feedback).** Search
+> now also reads the **authors, adviser and Academic Year**, and weighs fields
+> with **BM25F** (a title hit counts 3×, keywords and names 2×, the abstract
+> 1×). Tokens keep ñ and accents. See **§3a**. The "do not change `search.ts`"
+> instructions below were for step 05 itself and are historical; the
+> must-survive rules (§3, §6, §4 relevance) still hold.
+
 ### What shipped
 
 - 300ms debounce in `SearchScreen` (`query` for the input, `debouncedQuery`
@@ -37,21 +44,23 @@ engine:
 
 | Function | Status |
 |----------|--------|
-| `tokenize(text)` | ✅ works — lowercases, strips punctuation, splits on whitespace, drops empties |
+| `tokenize(text)` | ✅ works — NFC, lowercases, keeps Unicode letters (ñ, é), digits and `_`, splits on everything else, drops empties (§3a) |
 | `findMatchScore(q, d)` | ✅ works — `1.0` exact, `0.8` prefix, `0.6` substring (4+ chars only), `0` none |
-| `docTextOf(t)` | ✅ works — the searchable text: title + abstract + keywords |
-| `buildIndex(theses)` | ✅ works — pre-tokenises the corpus and builds a postings map |
-| `computeDocFreq(tokens, index)` | ✅ works — document frequency per query term |
-| `bestFieldFor(t, term)` | ✅ works — title / keyword / abstract (was for the removed breakdown panel; kept untouched) |
-| `bm25Score(query, thesis, docIndex, index, df)` | ✅ works — returns `{ score, termScores }` |
+| `docTextOf(t)` | ✅ works — the searchable text: title + abstract + keywords + authors + adviser |
+| `buildIndex(theses)` | ✅ works — pre-tokenises the corpus **per field**, keeps each study's year, builds a postings map |
+| `computeDocFreq(tokens, index)` | ✅ works — document frequency per query term (a 4-digit term also counts studies of that year) |
+| `bestFieldFor(index, docIndex, term)` | ✅ works — title / year / keyword / author / adviser / abstract (was for the removed breakdown panel; reads the prebuilt index, tokenises nothing) |
+| `bm25Score(query, thesis, docIndex, index, df)` | ✅ works — BM25F (§3a), returns `{ score, termScores }` |
+| `textOnly(text)` | ✅ new — a document with only `text` as its abstract; the summary scores sentences with it (§3a) |
+| `relevancePercent(score, maxScore)` | ✅ new — the relevance badge, top result 97% (§4) |
 | `SearchScreen` filters by department / year / status | ✅ works |
 | Empty query sorts newest-first | ✅ works |
 | "Relevance: XX%" badges | ✅ works |
 | "Why this rank?" per-term breakdown | ❌ removed 2026-09-30 (§4) |
 
 It is already in `src/search.ts`. **Do not move, rewrite or "improve" it.** Your
-job is only the remaining gaps below. The one sanctioned change to `search.ts` is
-the additive `idf`/`tf` fields in §4.
+job is only the remaining gaps below. (Historical: step 05 itself changed no
+scoring. The field weighting in §3a came later, errata #61.)
 
 ### Note the signatures
 
@@ -184,6 +193,119 @@ every score with `NaN`.
 
 ---
 
+## 3a. Field weighting (BM25F), authors, adviser and year — errata #61
+
+### Fields and weights
+
+| Field | Weight w | b (length normalisation) | Why |
+|-------|----------|--------------------------|-----|
+| Title | **3** | **0** | The author's own one-line summary: one hit there says more than one hit in a 250-word abstract. b = 0: a 5-word title is no less about "sample" than a 2-word one |
+| Keywords | **2** | 0.75 | Topic labels picked by staff: more reliable than the abstract, less than the title |
+| Authors | **2** | 0 | A name typed in the box means that person is wanted; names rarely collide with abstract words, so 2 is enough. Name length says nothing |
+| Adviser | **2** | 0 | Same as authors |
+| Abstract | **1** | 0.75 | The baseline — the old BM25 |
+| Year | **3** | — | Exact match of a 4-digit query word with the Academic Year |
+
+The weights are constants at the top of `search.ts` (`FIELD_WEIGHTS`,
+`FIELD_B`, `YEAR_WEIGHT`). Change them there, and re-run
+`node src/search.check.ts`.
+
+### The formula (BM25F)
+
+```
+tf̃(term, study) = Σ over fields  w_f · tf_f / (1 − b_f + b_f · len_f / avgLen_f)
+                  + 3 if the term is 4 digits and equals the study's year
+score            = Σ over terms   idf(term) · tf̃ · (k1 + 1) / (tf̃ + k1)        k1 = 1.5
+idf(term)        = ln((N − df + 0.5) / (df + 0.5) + 1)
+```
+
+- `tf_f` is still the fuzzy count from `findMatchScore`: exact 1.0, prefix 0.8,
+  substring 0.6 (4+ letters only).
+- Each field is normalised against **its own** average length (`avgFieldLen`).
+  An empty corpus, or a field nobody filled, falls back to 1, like `avgDocLen`.
+- The fields are added **before** the saturation. A word in the title *and* the
+  abstract therefore scores more than either alone, but not twice as much.
+- `df` counts the studies with a match in **any** field, plus, for a 4-digit
+  term, the studies of that year. A year query therefore gets a sensible idf: a
+  year shared by every study counts for little.
+- With only the abstract filled (weight 1, b 0.75), this is exactly the old
+  BM25. That is why the summary did not change (below).
+
+### Names: titles and degrees are not indexed
+
+`Dr.`, `Engr.`, `Prof.`, `Asst.`, `Assoc.`, `Mr.`, `Mrs.`, `Ms.`, `Atty.` and
+the degrees `PhD`, `EdD`, `MSc`, `MS`, `MA`, `MIT`, `MBA`, `RN`, `PE`, `CE` (the ones
+`validation.ts` accepts) are dropped from the author and adviser fields.
+Otherwise `Dr. Santos` would match every "Dr." adviser, the old `dr` bug again.
+`Dr. Stone` still finds Stone first, through "stone". The result card does
+not highlight these words in the author and adviser lines either
+(`isNameTitle()`): "Dr. Stone" never marks the "Dr" of Dr. Santos. The abstract
+snippet and the summary still mark "Dr" in prose; only the name lines skip it.
+
+### Year
+
+- Only a query word of exactly **4 digits** checks the year, and only for
+  equality. `20` and `202` never match the year field; they still prefix-match
+  text as before.
+- A year in the text still counts as text, so a 2024 study that also says "2024"
+  scores a little higher.
+- This is ranking, not a filter: the Year dropdown is separate and unchanged.
+
+### Tokenizer: ñ and accents are letters
+
+```typescript
+text.normalize("NFC").toLowerCase().replace(/[^\p{L}\p{M}\d_\s]/gu, " ")
+```
+
+- `niño`, `Peñablanca` and `José` stay whole words. Before, `niño` became `ni`
+  + `o`, and `ni` prefix-matched unrelated words.
+- `NFC` makes an `é` copied out of a PDF as `e` + accent match a typed `é`.
+- Accents are **not** folded: `nino` does not find `niño`.
+- `queryWordPattern()` in `snippet.ts` uses the same letters, so the
+  highlighting matches: `ni` marks all of "Niño".
+
+### On the card
+
+While searching, the query words are highlighted in the **author names** and
+the **adviser** line as well as in the snippet. All three use the same
+`highlightKw()` (rule: `highlightParts()` in `snippet.ts`). "Author:"/"Authors:",
+"+N more", and titles and degrees in the names are never marked.
+
+### Before / after on the 13 real studies (2026-10-14)
+
+| Query | Before | After |
+|-------|--------|-------|
+| `sample` | needs review sample 97 · thesis sample 2 57 · thesis sample 2 scanned 57 · Sample Thesis for pdf reader 57 · Vit sample 42 | needs review sample 97 · Vit sample 80 · thesis sample 2 scanned 80 · thesis sample 2 80 · Sample Thesis for pdf reader 80 |
+| `learning` | the seven "Vit…" studies 97 · Thesis2, Thesis 88 | the same seven 97 · Thesis2, Thesis 81 |
+| `irrigation` | the 3 studies with it in their keywords, 97 | the same 3, 97 |
+| `Acosta` | no results | Vit with Author 97 |
+| `Stone` | no results | Vit with Author, Vit, Vit sample — 97 |
+| `2024` | no results | the 5 studies of 2024, 97 |
+| `niño` | Thesis2, Thesis (wrong: via "ni…") | no results (correct) |
+
+On "sample":
+- "needs review sample" says the word twice (title and a 5-word abstract), so it
+  stays first.
+- The title-only hits now tie, because title length no longer counts.
+- Equal scores keep the newest-first order. "Sample Thesis for pdf reader" is
+  5th only by that tie order, and no tie-break was added (the owner's decision).
+
+### The summary trap
+
+`summary.ts` scores single sentences with this same `bm25Score`. It used to
+build `{ ...thesis, title: "", keywords: [], abstract: sentence }`. With
+authors, adviser and year now indexed, that would have made **every** sentence
+of a study "match" its author's name or its year. It now uses
+`textOnly(sentence)`: the sentence and nothing else.
+
+`search.check.ts` proves the summary is unchanged. It compares every sentence's
+score and the final picks for 8 queries against values recorded on `main`
+before the change. One exception is on purpose: on text containing ñ or accents
+the word count changes (`niño` is one word now, not two), and so do the scores,
+slightly.
+
+---
+
 ## 4. Gap 3 — the filters
 
 ### "Why this rank?" — removed
@@ -219,8 +341,10 @@ one of the exact `DEPARTMENTS` strings.
 Normalise against the top result's score, not a fixed ceiling:
 
 ```typescript
-const maxScore = Math.max(...results.map((r) => r.score), 0.01);
-const pct = Math.round((score / maxScore) * 93) + 4;
+// search.ts — SearchScreen calls relevancePercent(score, maxScore)
+export function relevancePercent(score: number, maxScore: number): number {
+  return Math.round((score / Math.max(maxScore, 0.01)) * 93) + 4;
+}
 ```
 
 This maps the best result to 97% rather than 100%, which is deliberate — a search
@@ -337,13 +461,24 @@ actually have something to match against.
 - [ ] Active filters appear as removable chips; "Clear filters" resets everything
 - [ ] Staff see their own department preselected; students see "All Departments"
 - [ ] Nobody sees a Status filter (removed 2026-10-12)
-- [ ] Ranking is **identical** before and after your change — run the same
-      queries on `main` and on your branch and compare
+- [ ] **[auto]** `node src/search.check.ts` ends with "All passed." It checks
+      that a title hit beats an abstract hit, that authors and the adviser are
+      found ("Acosta", "Stone", "Dr. Stone"), the year match and its df, that ñ
+      is kept, every must-survive rule, and that the combined summary is
+      unchanged against values recorded on `main`
+- [ ] `Acosta` / `Stone` find their studies, with the name highlighted on the
+      card; `2024` lists that year's studies; `niño` finds only studies that
+      contain "niño"
+- [ ] A change to the weights or the formula comes with a before/after table on
+      the real studies (like §3a), not "ranking identical": ranking is
+      *meant* to change when the weights do
 - [ ] An archive with zero theses shows the empty state and does not print `NaN`
 - [ ] `search.ts` imports nothing from `firebase/*`
 - [x] Seed has ≥ 20 theses (21, step 02)
 - [ ] The department dropdown lists all ten `DEPARTMENTS`, even ones with no theses
-- [ ] `search.ts` diff is additive only: `idf` / `tf` fields, nothing else
+- [ ] `bm25Score` still takes `(query, thesis, docIndex, index, df)` and reads
+      only the index; `bestFieldFor` reads `index.fieldTokens` and tokenises
+      nothing
 
 ---
 

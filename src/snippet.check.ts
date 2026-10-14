@@ -1,7 +1,8 @@
 // Examples for snippet.ts. Run with:  node src/snippet.check.ts
 // (Node 22.18+ runs TypeScript directly; nothing to install.)
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
-import { abstractSnippet, queryTerms, queryWordPattern } from "./snippet.ts";
+import { abstractSnippet, highlightParts } from "./snippet.ts";
+import { isNameTitle } from "./search.ts";
 
 let failed = 0;
 function check(label: string, got: string, want: string) {
@@ -63,18 +64,37 @@ check("a prefix only counts at the start of a word: “earn” is not in “lear
 check("“a” is ignored: “a flood” picks what “flood” picks", abstractSnippet(abstract, "a flood"), abstractSnippet(abstract, "flood"));
 
 console.log("\n— Highlighting (the rule highlightKw() uses) —");
-// The words highlightKw() would wrap in <mark>, shown here as [brackets].
-const marked = (text: string, query: string) => {
-  const terms = queryTerms(query);
-  return terms.length === 0 ? text
-    : text.split(queryWordPattern(terms)).map((p, i) => (i % 2 === 1 ? `[${p}]` : p)).join("");
-};
+// The words highlightKw() wraps in <mark> (highlightParts), shown here as [brackets].
+const marked = (text: string, query: string, skip?: (word: string) => boolean) =>
+  highlightParts(text, query, skip).map(p => (p.hit ? `[${p.text}]` : p.text)).join("");
 check("the whole word is marked, original case kept", marked("Machine Learning and e-learning tools", "learn"),
   "Machine [Learning] and e-[learning] tools");
 check("“a” is not marked in “a flood”", marked("A flood hit a farm after floods.", "a flood"),
   "A [flood] hit a farm after [floods].");
 check("not mid-word: “earn” marks nothing in “learning”", marked("Machine learning", "earn"), "Machine learning");
 check("only one-letter words → nothing marked", marked("A to B", "a b"), "A to B");
+
+console.log("\n— Names on result cards: titles and degrees are never marked —");
+check("“Dr. Stone” on Dr. Santos's study marks nothing", marked("Dr. Maria Santos, PhD", "Dr. Stone", isNameTitle),
+  "Dr. Maria Santos, PhD");
+check("“Dr. Stone” on Dr. Stone's study marks only “Stone”", marked("Dr. Maria Stone, PhD", "Dr. Stone", isNameTitle),
+  "Dr. Maria [Stone], PhD");
+check("“Engr” and “PhD” mark nothing", marked("Engr. Liza Pagulayan, PhD", "engr phd", isNameTitle), "Engr. Liza Pagulayan, PhD");
+check("“Asst. Prof.” marks nothing; the name still is", marked("Asst. Prof. Ana Reyes, MSc", "asst prof msc reyes", isNameTitle),
+  "Asst. Prof. Ana [Reyes], MSc");
+check("a name that merely starts like a title is still marked: “pe” → “Pedro”", marked("Pedro Cruz, PE", "pe", isNameTitle),
+  "[Pedro] Cruz, PE");
+check("the abstract snippet (no skip) still marks “Dr”", marked("Dr. Santos advised it.", "dr"), "[Dr]. Santos advised it.");
+
+console.log("\n— ñ and accents are letters, as in search —");
+check("“niño” marks the whole word, any case", marked("After the El NIÑO drought", "niño"), "After the El [NIÑO] drought");
+check("“ni” marks all of “Niño”, not just “Ni”", marked("El Niño years", "ni"), "El [Niño] years");
+check("a word starting with an accent is marked", marked("Él dijo", "él"), "[Él] dijo");
+check("not after ñ mid-word: “blanca” marks nothing in “Peñablanca”", marked("Peñablanca, Cagayan", "blanca"), "Peñablanca, Cagayan");
+check("an author line: “Acosta” in “Jan Rhyanne Acosta, Luigi Mindanao”",
+  marked("Jan Rhyanne Acosta, Luigi Mindanao", "acosta"), "Jan Rhyanne [Acosta], Luigi Mindanao");
+check("the snippet finds a sentence by “niño”", abstractSnippet(["Rainfall fell during El Niño years."], "Niño"),
+  "Rainfall fell during El Niño years.");
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);
