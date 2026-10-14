@@ -3,9 +3,10 @@ import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import { SEARCH_MAX, cleanQuery } from "../validation";
-import type { RankedThesis } from "../summary";
+import { splitSentences, type RankedThesis } from "../summary";
 import { apaReference } from "../citation";
-import { ISUSeal, StatusBadge, DeptBadge, Icon, formatPosted } from "./shared";
+import { abstractSnippet } from "../snippet";
+import { ISUSeal, DeptBadge, Icon, formatPosted, authorsPreview, highlightKw } from "./shared";
 
 /** The Drive link opened as the e-library account. With several Google accounts in one
  *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
@@ -90,6 +91,15 @@ export function SearchScreen({
       .filter(r => r.score > 0)
       .sort((a, b) => b.score - a.score);
   }, [filtered, index, searchQuery]);
+
+  // One short abstract snippet per result, only while searching (snippet.ts).
+  // No query (newest-first list) → no snippets.
+  const snippets = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!searchQuery) return m;
+    for (const { thesis: t } of results) m.set(t.id, abstractSnippet(splitSentences(t.abstract), searchQuery));
+    return m;
+  }, [results, searchQuery]);
 
   // Citation chip → scroll to that result and flash it (docs/07 §4). The panel
   // is already closed by then, so the card is not hidden behind the overlay.
@@ -263,6 +273,8 @@ export function SearchScreen({
             const showPreview = previewId === t.id;
             // APA 7 reference (citation.ts); null when no authors are recorded.
             const citation = showPreview ? apaReference(t) : null;
+            const authors = authorsPreview(t.authors);
+            const snippet = snippets.get(t.id);
 
             return (
               <div key={t.id} id={`result-${t.id}`}
@@ -279,6 +291,8 @@ export function SearchScreen({
                           {t.title}
                         </h3>
                       </button>
+                      {/* No authors recorded (older records) → no line. */}
+                      {authors && <p className="result-authors">{authors}</p>}
                     </div>
                     {pct > 0 && (
                       <div className="score-pill" title="Relevance, relative to the top result">
@@ -287,11 +301,15 @@ export function SearchScreen({
                     )}
                   </div>
 
+                  {/* No status badge: every study is POSTED. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, paddingLeft: 28 }}>
                     <DeptBadge dept={t.department} small />
-                    <StatusBadge status={t.status} />
-                    <span className="result-meta">{t.year} · {t.adviser}</span>
+                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {t.adviser}</>}</span>
                   </div>
+
+                  {snippet && (
+                    <p className="result-snippet">{highlightKw(snippet, searchQuery)}</p>
+                  )}
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 28 }}>
                     {t.keywords.slice(0, 4).map(kw => (

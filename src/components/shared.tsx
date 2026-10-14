@@ -1,7 +1,8 @@
 // Small presentational pieces used by more than one screen.
-import { useEffect } from "react";
-import type { Thesis, ThesisStatus } from "../types";
+import { useEffect, type ReactNode } from "react";
+import type { Thesis } from "../types";
 import { registeredAtISO } from "../types";
+import { queryTerms, queryWordPattern } from "../snippet";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -63,20 +64,6 @@ export function ISUSeal({ size = 40 }: { size?: number }) {
   );
 }
 
-/** Human-readable text for each status. */
-export const STATUS_LABELS: Record<ThesisStatus, string> = {
-  POSTED: "Posted",
-};
-
-export function StatusBadge({ status }: { status: ThesisStatus }) {
-  return (
-    <span className="status-badge status-posted">
-      <span className="status-dot" aria-hidden="true" />
-      {STATUS_LABELS[status]}
-    </span>
-  );
-}
-
 /** registeredAt as e.g. "October 12, 2026" ("Oct 12, 2026" with month "short"), or
  *  "Not recorded" for old records without one. Study Details and both dashboards use it. */
 export function formatPosted(t: Pick<Thesis, "registeredAt">, month: "long" | "short" = "long"): string {
@@ -87,12 +74,27 @@ export function formatPosted(t: Pick<Thesis, "registeredAt">, month: "long" | "s
     : "Not recorded";
 }
 
-/** Full names, at most `max`, then "+N more": "Jan Rhyanne Acosta, Luigi Mindanao +1 more".
+/** The labelled author line on result cards and both dashboards: full names, at most
+ *  `max`, then "+N more" — "Author: Luigi Mindanao", "Authors: Jan Rhyanne Acosta, Luigi
+ *  Mindanao +1 more" (like "Adviser: …" and Study Details' Author/Authors row).
  *  No authors (older records read as []) → "", so the caller can leave the line out. */
 export function authorsPreview(authors: string[], max = 2): string {
+  if (authors.length === 0) return "";
   const shown = authors.slice(0, max).join(", ");
   const more = authors.length - max;
-  return more > 0 ? `${shown} +${more} more` : shown;
+  return `${authors.length === 1 ? "Author" : "Authors"}: ${more > 0 ? `${shown} +${more} more` : shown}`;
+}
+
+/** Wraps each word in `text` that starts with a query word in <mark> ("learn"
+ *  marks all of "learning"; words under 2 letters are ignored, as in search):
+ *  the combined summary and the search result snippet. The rule is in snippet.ts.
+ *  Builds React nodes rather than an HTML string, so abstract text is never
+ *  parsed as HTML, and the original casing is kept. */
+export function highlightKw(text: string, query: string): ReactNode {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return text;
+  return text.split(queryWordPattern(terms)).map((part, i) =>
+    i % 2 === 1 ? <mark key={i} className="keyword-highlight">{part}</mark> : part);
 }
 
 export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
