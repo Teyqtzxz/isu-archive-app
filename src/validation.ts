@@ -37,6 +37,8 @@ export const MSG = {
   authorsRequired: "Please add at least one author.",
   authorFull: "Type the author's full name, e.g. Juan Dela Cruz",
   authorsMax: `Up to ${MAX_AUTHORS} authors can be added.`,
+  /** A saved author name (Edit study) that would not pass today's check. */
+  authorStored: (name: string, problem: string) => `Fix “${name}”: remove it and add it again. ${problem}`,
   nameChars: "Names can only have letters, spaces and . , ' - (no numbers or symbols).",
   nameLong: (max: number) => `That name is too long (max ${max} characters).`,
   departmentRequired: "Please choose a department.",
@@ -142,6 +144,24 @@ export function addAuthor(list: string[], typed: string): Added {
   if (list.some(a => sameText(a, value))) return { list, note: MSG.alreadyListed([value]) };
   if (list.length >= MAX_AUTHORS) return { list, error: MSG.authorsMax };
   return { list: [...list, value] };
+}
+
+/**
+ * A saved study's authors, loaded into the Edit form: each cleaned as if typed
+ * (spaces, capitals), repeats dropped. A name that would not pass checkAuthor
+ * (saved before the checks existed) is kept as stored — dropping it would lose
+ * an author — and the first one's message is returned, so saving asks for a fix.
+ */
+export function cleanAuthorList(names: string[]): Added {
+  const list: string[] = [];
+  let error: string | undefined;
+  for (const raw of names) {
+    const { value, error: problem } = checkAuthor(raw);
+    if (!value || list.some(a => sameText(a, value))) continue;
+    if (problem && !error) error = MSG.authorStored(value, problem);
+    list.push(value);
+  }
+  return { list, error };
 }
 
 /** Titles the adviser's name may start with; the period is optional.

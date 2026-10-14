@@ -23,7 +23,7 @@ function withAccount(link: string, email: string): string {
 }
 
 export function SearchScreen({
-  theses, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onBack, onSignOut,
+  theses, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role;
   /** The signed-in e-library account; Drive links open with it (authuser). */
@@ -37,6 +37,10 @@ export function SearchScreen({
    *  repeat tap on the same study fire again. `open` also expands that study's Study Details. */
   jumpTo?: { thesisId: string; nonce: number; open?: boolean } | null;
   onCombinedSummary: (results: RankedThesis[], query: string) => void;
+  /** Staff only: open this study in the Edit form / ask to delete it. The
+   *  buttons show only for staff, and firestore.rules deny anyone else anyway. */
+  onEdit?: (thesis: Thesis) => void;
+  onDelete?: (thesis: Thesis) => void;
   onBack: () => void;
   onSignOut: () => void;
 }) {
@@ -334,10 +338,24 @@ export function SearchScreen({
                       {/* Students read the study in Google's view-only viewer: the file is
                           shared ISU → Viewer with download limited to Editors (docs/08 §7b). */}
                       {role === "staff" ? (
-                        <a href={withAccount(t.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">
-                          <Icon name="external" size={13} />
-                          Open in Drive
-                        </a>
+                        <span className="details-actions">
+                          <a href={withAccount(t.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">
+                            <Icon name="external" size={13} />
+                            Open in Drive
+                          </a>
+                          {onEdit && (
+                            <button type="button" onClick={() => onEdit(t)} className="drive-btn" aria-label={`Edit “${t.title}”`}>
+                              <Icon name="edit" size={13} />
+                              Edit
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button type="button" onClick={() => onDelete(t)} className="drive-btn drive-btn-danger" aria-label={`Delete “${t.title}”`}>
+                              <Icon name="trash" size={13} />
+                              Delete
+                            </button>
+                          )}
+                        </span>
                       ) : (
                         <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, textAlign: "right" }}>
                           <a href={withAccount(t.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">

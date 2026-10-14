@@ -144,6 +144,8 @@ by the security rules once they are published, by design.
 | `status` | string | `"POSTED"` | the only value (`ThesisStatus`). Records saved before 2026-10-12 may hold `"ARCHIVED"`, `"NEEDS_REVIEW"` or `"DRAFT"`; `data.ts` reads them as `POSTED` |
 | `registeredBy` | string | `"uid_of_staff"` | who saved it |
 | `registeredAt` | timestamp | — | when saved |
+| `updatedBy` | string | `"uid_of_staff"` | who last edited it (`updateThesis()`); absent on a study never edited. An edit never changes `registeredBy` |
+| `updatedAt` | timestamp | — | when last edited (`serverTimestamp()`); absent on a study never edited. An edit never changes `registeredAt` |
 
 ### Status flow
 

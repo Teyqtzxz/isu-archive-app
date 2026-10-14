@@ -19,6 +19,9 @@ export function StaffDashboard({
   activeTab,
   onTabChange,
   onSave,
+  editing,
+  onEditSave,
+  onEditCancel,
   onSearch,
   onOpenStudy,
   onSignOut,
@@ -28,6 +31,12 @@ export function StaffDashboard({
   activeTab: StaffTab;
   onTabChange: (t: StaffTab) => void;
   onSave: (thesis: NewThesis) => Promise<void>;
+  /** Set while staff edit a study (Study Details → Edit): the edit form
+   *  replaces the tab content and no tab is marked active. */
+  editing?: Thesis | null;
+  /** Rejects on failure so the edit form can show the error and stay open. */
+  onEditSave?: (thesis: NewThesis) => Promise<void>;
+  onEditCancel?: () => void;
   /** department: undefined = the default filter (own department), "" = all. */
   onSearch: (q?: string, department?: string) => void;
   /** Open the search screen at this study, with its Study Details expanded. */
@@ -122,8 +131,8 @@ export function StaffDashboard({
             <button
               key={tab.id}
               onClick={() => tab.id === "search" ? onSearch() : onTabChange(tab.id)}
-              className={`tab-btn${activeTab === tab.id ? " tab-btn-active" : ""}`}
-              aria-current={activeTab === tab.id ? "page" : undefined}
+              className={`tab-btn${!editing && activeTab === tab.id ? " tab-btn-active" : ""}`}
+              aria-current={!editing && activeTab === tab.id ? "page" : undefined}
             >
               <span className="tab-icon"><Icon name={tab.icon} size={16} /></span>
               {tab.label}
@@ -134,7 +143,14 @@ export function StaffDashboard({
 
       {/* Content */}
       <main className="app-shell">
-        {activeTab === "dashboard" && (
+        {/* Edit study: the Register form in edit mode, keyed so another study starts fresh. */}
+        {editing && onEditSave && onEditCancel && (
+          <div className="register-wrap">
+            <RegisterForm key={editing.id} study={editing} onBack={onEditCancel} onSave={onEditSave} />
+          </div>
+        )}
+
+        {!editing && activeTab === "dashboard" && (
           <div className="animate-fade-in">
             {/* Welcome */}
             <div className="card card-pad card-mb welcome">
@@ -225,7 +241,7 @@ export function StaffDashboard({
           </div>
         )}
 
-        {activeTab === "register" && (
+        {!editing && activeTab === "register" && (
           <div className="register-wrap">
             <RegisterForm
               onBack={() => onTabChange("dashboard")}
@@ -235,7 +251,7 @@ export function StaffDashboard({
         )}
 
         {/* Every department, not just `mine`: the point is to compare them. */}
-        {activeTab === "statistics" && (
+        {!editing && activeTab === "statistics" && (
           <div className="animate-fade-in">
             <DepartmentStats
               theses={theses}
@@ -246,7 +262,7 @@ export function StaffDashboard({
           </div>
         )}
 
-        {activeTab === "settings" && (
+        {!editing && activeTab === "settings" && (
           <div className="animate-fade-in card card-pad-lg register-wrap">
             <h2 className="form-title" style={{ marginBottom: 12 }}>Account</h2>
             {([

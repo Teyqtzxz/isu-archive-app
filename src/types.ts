@@ -44,11 +44,18 @@ export interface Thesis {
    * sorting and display must never assume one shape.
    */
   registeredAt: Timestamp | string | null;
+  /** uid of the staff member who last edited it (updateThesis). Absent on a
+   *  study never edited; registeredBy is kept unchanged by an edit. */
+  updatedBy?: string;
+  /** When it was last edited (serverTimestamp). Absent on a study never edited. */
+  updatedAt?: Timestamp | string | null;
 }
 
-/** What the register form hands to saveThesis(). saveThesis fills in the
- *  status (always POSTED) and the server the id, registeredBy and registeredAt. */
-export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
+/** What the register form hands to saveThesis() (and, in edit mode, to
+ *  updateThesis()). saveThesis fills in the status (always POSTED) and the
+ *  server the id, registeredBy and registeredAt; updateThesis adds updatedBy
+ *  and updatedAt. */
+export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt" | "updatedBy" | "updatedAt">;
 
 /**
  * registeredAt as a sortable ISO string, whatever shape it arrived in.

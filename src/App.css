@@ -415,6 +415,7 @@
   margin-bottom: 6px;
 }
 .field-req { color: var(--isu-red); }
+.field-optional { color: var(--text-subtle); font-weight: 400; }
 .field-mb  { margin-bottom: 16px; }
 
 .input {
@@ -1203,6 +1204,11 @@ select.input {
   background: var(--surface);
 }
 .drive-btn:hover { background: var(--isu-green-light); }
+/* Staff only: Open in Drive, Edit and Delete side by side; they wrap on a phone. */
+.details-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+button.drive-btn { cursor: pointer; font-family: inherit; line-height: inherit; }
+.drive-btn-danger { color: var(--isu-red); border-color: rgba(205, 32, 43, 0.35); }
+.drive-btn-danger:hover { background: var(--isu-red-light); }
 
 /* ─── Register form bits ───────────────────────────────────── */
 .register-wrap { max-width: 720px; margin: 0 auto; }
@@ -1393,7 +1399,7 @@ select.input {
   .sheet-handle-row { display: none; }
   .sheet-header { padding-top: 20px; }
 }
-/* ─── Sign-out confirmation ────────────────────────────────── */
+/* ─── Confirmation dialog (sign out, delete a study) ───────── */
 /* A small centred card at every width (not a bottom sheet), above the header. */
 .confirm-overlay { justify-content: center; align-items: center; padding: 16px; z-index: 200; }
 .confirm-box {
@@ -1418,6 +1424,7 @@ select.input {
   color: var(--isu-red);
 }
 .confirm-title { font-size: 18px; font-weight: 800; color: var(--text); margin: 0 0 6px; }
+.confirm-detail { font-size: 14px; font-weight: 700; color: var(--isu-blue); line-height: 1.4; margin: 0 0 8px; overflow-wrap: anywhere; }
 .confirm-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px; }
 .confirm-actions { display: flex; gap: 10px; }
 .confirm-btn { flex: 1; padding: 11px; font-size: 14px; }

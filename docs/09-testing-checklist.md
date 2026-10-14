@@ -42,6 +42,11 @@ matters most.
 
 - [ ] Student writes to `theses` → **denied**
 - [ ] Staff writes to `theses` → **allowed**
+- [ ] Student **deletes** `theses/{id}` (Playground: delete, authenticated as a
+      student's uid with an `@isu.edu.ph` email) → **denied**; the same as a
+      staff uid → **allowed**
+- [ ] Student **updates** `theses/{id}` → **denied** (edit/delete are staff-only
+      in `firestore.rules`: `allow create, update, delete: if isStaff()`)
 - [ ] Student updates own `users/{uid}` doc, `role` unchanged → **allowed**
 - [ ] Student updates own doc to `role: "STAFF"` → **denied**
 - [ ] No account can create a new user doc already born as `STAFF`
@@ -166,6 +171,66 @@ matters most.
 - [ ] After typing the abstract, "Save Manually" writes `status: "POSTED"`
 - [ ] Garbage link → specific error message, no crash
 - [ ] Non-Drive URL is rejected before any download starts
+
+## 4b. Edit and delete a study (staff)
+
+- [ ] **Staff:** Study Details (Search → tap a title) shows **Edit** and
+      **Delete** (red outline) next to "Open in Drive"; on a 360 px phone the
+      three buttons wrap, nothing sticks out of the card
+- [ ] **Student:** Study Details shows only "Read full study" and the
+      view-only line — **no Edit, no Delete** (check on the student dashboard's
+      "View details" too)
+- [ ] **Edit** opens "Edit study" (heading and step 1) with every field filled
+      in: title, authors (chips), department, Academic Year, adviser, Drive
+      link; the PDF box says "(optional)" and the button says **"Continue"**
+- [ ] **Edit without a PDF:** change the title → "Continue" goes straight to
+      the save step (no "Reading PDF…", no Drive download — check the Network
+      tab: no `googleapis.com/drive` request) with "Ready to save: Current
+      abstract and keywords kept"; the abstract and keywords are the study's
+- [ ] **Save changes** → toast **"Study updated"** → the search screen opens at
+      that study with its Study Details expanded and the new title; the
+      dashboards and Statistics show the change without a reload
+- [ ] In the Firestore console the document has `updatedAt` (a timestamp) and
+      `updatedBy` (your uid); `registeredAt`, `registeredBy` and `status` are
+      unchanged, and the study keeps its place in the newest-first list
+- [ ] **Edit with a PDF:** choose a PDF → the button says "Read PDF & continue"
+      → PROCESSING → "Details filled in:" with the abstract and keywords read
+      from that PDF; Save changes keeps them
+- [ ] A PDF that cannot be read (scanned) in Edit → "Could not read the PDF."
+      and the study's current abstract and keywords are **kept**, not blanked
+- [ ] **Validation on edit:** clear the title → "Continue" shows "Please fill
+      in the title." under it; Academic Year `201` → "Please type a 4-digit
+      year, e.g. 2019."; adviser `Dr. Santos` → the adviser message; an
+      abstract cut to under 50 words → "The abstract looks too short…" on Save
+      changes; nothing is saved while a message shows
+- [ ] A study saved before the name checks with an author like `Dela Cruz`:
+      "Continue" shows "Fix “Dela Cruz”: remove it and add it again. …"; remove
+      the chip, add `Juan Dela Cruz`, and it saves
+- [ ] Values are cleaned on loading: a title saved with double spaces or an
+      author saved as `juan dela cruz` shows as `Juan Dela Cruz` in the form
+- [ ] **Cancel** (step 1) and **Edit details → Cancel** return to the search
+      screen at that study with **nothing** changed; clicking a staff tab while
+      editing also leaves without saving
+- [ ] **Delete** → a dialog: "Delete this study?", the study's title in bold,
+      "This removes it from the e-library for everyone and cannot be undone.
+      The PDF stays in Google Drive.", **Cancel** (focused — Enter cancels) and
+      **Delete** (red)
+- [ ] **Cancel**, **Escape** and a click on the dark backdrop each close the
+      dialog and the study is still there
+- [ ] **Delete** → toast **"Study deleted"**; the study disappears from the
+      search results, the staff "Recent studies", the student "Recently added"
+      (open a student window side by side: it goes there too without a
+      reload), the dashboard counts and the Statistics bars/keywords
+- [ ] The PDF is still in Google Drive after the delete
+- [ ] Sign out still asks "Sign out?" exactly as before (same dialog component)
+- [ ] A refused write shows a clear message, never a blank page: open a study
+      as staff, then in the Firebase console change your `users/{uid}` role to
+      `STUDENT` (do not reload). **Delete** → toast "You do not have permission
+      to delete the study. Only Research Department staff can edit or delete
+      studies." and the study stays; **Edit → Save changes** → the same kind of
+      message in the red box, the form stays open. Set the role back to `STAFF`
+      afterwards. (Offline is not a failure: Firestore queues the write and
+      sends it when the connection returns.)
 
 ## 5. Search (both roles)
 

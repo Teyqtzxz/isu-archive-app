@@ -4,7 +4,7 @@ import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
 import { auth } from "./firebase";
 import {
-  getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses,
+  deleteThesis, getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses, updateThesis,
 } from "./data";
 import { LoginScreen } from "./components/LoginScreen";
 import { StaffDashboard, type StaffAccount } from "./components/StaffDashboard";
@@ -12,6 +12,7 @@ import { StudentDashboard } from "./components/StudentDashboard";
 import { SearchScreen } from "./components/SearchScreen";
 import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
 import { SignOutDialog } from "./components/SignOutDialog";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { RankedThesis } from "./summary";
 import { ISUSeal, Icon, Toast } from "./components/shared";
 
@@ -39,6 +40,12 @@ export default function App() {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // Stable, so the dialog's Escape listener is not re-added on every render.
   const cancelSignOut = useCallback(() => setConfirmSignOut(false), []);
+  // Staff only. The study being edited (the Register form in edit mode, on the
+  // staff dashboard), and the one waiting for the "Delete this study?" answer.
+  // A copy taken when Edit was pressed, so a live update cannot reset the form.
+  const [editing, setEditing] = useState<Thesis | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Thesis | null>(null);
+  const cancelDelete = useCallback(() => setConfirmDelete(null), []);
 
   // The single place that turns "a user is signed in" into a role and a
   // screen — for a fresh sign-in and for a session restored on refresh alike.
@@ -49,6 +56,8 @@ export default function App() {
         setScreen("login");
         setStaffTab("dashboard");
         setSummaryData(null);
+        setEditing(null);
+        setConfirmDelete(null);
         setAuthReady(true);
         return;
       }
@@ -115,6 +124,41 @@ export default function App() {
     setToast("Study posted!");
   }
 
+  // Study Details → Edit: the edit form, on the staff dashboard.
+  function startEdit(thesis: Thesis) {
+    setEditing(thesis);
+    setScreen("staff-dashboard");
+  }
+
+  // Cancel / Back: nothing saved; back to the search screen at that study.
+  function cancelEdit() {
+    const id = editing?.id;
+    setEditing(null);
+    if (id) openStudy(id);
+  }
+
+  // Rejects on failure (updateThesis has a clear message) so the form stays
+  // open and shows it. registeredAt/registeredBy are left as they were.
+  async function handleEditSave(fields: NewThesis) {
+    if (!editing) return;
+    const id = editing.id;
+    await updateThesis(id, fields);
+    setToast("Study updated");
+    setEditing(null);
+    openStudy(id);
+  }
+
+  // The dialog closes at once; the study leaves every list, dashboard and
+  // statistic through the live subscription. A failure is a toast, not a crash.
+  function confirmedDelete() {
+    const thesis = confirmDelete;
+    setConfirmDelete(null);
+    if (!thesis) return;
+    deleteThesis(thesis.id)
+      .then(() => setToast("Study deleted"))
+      .catch((err: unknown) => setToast(err instanceof Error ? err.message : "Could not delete the study. Try again."));
+  }
+
   // Every Sign Out button only asks; the dialog's "Sign Out" really signs out.
   function handleSignOut() {
     setConfirmSignOut(true);
@@ -174,9 +218,12 @@ export default function App() {
           theses={theses}
           account={account}
           activeTab={staffTab}
-          onTabChange={setStaffTab}
+          onTabChange={t => { setEditing(null); setStaffTab(t); }}
           onSave={handleSave}
-          onSearch={goSearch}
+          editing={editing}
+          onEditSave={handleEditSave}
+          onEditCancel={cancelEdit}
+          onSearch={(q, dept) => { setEditing(null); goSearch(q, dept); }}
           onOpenStudy={openStudy}
           onSignOut={handleSignOut}
         />
@@ -197,6 +244,8 @@ export default function App() {
           initialDepartment={searchInitialDept}
           jumpTo={citeJump}
           onCombinedSummary={handleCombinedSummary}
+          onEdit={role === "staff" ? startEdit : undefined}
+          onDelete={role === "staff" ? setConfirmDelete : undefined}
           onBack={() => setScreen(role === "staff" ? "staff-dashboard" : "student-dashboard")}
           onSignOut={handleSignOut}
         />
@@ -213,6 +262,18 @@ export default function App() {
 
       {confirmSignOut && (
         <SignOutDialog onConfirm={confirmedSignOut} onCancel={cancelSignOut} />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          icon="trash"
+          title="Delete this study?"
+          detail={confirmDelete.title}
+          description="This removes it from the e-library for everyone and cannot be undone. The PDF stays in Google Drive."
+          confirmLabel="Delete"
+          onConfirm={confirmedDelete}
+          onCancel={cancelDelete}
+        />
       )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
