@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ExtractionState, NewThesis, Thesis } from "../types";
 import { DEPARTMENTS } from "../types";
 import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
@@ -7,7 +7,8 @@ import {
   addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
   cleanAuthorList, cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
 } from "../validation";
-import { DeptBadge, Icon } from "./shared";
+import { buildOriginalityIndex, originalityCheck, originalityReason, type SimilarityLevel } from "../similarity";
+import { DeptBadge, Icon, SharedTerms, withAccount } from "./shared";
 
 /** The Academic Year box starts at this year; any past year can be typed. */
 const THIS_YEAR = new Date().getFullYear();
@@ -20,11 +21,23 @@ type FieldErrors = Partial<Record<Field, string>>;
 const fieldId = (f: Field) => `register-${f}`;
 const errorId = (f: Field) => `register-${f}-error`;
 
-export function RegisterForm({ study, onBack, onSave }: {
+/** The originality check's three messages (similarity.ts THRESHOLDS: 80 / 50 / 30%,
+ *  on the higher of the overall and the abstract-only score). */
+const SIMILARITY_BOXES: { level: SimilarityLevel; className: string; heading: (count: number) => string }[] = [
+  { level: "duplicate", className: "sim-box sim-box--duplicate", heading: () => "Possible duplicate — this study may already be registered" },
+  { level: "very-similar", className: "sim-box sim-box--warn", heading: n => n === 1 ? "Very similar study found" : "Very similar studies found" },
+  { level: "related", className: "sim-box sim-box--info", heading: () => "Related studies" },
+];
+
+export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
   /** Edit mode: the saved study, pre-filled (cleaned as when typed). Reading a
    *  PDF is then optional; with none chosen the current abstract and keywords
    *  are kept. Key the form by study id so a different study starts fresh. */
   study?: Thesis;
+  /** Every stored study, for the originality check on the save step. */
+  theses: Thesis[];
+  /** The signed-in account; "Open in Drive" on a match opens with it (authuser). */
+  viewerEmail: string;
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
   onSave: (thesis: NewThesis) => Promise<void>;
@@ -63,6 +76,26 @@ export function RegisterForm({ study, onBack, onSave }: {
   /** The last PDF read and how it went, so "Edit details" → continue does not
    *  download the same file again or wipe the staff member's edits. */
   const lastRead = useRef<{ source: string; ok: boolean } | null>(null);
+
+  // Originality check (similarity.ts) on the save step: the study as it will
+  // be saved, compared with every stored study except itself (Edit study).
+  // Scored overall and by abstract alone (a copied abstract under a new
+  // title is still a duplicate). The stored studies' vectors are built once
+  // per data change.
+  const onSaveStep = extractState === "success" || extractState === "needs_review";
+  const originalityIndex = useMemo(() => buildOriginalityIndex(theses), [theses]);
+  const byId = useMemo(() => new Map(theses.map(t => [t.id, t])), [theses]);
+  const draftTitle = checkTitle(form.title).value;
+  const matches = useMemo(() => onSaveStep
+    ? originalityCheck(originalityIndex, { title: draftTitle, abstract, keywords }, { excludeId: study?.id })
+    : [], [onSaveStep, originalityIndex, draftTitle, abstract, keywords, study?.id]);
+  /** The possible duplicates, as one key: ticking the box confirms these ones.
+   *  If the list changes (abstract edited, another study saved), it asks again. */
+  const duplicateKey = matches.filter(m => m.level === "duplicate").map(m => m.id).join(" ");
+  const [checkedDuplicates, setCheckedDuplicates] = useState("");
+  const mustConfirm = duplicateKey !== "" && checkedDuplicates !== duplicateKey;
+  /** The match whose details are shown inside the warning (no leaving the form). */
+  const [detailsId, setDetailsId] = useState<string | null>(null);
 
   const steps = [
     { label: editing ? "Edit study" : "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
@@ -228,6 +261,8 @@ export function RegisterForm({ study, onBack, onSave }: {
   }
 
   async function handleSave() {
+    // The button is disabled too; this keeps a double tap from slipping through.
+    if (mustConfirm) return;
     // "Confirm & Save" and "Save Manually" both post the study: staff have
     // already checked the details here, so there is no later review step.
     // That makes this the last check: search ranks studies on the abstract,
@@ -545,6 +580,66 @@ export function RegisterForm({ study, onBack, onSave }: {
             {keywords.length >= MAX_KEYWORDS && <p className="hint">{MSG.keywordsMax}</p>}
           </div>
 
+          {/* Originality check: at most 3 matches, grouped by level. */}
+          {SIMILARITY_BOXES.map(box => {
+            const group = matches.filter(m => m.level === box.level);
+            if (group.length === 0) return null;
+            return (
+              <div key={box.level} className={box.className} role={box.level === "duplicate" ? "alert" : undefined}>
+                <div className="sim-box-heading">
+                  <Icon name={box.level === "related" ? "info" : "alert"} size={16} />
+                  {box.heading(group.length)}
+                </div>
+                {group.map(m => {
+                  const s = byId.get(m.id);
+                  if (!s) return null;
+                  const open = detailsId === m.id;
+                  return (
+                    <div key={m.id} className="sim-match">
+                      <div className="sim-match-title">{s.title}</div>
+                      <span className="result-meta">{s.year} · {originalityReason(m)}</span>
+                      <SharedTerms terms={m.sharedTerms} />
+                      <div className="sim-match-actions">
+                        <button type="button" onClick={() => setDetailsId(open ? null : m.id)} className="drive-btn" aria-expanded={open}>
+                          {open ? "Hide details" : "Show details"}
+                        </button>
+                        <a href={withAccount(s.driveLink, viewerEmail)} target="_blank" rel="noreferrer" className="drive-btn">
+                          <Icon name="external" size={13} />
+                          Open in Drive
+                        </a>
+                      </div>
+                      {open && (
+                        <div className="sim-details">
+                          <dl className="study-details">
+                            <dt>Author{s.authors.length === 1 ? "" : "s"}</dt>
+                            <dd>{s.authors.length > 0 ? s.authors.join("; ") : <span className="study-details-empty">Not recorded</span>}</dd>
+                            <dt>Adviser</dt>
+                            <dd>{s.adviser}</dd>
+                            <dt>Department</dt>
+                            <dd>{s.department}</dd>
+                            {s.keywords.length > 0 && <>
+                              <dt>Keywords</dt>
+                              <dd>{s.keywords.join(", ")}</dd>
+                            </>}
+                          </dl>
+                          <span className="overline-label">Abstract</span>
+                          <p className="preview-text">{s.abstract}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {box.level === "duplicate" && (
+                  <label className="sim-confirm">
+                    <input type="checkbox" checked={!mustConfirm}
+                      onChange={e => setCheckedDuplicates(e.target.checked ? duplicateKey : "")} />
+                    I checked — register anyway
+                  </label>
+                )}
+              </div>
+            );
+          })}
+
           {saveError && (
             <div className="error-box" role="alert">
               <Icon name="alert" size={16} />
@@ -552,10 +647,14 @@ export function RegisterForm({ study, onBack, onSave }: {
             </div>
           )}
 
-          <button onClick={handleSave} disabled={saving} className="btn-submit">
+          <button onClick={handleSave} disabled={saving || mustConfirm} className="btn-submit"
+            aria-describedby={mustConfirm ? "register-confirm-hint" : undefined}>
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {saving ? "Saving..." : editing ? "Save changes" : extractState === "success" ? "Confirm & Save" : "Save Manually"}
           </button>
+          {mustConfirm && (
+            <p id="register-confirm-hint" className="hint sim-confirm-hint">Tick “I checked — register anyway” above to save.</p>
+          )}
         </div>
       )}
 

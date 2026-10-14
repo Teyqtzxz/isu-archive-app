@@ -116,6 +116,32 @@ export function highlightKw(text: string, query: string, skip?: (word: string) =
     p.hit ? <mark key={i} className="keyword-highlight">{p.text}</mark> : p.text);
 }
 
+/** "Shared key terms" of a similarity match (similarity.ts): the words that
+ *  add the most to the score. Nothing when there are none. */
+export function SharedTerms({ terms }: { terms: string[] }) {
+  if (terms.length === 0) return null;
+  return (
+    <div className="sim-terms">
+      <span className="sim-terms-label">Shared key terms:</span>
+      {terms.map(t => <span key={t} className="key-term">{t}</span>)}
+    </div>
+  );
+}
+
+/** The Drive link opened as the e-library account. With several Google accounts in one
+ *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
+ *  "You need access". Empty email or an unparsable link → the link unchanged. */
+export function withAccount(link: string, email: string): string {
+  if (!email) return link;
+  try {
+    const url = new URL(link);
+    url.searchParams.set("authuser", email);
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
 export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
   return (
     <span className={`dept-badge${small ? " dept-badge--small" : ""}`}>

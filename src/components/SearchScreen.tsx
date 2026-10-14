@@ -6,22 +6,9 @@ import { SEARCH_MAX, cleanQuery } from "../validation";
 import { splitSentences, type RankedThesis } from "../summary";
 import { apaReference } from "../citation";
 import { abstractSnippet } from "../snippet";
-import { ISUSeal, DeptBadge, Icon, formatPosted, authorsPreviewParts, highlightKw } from "./shared";
+import { THRESHOLDS, buildSimilarityIndex, similarStudies } from "../similarity";
+import { ISUSeal, DeptBadge, Icon, SharedTerms, formatPosted, authorsPreviewParts, highlightKw, withAccount } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
-
-/** The Drive link opened as the e-library account. With several Google accounts in one
- *  browser, Drive otherwise uses the first one (often a personal Gmail) and shows
- *  "You need access". Empty email or an unparsable link → the link unchanged. */
-function withAccount(link: string, email: string): string {
-  if (!email) return link;
-  try {
-    const url = new URL(link);
-    url.searchParams.set("authuser", email);
-    return url.toString();
-  } catch {
-    return link;
-  }
-}
 
 export function SearchScreen({
   theses, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
@@ -116,9 +103,12 @@ export function SearchScreen({
     if (jumpTo.open) setPreviewId(jumpTo.thesisId);
     setScrollTarget({ id: jumpTo.thesisId, open: !!jumpTo.open });
     setFlashId(jumpTo.thesisId);
+  }, [jumpTo]);
+  useEffect(() => {
+    if (!flashId) return;
     const t = setTimeout(() => setFlashId(null), 1600);
     return () => clearTimeout(t);
-  }, [jumpTo]);
+  }, [flashId]);
   // Scrolls in the render after the jump, so an expanded Study Details is already
   // laid out. An opened card is aligned to its top: it can be taller than the screen.
   // The top sits just below the sticky header (search box and filters), measured, not hardcoded.
@@ -133,6 +123,30 @@ export function SearchScreen({
     }
     setScrollTarget(null);
   }, [scrollTarget]);
+
+  // Similar studies (similarity.ts) in the open Study Details: TF-IDF vectors
+  // of every study, built once per data change (not per keystroke, and not
+  // from the filtered list: a similar study in another department still counts).
+  const similarityIndex = useMemo(() => buildSimilarityIndex(theses), [theses]);
+  const byId = useMemo(() => new Map(theses.map(t => [t.id, t])), [theses]);
+  const similar = useMemo(() => {
+    const open = previewId ? byId.get(previewId) : undefined;
+    return open ? similarStudies(similarityIndex, open, { excludeId: open.id, min: THRESHOLDS.similarStudies }) : [];
+  }, [similarityIndex, byId, previewId]);
+
+  // A similar study tapped: the same jump as "View details" (open it, scroll to
+  // it, flash it). If the search words or a filter hide it, they are cleared first.
+  function openSimilar(thesisId: string) {
+    if (!results.some(r => r.thesis.id === thesisId)) {
+      setQuery("");
+      setDebouncedQuery("");
+      setDeptFilter("");
+      setYearFilter("");
+    }
+    setPreviewId(thesisId);
+    setScrollTarget({ id: thesisId, open: true });
+    setFlashId(thesisId);
+  }
 
   // The summary uses ticked results that are still visible, each with the rank
   // it is shown at, so the button count and the cited studies match the list.
@@ -398,6 +412,25 @@ export function SearchScreen({
                     </dl>
                     <span className="overline-label">Abstract</span>
                     <p className="preview-text">{t.abstract}</p>
+                    {/* Top 3 other studies at 15% or more (TF-IDF + cosine). None → no section. */}
+                    {similar.length > 0 && (
+                      <div className="sim-section">
+                        <span className="overline-label">Similar studies</span>
+                        <ul className="sim-list">
+                          {similar.map(m => {
+                            const s = byId.get(m.id);
+                            if (!s) return null;
+                            return (
+                              <li key={m.id} className="sim-item">
+                                <button type="button" onClick={() => openSimilar(m.id)} className="sim-link">{s.title}</button>
+                                <span className="result-meta">{s.year} · {m.percent}% similar</span>
+                                <SharedTerms terms={m.sharedTerms} />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

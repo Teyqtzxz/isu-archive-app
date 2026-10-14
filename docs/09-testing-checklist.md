@@ -232,6 +232,43 @@ matters most.
       afterwards. (Offline is not a failure: Firestore queues the write and
       sends it when the connection returns.)
 
+## 4c. Similarity — originality check and similar studies (`14`)
+
+- [ ] **[auto]** `node src/similarity.check.ts` ends with "All passed."
+      (identical ≈ 100%, unrelated 0%, partial in between, case/punctuation
+      ignored, empty abstract safe, never matches itself, shared terms)
+- [ ] **Register a copy:** Register → type a new title, an author, department,
+      adviser and a Drive link → Read PDF & continue (Drive refuses → manual
+      entry) → paste the abstract of an existing study. A red **"Possible
+      duplicate — this study may already be registered"** box lists that study
+      (title, year, **"Abstract 100% similar"**, "Shared key terms") — also
+      with **no keywords** added and **Save Manually is greyed out**
+      with "Tick “I checked — register anyway” above to save."
+- [ ] Tick **"I checked — register anyway"** → the save button works. Untick
+      → greyed out again. (Cancel without saving if this is only a test.)
+- [ ] **Show details** opens the match's authors, adviser, department,
+      keywords and abstract **inside the box**; **Hide details** closes it; the
+      form keeps everything typed. **Open in Drive** opens the PDF in a new
+      tab with `authuser=` in the link
+- [ ] Change the abstract to something unrelated → the warning disappears and
+      the button is enabled without ticking; at most **3** matches ever show
+- [ ] A partial copy (half the abstract, or the same title and keywords with
+      another abstract) shows the yellow **"Very similar study found"** box, no
+      checkbox; a 30–49% match shows the green **"Related studies"** box
+- [ ] **Edit study:** Edit a study that has a copy → Continue → the copy is
+      listed, the study itself **never** is. A study with no copy shows no box
+- [ ] **Study Details (staff and student):** a study with copies shows
+      **"Similar studies"** under the abstract — at most 3, each with title,
+      year, "% similar" and "Shared key terms"; a study with nothing ≥ 15%
+      (e.g. my.Eskwela) shows **no** section
+- [ ] Tap a similar study → its Study Details opens, scrolls into view and
+      flashes. With a search word or department filter that hides it, the
+      search box and filters are cleared first so it can be shown
+- [ ] Dark mode: the three boxes, the chips and the links are readable in
+      Light and Dark; `grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx`
+      prints nothing
+- [ ] Search results, ranking and relevance % are exactly as before
+
 ## 5. Search (both roles)
 
 - [ ] **[auto]** `grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts`
@@ -437,12 +474,13 @@ matters most.
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
 node src/search.check.ts                               # expect: All passed.
 node src/theme.check.ts                                # expect: All passed.
+node src/similarity.check.ts                           # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

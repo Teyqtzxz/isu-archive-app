@@ -52,6 +52,7 @@ one at a time.
 | 11 | `11-doc-errata.md` | — | what was corrected and why |
 | 12 | `12-how-to-contribute.md` | everyone | **read once if you have never used GitHub** |
 | 13 | `13-prompt-templates.md` | everyone | **copy-paste prompts for every step — start here** |
+| 14 | `14-similarity.md` | — | document similarity (TF-IDF + cosine): originality check and Similar studies — method, worked example, thresholds, limits (for the defense) |
 
 Steps 06 and 07 are independent — take whichever you prefer.
 
