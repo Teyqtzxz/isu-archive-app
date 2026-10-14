@@ -11,7 +11,7 @@ import type { Thesis } from "./types";
 
 export interface SummarySentence {
   text: string;
-  sourceIndex: number; // the thesis's visible rank = the [n] on its result card
+  sourceIndex: number; // the thesis's visible rank; the panel maps it to the study and its APA citation
 }
 
 /** A ticked result and the rank it was shown at. SearchScreen builds these —

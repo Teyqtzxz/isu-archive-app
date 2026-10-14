@@ -121,7 +121,8 @@ Verified against the code on 2026-09-30.
 - ☑ Department statistics: studies per department, top keywords (staff Statistics tab, student dashboard)
 - ☑ "Sign out?" confirmation on every Sign Out
 - ☑ Click a result title → abstract preview → "Open in Drive"
-- ☑ Combined summary of ticked results, extractive (MMR over BM25), with `[n]` citations (step 07)
+- ☑ APA 7 citation in Study Details (professor, 2026-10-14)
+- ☑ Combined summary of ticked results, extractive (MMR over BM25), with APA 7 in-text citations (step 07, `07` §8)
 - ☑ Responsive headers with safe-area handling
 - ☑ Security: only STAFF can write; students read-only; ISU accounts only
 - ☐ Deployed on Firebase Hosting with HTTPS

@@ -3,6 +3,7 @@ import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
 import type { RankedThesis } from "../summary";
+import { apaReference } from "../citation";
 import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
 
 /** registeredAt as e.g. "October 12, 2026", or a placeholder for old records without one. */
@@ -106,7 +107,7 @@ export function SearchScreen({
   }, [jumpTo]);
 
   // The summary uses ticked results that are still visible, each with the rank
-  // it is shown at, so the button count and the [n] chips match the list.
+  // it is shown at, so the button count and the cited studies match the list.
   const ticked: RankedThesis[] = results
     .map((r, i) => ({ thesis: r.thesis, rank: i + 1 }))
     .filter(r => selected.has(r.thesis.id));
@@ -247,6 +248,8 @@ export function SearchScreen({
             const pct = searchQuery && score > 0 ? Math.round((score / maxScore) * 93) + 4 : 0;
             const isSelected = selected.has(t.id);
             const showPreview = previewId === t.id;
+            // APA 7 reference (citation.ts); null when no authors are recorded.
+            const citation = showPreview ? apaReference(t) : null;
 
             return (
               <div key={t.id} id={`result-${t.id}`}
@@ -308,6 +311,13 @@ export function SearchScreen({
                       )}
                     </div>
                     <dl className="study-details">
+                      {/* Citation first, in APA 7 format. No authors recorded →
+                          "Not recorded": a reference without authors would be wrong. */}
+                      <dt>Citation</dt>
+                      <dd>{citation
+                        ? <span className="apa-ref">{citation.lead}<em>{citation.title}</em>{citation.tail}</span>
+                        : <span className="study-details-empty">Not recorded</span>}</dd>
+                      {/* Full names: the citation shows only initials. */}
                       <dt>Author{t.authors.length === 1 ? "" : "s"}</dt>
                       <dd>{t.authors.length > 0
                         ? t.authors.join("; ")
@@ -316,8 +326,11 @@ export function SearchScreen({
                       <dd>{t.adviser}</dd>
                       <dt>Department</dt>
                       <dd>{t.department}</dd>
-                      <dt>Academic Year</dt>
-                      <dd>{t.year}</dd>
+                      {/* The citation already shows the year; without one, show it here. */}
+                      {!citation && <>
+                        <dt>Academic Year</dt>
+                        <dd>{t.year}</dd>
+                      </>}
                       <dt>Date Posted</dt>
                       <dd>{formatPosted(t)}</dd>
                       {t.keywords.length > 0 && <>
