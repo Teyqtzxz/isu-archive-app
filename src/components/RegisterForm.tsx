@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
-import type { ExtractionState, NewThesis } from "../types";
+import type { ExtractionState, NewThesis, Thesis } from "../types";
 import { DEPARTMENTS } from "../types";
 import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
 import {
   ABSTRACT_COUNTER_FROM, ABSTRACT_MAX, MAX_AUTHORS, MAX_KEYWORDS, MSG, TITLE_COUNTER_FROM, TITLE_MAX,
   addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
-  cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
+  cleanAuthorList, cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
 } from "../validation";
 import { DeptBadge, Icon } from "./shared";
 
@@ -20,19 +20,34 @@ type FieldErrors = Partial<Record<Field, string>>;
 const fieldId = (f: Field) => `register-${f}`;
 const errorId = (f: Field) => `register-${f}-error`;
 
-export function RegisterForm({ onBack, onSave }: {
+export function RegisterForm({ study, onBack, onSave }: {
+  /** Edit mode: the saved study, pre-filled (cleaned as when typed). Reading a
+   *  PDF is then optional; with none chosen the current abstract and keywords
+   *  are kept. Key the form by study id so a different study starts fresh. */
+  study?: Thesis;
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
   onSave: (thesis: NewThesis) => Promise<void>;
 }) {
+  const editing = !!study;
   const [extractState, setExtractState] = useState<ExtractionState>("idle");
-  const [form, setForm] = useState({ driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
+  const [form, setForm] = useState(() => study
+    ? {
+      driveLink: study.driveLink.trim(), title: checkTitle(study.title).value,
+      // Not one of DEPARTMENTS (typed by hand long ago) → blank, so saving asks for one.
+      department: (DEPARTMENTS as readonly string[]).includes(study.department) ? study.department : "",
+      year: yearInput(String(study.year ?? "")), adviser: checkAdviser(study.adviser).value,
+    }
+    : { driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
   /** One entry per author. A list, not a comma string, because names like
    *  "Santos, Maria" contain commas themselves. */
-  const [authors, setAuthors] = useState<string[]>([]);
+  const [authors, setAuthors] = useState<string[]>(() => study ? cleanAuthorList(study.authors).list : []);
   const [newAuthor, setNewAuthor] = useState("");
-  const [abstract, setAbstract] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [abstract, setAbstract] = useState(() => study ? cleanAbstract(study.abstract) : "");
+  const [keywords, setKeywords] = useState<string[]>(() => study ? cleanKeywordList(study.keywords) : []);
+  /** Edit mode, no PDF chosen: the save step shows the abstract and keywords
+   *  already in the form instead of ones just read from a PDF. */
+  const [keptCurrent, setKeptCurrent] = useState(false);
   const [newKw, setNewKw] = useState("");
   /** Why the PDF could not be read (shown on the save step). */
   const [error, setError] = useState("");
@@ -50,7 +65,7 @@ export function RegisterForm({ onBack, onSave }: {
   const lastRead = useRef<{ source: string; ok: boolean } | null>(null);
 
   const steps = [
-    { label: "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
+    { label: editing ? "Edit study" : "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
     { label: "Processing", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
     { label: "Save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
@@ -143,7 +158,9 @@ export function RegisterForm({ onBack, onSave }: {
     const valid = showErrors({
       drive: problem("drive", form.driveLink, true) ?? undefined,
       title: problem("title", form.title, true) ?? undefined,
-      author: typed.error ?? (typed.list.length === 0 ? MSG.authorsRequired : undefined),
+      // cleanAuthorList: a name saved before the checks existed (Edit study)
+      // must be fixed too. Names added in this form always pass it.
+      author: typed.error ?? (typed.list.length === 0 ? MSG.authorsRequired : cleanAuthorList(typed.list).error),
       department: problem("department", form.department, true) ?? undefined,
       year: problem("year", form.year, true) ?? undefined,
       adviser: problem("adviser", form.adviser, true) ?? undefined,
@@ -156,6 +173,17 @@ export function RegisterForm({ onBack, onSave }: {
     }
 
     const driveLink = form.driveLink.trim();
+    // Edit study with no PDF chosen: no Drive download (protected files cannot
+    // be read anyway); go straight to saving, with the abstract and keywords
+    // already in the form — the saved ones, or a PDF's read earlier.
+    if (editing && !pdfFile) {
+      setError("");
+      setKeptCurrent(true);
+      setExtractState("success");
+      return;
+    }
+    setKeptCurrent(false);
+
     const source = pdfFile
       ? `file:${pdfFile.name}:${pdfFile.size}:${pdfFile.lastModified}`
       : `drive:${driveLink}`;
@@ -182,7 +210,8 @@ export function RegisterForm({ onBack, onSave }: {
       // Keep the reason so staff know why the fields are empty.
       setError(err instanceof Error ? err.message : "Could not read that PDF.");
       // Same PDF failed again (e.g. Drive still busy): keep what staff typed.
-      if (!sameSource) {
+      // Editing: keep the study's current abstract and keywords, never blank them.
+      if (!sameSource && !editing) {
         setAbstract("");
         setKeywords([]);
       }
@@ -233,12 +262,13 @@ export function RegisterForm({ onBack, onSave }: {
 
   return (
     <div className="animate-fade-in">
-      {/* Back: leave the form, or return from review to fix the details */}
+      {/* Back: leave the form (Edit study: Cancel, nothing saved), or return
+          from review to fix the details */}
       {extractState !== "extracting" && !saving && (
         <button onClick={extractState === "idle" ? onBack : editDetails}
           className="btn btn-outline-green btn-sm" style={{ marginBottom: 14 }}>
           <Icon name="arrowLeft" size={14} />
-          {extractState === "idle" ? "Back to dashboard" : "Edit details"}
+          {extractState !== "idle" ? "Edit details" : editing ? "Cancel" : "Back to dashboard"}
         </button>
       )}
 
@@ -260,13 +290,17 @@ export function RegisterForm({ onBack, onSave }: {
       {/* Form card */}
       {(extractState === "idle" || extractState === "extracting") && (
         <div className="card card-pad-xl card-accent card-mb">
-          <h2 className="form-title">Register a study</h2>
-          <p className="form-sub">Choose the study's PDF, paste its Drive link and fill in the details. The abstract and keywords are read from the PDF.</p>
+          <h2 className="form-title">{editing ? "Edit study" : "Register a study"}</h2>
+          <p className="form-sub">
+            {editing
+              ? "Change the details and continue. Choosing the PDF is optional: only do it to read the abstract and keywords again."
+              : "Choose the study's PDF, paste its Drive link and fill in the details. The abstract and keywords are read from the PDF."}
+          </p>
 
           {/* Main source: the PDF from this computer. Protected (view-only) Drive
               files cannot be downloaded through the Drive API (docs/06 §7). */}
           <div className="field-mb">
-            <label className="field-label" htmlFor={fieldId("pdf")}>Study PDF</label>
+            <label className="field-label" htmlFor={fieldId("pdf")}>Study PDF{editing && <span className="field-optional"> (optional)</span>}</label>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden
                 onChange={e => { choosePdf(e.target.files?.[0] ?? null); e.target.value = ""; }} />
@@ -290,7 +324,9 @@ export function RegisterForm({ onBack, onSave }: {
             <p className="hint">
               {pdfFile
                 ? "The abstract and keywords will be read from this PDF."
-                : "Choose the study's PDF from this computer to fill in the abstract and keywords."}
+                : editing
+                  ? "No PDF chosen: the current abstract and keywords are kept (you can still edit them on the next step)."
+                  : "Choose the study's PDF from this computer to fill in the abstract and keywords."}
             </p>
           </div>
 
@@ -322,7 +358,7 @@ export function RegisterForm({ onBack, onSave }: {
             </div>
             {fieldError("drive")}
             <p className="hint">
-              {pdfFile
+              {pdfFile || editing
                 ? "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it."
                 : "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it. With no PDF chosen, the app tries to read the file from Drive (not possible for protected files)."}
             </p>
@@ -347,7 +383,7 @@ export function RegisterForm({ onBack, onSave }: {
                 {authors.map(a => (
                   <span key={a} className="kw-chip">
                     {a}
-                    <button onClick={() => setAuthors(p => p.filter(x => x !== a))} disabled={extractState === "extracting"}
+                    <button onClick={() => { setAuthors(p => p.filter(x => x !== a)); setFieldError("author", null); }} disabled={extractState === "extracting"}
                       className="kw-chip-x" aria-label={`Remove author ${a}`}>
                       <Icon name="x" size={12} strokeWidth={2.5} />
                     </button>
@@ -436,10 +472,14 @@ export function RegisterForm({ onBack, onSave }: {
             </div>
             <div>
               <div className={`status-title ${extractState === "success" ? "status-title-success" : "status-title-review"}`}>
-                {extractState === "success" ? "Details filled in:" : "Could not read PDF completely. Please fill in:"}
+                {extractState === "success"
+                  ? (keptCurrent ? "Ready to save:" : "Details filled in:")
+                  : editing ? "Could not read the PDF." : "Could not read PDF completely. Please fill in:"}
               </div>
               <div className="status-sub">
-                {extractState === "success" ? "Abstract and keywords extracted — edit if needed" : "Manual entry required for abstract and keywords"}
+                {extractState === "success"
+                  ? (keptCurrent ? "Current abstract and keywords kept — edit if needed" : "Abstract and keywords extracted — edit if needed")
+                  : editing ? "The current abstract and keywords are kept — edit if needed" : "Manual entry required for abstract and keywords"}
               </div>
             </div>
           </div>
@@ -514,7 +554,7 @@ export function RegisterForm({ onBack, onSave }: {
 
           <button onClick={handleSave} disabled={saving} className="btn-submit">
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            {saving ? "Saving..." : extractState === "success" ? "Confirm & Save" : "Save Manually"}
+            {saving ? "Saving..." : editing ? "Save changes" : extractState === "success" ? "Confirm & Save" : "Save Manually"}
           </button>
         </div>
       )}
@@ -523,7 +563,7 @@ export function RegisterForm({ onBack, onSave }: {
       {extractState === "idle" && (
         <button onClick={handleSubmit} className="btn-submit">
           <Icon name="file" size={18} />
-          Read PDF & continue
+          {editing && !pdfFile ? "Continue" : "Read PDF & continue"}
         </button>
       )}
     </div>

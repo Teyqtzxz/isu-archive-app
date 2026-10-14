@@ -36,7 +36,7 @@ the results they tick, and see department statistics.
 
 | Role | Can do |
 |------|--------|
-| `STAFF` (Research Department staff) | Register and post studies, search, statistics |
+| `STAFF` (Research Department staff) | Register and post studies, edit and delete them (Study Details), search, statistics |
 | `STUDENT` | Search, view and statistics — read-only |
 
 ## Hard architecture constraint
@@ -78,6 +78,8 @@ export interface Thesis {
   status: ThesisStatus;
   registeredBy: string;
   registeredAt: Timestamp | string | null;
+  updatedBy?: string;                       // uid of the last editor; absent if never edited
+  updatedAt?: Timestamp | string | null;    // serverTimestamp of the last edit
 }
 
 export type Role = "staff" | "student";
@@ -93,9 +95,10 @@ export const DEPARTMENTS = [ /* the ten strings below */ ] as const;
 /** Stored role on users/{uid}. Uppercase; separate from the lowercase routing `Role`. */
 export type AccountRole = "STAFF" | "STUDENT";
 
-/** What the register form hands to saveThesis(): saveThesis adds status (always
- *  POSTED); the server adds id, registeredBy, registeredAt. */
-export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt">;
+/** What the register form hands to saveThesis() (edit mode: updateThesis()):
+ *  saveThesis adds status (always POSTED); the server adds id, registeredBy,
+ *  registeredAt; updateThesis adds updatedBy, updatedAt. */
+export type NewThesis = Omit<Thesis, "id" | "status" | "registeredBy" | "registeredAt" | "updatedBy" | "updatedAt">;
 ```
 
 Records saved before the `authors` field existed have no authors and are read as
@@ -136,7 +139,11 @@ src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in, user profile,
                         live theses (all read as POSTED), saveThesis
-                        (adviser is typed freely: no option list) ✅ EXISTS
+                        (adviser is typed freely: no option list),
+                        updateThesis(id, fields) (keeps registeredAt/
+                        registeredBy, adds updatedAt/updatedBy),
+                        deleteThesis(id) (the Drive PDF stays);
+                        both reject with a clear message        ✅ EXISTS
   firebase.ts         ← app, auth, db — real config for project
                         isu-archive-9253b (committed on purpose) ✅ EXISTS
   seed.ts             ← devtools maintenance helpers, NO sample
@@ -189,7 +196,10 @@ src/
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
-    SignOutDialog.tsx ("Sign out?" confirmation)                 ✅ EXIST
+    ConfirmDialog.tsx (the one "Are you sure?" dialog: Cancel
+                      focused, red confirm, Escape/backdrop =
+                      Cancel — never copy it, reuse it)
+    SignOutDialog.tsx ("Sign out?", built on ConfirmDialog)      ✅ EXIST
 
 firestore.rules       ← project root, not src/ — ISU-only, role immutable,
                         theses writes staff-only; pasted into the console ✅ EXISTS
@@ -230,6 +240,13 @@ Real, working — **do not rewrite**:
 - Google sign-in (ISU accounts only), role routing, session restore, sign-out
   with a "Sign out?" confirmation, and `firestore.rules` (step 03)
 - Live Firestore data, save (always POSTED), staff department (step 04)
+- Staff **Edit** and **Delete** in Study Details (students never see them).
+  Edit is `RegisterForm` in edit mode (`study` prop): pre-filled and cleaned
+  as when typed, same `validation.ts` checks, reading a PDF optional (none
+  chosen → no Drive download, the current abstract/keywords are kept), "Save
+  changes" → `updateThesis()`, toast "Study updated", back to Search at that
+  study. Delete asks "Delete this study?" (`ConfirmDialog`) → `deleteThesis()`,
+  toast "Study deleted"; the live subscription removes it everywhere
 - PDF reading from Drive or from this computer, with manual entry when it fails
   (step 06); the extractive summary (step 07)
 - Department statistics: studies per department and top keywords (staff
@@ -286,6 +303,9 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   lowercase or ALL CAPS is saved with capitals; mixed case is kept as typed.
 - Academic Year is a text box, not a dropdown or date picker: digits only, 4
   digits, any past year up to this year, saved as a number.
+- **Edit study uses the same checks** (it is the same form). A saved record is
+  cleaned on loading as if typed; an author name saved before the checks
+  existed is kept, but saving asks for it to be fixed (`cleanAuthorList()`).
 - These checks run in the browser only; `firestore.rules` does not check field
   contents yet.
 
@@ -295,7 +315,8 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
    Doc 01 §5 is the authority on this.
 2. **`src/data.ts` is the only module that imports `firebase/firestore`.** If a
    component needs data, it calls a function in `data.ts`.
-3. **Status is set in one place:** `saveThesis()` writes `POSTED`. Never add a
+3. **Status is set in one place:** `saveThesis()` writes `POSTED`
+   (`updateThesis()` never writes `status`, `registeredAt` or `registeredBy`). Never add a
    second status or a review queue unless the group decides so first.
 4. **Firestore security rules are the security boundary.** Never write a rule that
    lets a user modify their own `role`.

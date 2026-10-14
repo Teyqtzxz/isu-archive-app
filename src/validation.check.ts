@@ -3,7 +3,7 @@
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 import {
   ABSTRACT_MAX, MSG, addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle,
-  checkYear, cleanAbstract, cleanKeywordList, cleanQuery, countWords, fixCapitals, pdfFileProblem, validateDriveLink, yearInput,
+  checkYear, cleanAbstract, cleanAuthorList, cleanKeywordList, cleanQuery, countWords, fixCapitals, pdfFileProblem, validateDriveLink, yearInput,
   type Added, type Checked,
 } from "./validation.ts";
 
@@ -169,6 +169,17 @@ check("blank", validateDriveLink(" "), "Please paste a Google Drive link.");
 check("not Drive", validateDriveLink("https://example.com/file.pdf"), "That does not look like a Google Drive link.");
 check("no file id", validateDriveLink("https://drive.google.com/drive/folders"),
   "Could not find a file id in that link. Make sure it is a shared file link.");
+
+console.log("\n— Edit study: a saved record's authors —");
+check("cleaned as if typed", cleanAuthorList(["  juan   dela cruz ", "MARIA SANTOS"]),
+  { list: ["Juan Dela Cruz", "Maria Santos"] } satisfies Added);
+check("repeat (ignoring case) and blank dropped", cleanAuthorList(["Juan Dela Cruz", "juan dela cruz", " "]),
+  { list: ["Juan Dela Cruz"] } satisfies Added);
+check("an old name that fails is kept, with a message", cleanAuthorList(["Dela Cruz", "Maria Santos"]),
+  { list: ["Dela Cruz", "Maria Santos"], error: MSG.authorStored("Dela Cruz", MSG.authorFull) } satisfies Added);
+check("only the first failing name is named", cleanAuthorList(["Juan 2", "Dela Cruz"]).error,
+  MSG.authorStored("Juan 2", MSG.nameChars));
+check("no authors (older record)", cleanAuthorList([]), { list: [] } satisfies Added);
 
 console.log("\n— Search boxes —");
 check("trimmed, spaces collapsed", cleanQuery("  rice   yield "), "rice yield");

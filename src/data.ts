@@ -1,7 +1,7 @@
 // Data layer — the only module that imports firebase/firestore. Components
 // never talk to Firestore directly; they call these functions.
 import {
-  addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc,
+  addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc,
 } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, db } from "./firebase";
@@ -121,3 +121,50 @@ export async function saveThesis(t: NewThesis): Promise<string> {
   return ref.id;
 }
 
+/**
+ * A failed edit or delete as a sentence staff can act on. The Firestore codes
+ * are the ones a staff member can actually hit; anything else gets the
+ * generic "try again" rather than Firebase's English-for-developers.
+ */
+function writeError(err: unknown, action: "save the changes" | "delete the study"): Error {
+  const code = (err as { code?: string } | null)?.code ?? "";
+  if (code === "permission-denied") {
+    return new Error(`You do not have permission to ${action}. Only Research Department staff can edit or delete studies.`);
+  }
+  if (code === "not-found") {
+    return new Error("This study is no longer in the e-library. Someone may have deleted it.");
+  }
+  if (code === "unavailable") {
+    return new Error(`Could not ${action}: no connection. Check your connection and try again.`);
+  }
+  return new Error(`Could not ${action}. Try again.`);
+}
+
+/**
+ * Staff edit. Overwrites the fields given and records who changed it and when;
+ * registeredAt, registeredBy and status are not touched. Rejects with a clear
+ * message (writeError) so the form can show it and stay open.
+ */
+export async function updateThesis(id: string, fields: Partial<NewThesis>): Promise<void> {
+  try {
+    await updateDoc(doc(db, "theses", id), {
+      ...fields,
+      updatedBy: auth.currentUser?.uid ?? "",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("[data] could not update the study", err);
+    throw writeError(err, "save the changes");
+  }
+}
+
+/** Staff delete. Removes the record only: the PDF stays in Google Drive. Every
+ *  open list, dashboard and statistic drops it through subscribeToTheses(). */
+export async function deleteThesis(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "theses", id));
+  } catch (err) {
+    console.error("[data] could not delete the study", err);
+    throw writeError(err, "delete the study");
+  }
+}
