@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score } from "../search";
+import { SEARCH_MAX, cleanQuery } from "../validation";
 import type { RankedThesis } from "../summary";
 import { apaReference } from "../citation";
 import { ISUSeal, StatusBadge, DeptBadge, Icon } from "./shared";
@@ -57,7 +58,9 @@ export function SearchScreen({
   }, [query]);
   // A single character matches too much to be useful (findMatchScore ignores
   // terms under 2 chars anyway), so it counts as "no query": show everything.
-  const searchQuery = debouncedQuery.trim().length >= 2 ? debouncedQuery.trim() : "";
+  // So does junk with no letter or digit ("!!!"): cleanQuery returns "".
+  const cleaned = cleanQuery(debouncedQuery);
+  const searchQuery = cleaned.length >= 2 ? cleaned : "";
 
   const [deptFilter, setDeptFilter] = useState(initialDepartment ?? (role === "staff" ? defaultDepartment : ""));
   const [yearFilter, setYearFilter] = useState("");
@@ -145,7 +148,7 @@ export function SearchScreen({
           <div className="search-bar-row">
             <div className="search-bar">
               <span className="search-bar-icon"><Icon name="search" size={18} /></span>
-              <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
+              <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} maxLength={SEARCH_MAX}
                 placeholder="Search by title, keyword or abstract…"
                 aria-label="Search studies"
                 className="search-input" />

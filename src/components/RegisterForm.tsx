@@ -1,17 +1,24 @@
 import { useRef, useState } from "react";
 import type { ExtractionState, NewThesis } from "../types";
 import { DEPARTMENTS } from "../types";
-import { MAX_PAGES, extractFromDrive, extractFromFile, validateDriveLink } from "../extractPdf";
+import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
+import {
+  ABSTRACT_COUNTER_FROM, ABSTRACT_MAX, MAX_AUTHORS, MAX_KEYWORDS, MSG, TITLE_COUNTER_FROM, TITLE_MAX,
+  addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
+  cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
+} from "../validation";
 import { DeptBadge, Icon } from "./shared";
 
-/** Academic year options: this year back ten years, computed so the list never
- *  goes stale (it used to be hardcoded 2025–2020, which shut out 2026 theses). */
+/** The Academic Year box starts at this year; any past year can be typed. */
 const THIS_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => THIS_YEAR - i);
 
-/** The adviser is typed freely, so drop stray spaces before saving:
- *  "  Dr.  Maria Santos " → "Dr. Maria Santos". */
-const cleanAdviser = (name: string) => name.trim().replace(/\s+/g, " ");
+/** Every input that can show a message under it, in screen order: on submit
+ *  the cursor goes to the first one with an error. */
+const FIELDS = ["pdf", "drive", "title", "author", "department", "year", "adviser", "abstract", "keyword"] as const;
+type Field = typeof FIELDS[number];
+type FieldErrors = Partial<Record<Field, string>>;
+const fieldId = (f: Field) => `register-${f}`;
+const errorId = (f: Field) => `register-${f}-error`;
 
 export function RegisterForm({ onBack, onSave }: {
   onBack: () => void;
@@ -27,7 +34,12 @@ export function RegisterForm({ onBack, onSave }: {
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
+  /** Why the PDF could not be read (shown on the save step). */
   const [error, setError] = useState("");
+  /** One message per input, shown under it. The rules are in validation.ts. */
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  /** Grey notes, not errors: a repeat that was skipped, a PDF too large to read. */
+  const [notes, setNotes] = useState<{ pdf?: string; author?: string; keyword?: string }>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   /** Backup source (docs/06 §7): a PDF picked from this computer, read without Drive. */
@@ -43,41 +55,110 @@ export function RegisterForm({ onBack, onSave }: {
     { label: "Save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
 
-  /** Adds the typed author, cleaned like the adviser, skipping blanks and repeats. */
-  function addAuthor() {
-    const name = cleanAdviser(newAuthor);
-    if (name && !authors.includes(name)) setAuthors(p => [...p, name]);
+  /**
+   * The message for one input, or null. On leaving a field (`submit` false) an
+   * empty field is not flagged; on submit, required fields are.
+   */
+  function problem(f: Field, value: string, submit: boolean): string | null {
+    const blank = !value.trim();
+    switch (f) {
+      case "drive":
+        if (blank) return submit ? (pdfFile ? MSG.driveRequiredWithPdf : MSG.driveRequired) : null;
+        return validateDriveLink(value);
+      case "title": return blank && !submit ? null : checkTitle(value).error;
+      case "adviser": return blank && !submit ? null : checkAdviser(value).error;
+      case "abstract": return blank && !submit ? null : checkAbstract(value).error;
+      case "author": return checkAuthor(value).error;
+      case "keyword": return blank ? null : addKeywords(keywords, value).error ?? null;
+      case "department": return submit && !(DEPARTMENTS as readonly string[]).includes(value) ? MSG.departmentRequired : null;
+      case "year": return blank && !submit ? null : checkYear(value).error;
+      default: return null;
+    }
+  }
+
+  function setFieldError(f: Field, message: string | null) {
+    setFieldErrors(p => ({ ...p, [f]: message ?? undefined }));
+  }
+
+  /** On submit: show every message at once and put the cursor on the first. */
+  function showErrors(errors: FieldErrors): boolean {
+    setFieldErrors(p => ({ ...p, ...errors }));
+    const first = FIELDS.find(f => errors[f]);
+    if (first) document.getElementById(fieldId(first))?.focus();
+    return !first;
+  }
+
+  /** A field already showing an error re-checks as it is typed in, so the
+   *  message clears as soon as it is fixed. */
+  function recheck(f: Field, value: string) {
+    if (fieldErrors[f]) setFieldError(f, problem(f, value, false));
+  }
+
+  /** aria-invalid + aria-describedby for an input, pointing at its message. */
+  function a11y(f: Field) {
+    const invalid = !!fieldErrors[f];
+    return { id: fieldId(f), "aria-invalid": invalid || undefined, "aria-describedby": invalid ? errorId(f) : undefined };
+  }
+
+  const fieldError = (f: Field) =>
+    fieldErrors[f] ? <p id={errorId(f)} className="field-error">{fieldErrors[f]}</p> : null;
+
+  /** + Add / Enter in the Authors box. Cleaned, checked, repeats skipped. */
+  function addTypedAuthor() {
+    const r = addAuthor(authors, newAuthor);
+    setFieldError("author", r.error ?? null);
+    if (r.error) return;
+    setAuthors(r.list);
+    setNotes(p => ({ ...p, author: r.note }));
     setNewAuthor("");
   }
 
-  async function handleSubmit() {
-    // Say exactly what is missing. The button used to stay disabled with no
-    // reason given until a Drive link was typed — even with a PDF already chosen.
-    if (!form.driveLink.trim()) {
-      setError(pdfFile
-        ? "Paste the study's Google Drive link too. The PDF is read from this computer, but the link is what students open to read the full study."
-        : "Please paste the Google Drive link of the study PDF.");
-      return;
-    }
-    const missing = [
-      !form.title.trim() && "Title",
-      authors.length === 0 && !newAuthor.trim() && "Authors",
-      !form.department && "Department",
-      !form.adviser.trim() && "Adviser",
-    ].filter(Boolean);
-    if (missing.length > 0) {
-      setError(`Please fill in: ${missing.join(", ")}.`);
-      return;
-    }
-    // Validate before downloading anything (docs/06 §6).
-    const invalid = validateDriveLink(form.driveLink);
-    if (invalid) { setError(invalid); return; }
-    // A name typed but not yet added with Enter still counts.
-    if (newAuthor.trim()) addAuthor();
+  /** + Add / Enter in the Keywords box. "rice, soil" adds two. */
+  function addTypedKeywords() {
+    const r = addKeywords(keywords, newKw);
+    setFieldError("keyword", r.error ?? null);
+    if (r.error) return;
+    setKeywords(r.list);
+    setNotes(p => ({ ...p, keyword: r.note }));
+    setNewKw("");
+  }
 
+  /** A chosen PDF is checked at once: not a PDF or empty → not taken; too
+   *  large → kept with a warning, and read as before (manual entry). */
+  function choosePdf(file: File | null) {
+    if (!file) return;
+    const p = pdfFileProblem(file);
+    if (p && !p.keep) {
+      setFieldError("pdf", p.message);
+      return;
+    }
+    setFieldError("pdf", null);
+    setNotes(n => ({ ...n, pdf: p?.message }));
+    setPdfFile(file);
+  }
+
+  async function handleSubmit() {
+    // A name typed but not yet added with Enter still counts, after the same checks.
+    const typed = newAuthor.trim() ? addAuthor(authors, newAuthor) : { list: authors, error: undefined, note: undefined };
+    const valid = showErrors({
+      drive: problem("drive", form.driveLink, true) ?? undefined,
+      title: problem("title", form.title, true) ?? undefined,
+      author: typed.error ?? (typed.list.length === 0 ? MSG.authorsRequired : undefined),
+      department: problem("department", form.department, true) ?? undefined,
+      year: problem("year", form.year, true) ?? undefined,
+      adviser: problem("adviser", form.adviser, true) ?? undefined,
+    });
+    if (!valid) return;
+    if (newAuthor.trim()) {
+      setAuthors(typed.list);
+      setNotes(p => ({ ...p, author: typed.note }));
+      setNewAuthor("");
+    }
+
+    const driveLink = form.driveLink.trim();
     const source = pdfFile
       ? `file:${pdfFile.name}:${pdfFile.size}:${pdfFile.lastModified}`
-      : `drive:${form.driveLink.trim()}`;
+      : `drive:${driveLink}`;
     const sameSource = lastRead.current?.source === source;
     // Back from "Edit details" with the same PDF, and it was read fine last
     // time: keep that result and the edits made to it.
@@ -90,9 +171,10 @@ export function RegisterForm({ onBack, onSave }: {
     setError("");
     setExtractState("extracting");
     try {
-      const { abstract, keywords } = await (pdfFile ? extractFromFile(pdfFile) : extractFromDrive(form.driveLink));
+      const { abstract, keywords } = await (pdfFile ? extractFromFile(pdfFile) : extractFromDrive(driveLink));
       setAbstract(abstract);
-      setKeywords(keywords);
+      // Keywords read from the PDF get the same cleaning as typed ones.
+      setKeywords(cleanKeywordList(keywords));
       setExtractState("success");
       lastRead.current = { source, ok: true };
     } catch (err) {
@@ -121,23 +203,33 @@ export function RegisterForm({ onBack, onSave }: {
     // already checked the details here, so there is no later review step.
     // That makes this the last check: search ranks studies on the abstract,
     // so a study posted without one would almost never be found.
-    if (!abstract.trim()) {
-      setSaveError("Please fill in: Abstract. Copy it from the PDF. Search uses it to find this study.");
-      return;
+    const checkedAbstract = checkAbstract(abstract);
+    // A keyword typed but not yet added still counts, after the same checks.
+    const typed = newKw.trim() ? addKeywords(keywords, newKw) : { list: keywords, error: undefined, note: undefined };
+    const valid = showErrors({ abstract: checkedAbstract.error ?? undefined, keyword: typed.error });
+    if (!valid) return;
+    if (newKw.trim()) {
+      setKeywords(typed.list);
+      setNotes(p => ({ ...p, keyword: typed.note }));
+      setNewKw("");
     }
     setSaveError("");
     setSaving(true);
     try {
       await onSave({
-        title: form.title, authors, department: form.department,
-        year: parseInt(form.year), adviser: cleanAdviser(form.adviser), abstract, keywords,
-        driveLink: form.driveLink,
+        title: checkTitle(form.title).value, authors, department: form.department,
+        year: Number(checkYear(form.year).value), adviser: checkAdviser(form.adviser).value,
+        abstract: checkedAbstract.value, keywords: typed.list,
+        driveLink: form.driveLink.trim(),
       });
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not save the study. Try again.");
       setSaving(false);
     }
   }
+
+  const titleLength = cleanSpaces(form.title).length;
+  const abstractLength = cleanAbstract(abstract).length;
 
   return (
     <div className="animate-fade-in">
@@ -174,11 +266,11 @@ export function RegisterForm({ onBack, onSave }: {
           {/* Main source: the PDF from this computer. Protected (view-only) Drive
               files cannot be downloaded through the Drive API (docs/06 §7). */}
           <div className="field-mb">
-            <label className="field-label">Study PDF</label>
+            <label className="field-label" htmlFor={fieldId("pdf")}>Study PDF</label>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden
-                onChange={e => { setPdfFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
-              <button type="button" onClick={() => fileInput.current?.click()}
+                onChange={e => { choosePdf(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+              <button type="button" onClick={() => fileInput.current?.click()} {...a11y("pdf")}
                 disabled={extractState === "extracting"} className="paste-btn" style={{ padding: "8px 12px" }}>
                 <Icon name="file" size={16} />
                 {pdfFile ? "Choose a different PDF" : "Choose PDF from this computer"}
@@ -186,13 +278,15 @@ export function RegisterForm({ onBack, onSave }: {
               {pdfFile && (
                 <span className="kw-chip">
                   {pdfFile.name}
-                  <button onClick={() => setPdfFile(null)} disabled={extractState === "extracting"}
+                  <button onClick={() => { setPdfFile(null); setNotes(n => ({ ...n, pdf: undefined })); }} disabled={extractState === "extracting"}
                     className="kw-chip-x" aria-label="Remove the chosen PDF">
                     <Icon name="x" size={12} strokeWidth={2.5} />
                   </button>
                 </span>
               )}
             </div>
+            {fieldError("pdf")}
+            {notes.pdf && <p className="field-note">{notes.pdf}</p>}
             <p className="hint">
               {pdfFile
                 ? "The abstract and keywords will be read from this PDF."
@@ -202,16 +296,23 @@ export function RegisterForm({ onBack, onSave }: {
 
           {/* Drive link — saved for staff; read only when no PDF is chosen */}
           <div className="field-mb">
-            <label className="field-label">
+            <label className="field-label" htmlFor={fieldId("drive")}>
               Google Drive Link <span className="field-req">*</span>
             </label>
             <div style={{ display: "flex", gap: 8 }}>
               <div style={{ position: "relative", flex: 1 }}>
-                <input value={form.driveLink} onChange={e => setForm(p => ({ ...p, driveLink: e.target.value }))}
+                <input value={form.driveLink} {...a11y("drive")}
+                  onChange={e => { setForm(p => ({ ...p, driveLink: e.target.value })); recheck("drive", e.target.value); }}
+                  onBlur={e => setFieldError("drive", problem("drive", e.target.value, false))}
                   placeholder="https://drive.google.com/file/d/..."
                   disabled={extractState === "extracting"} className="input" />
               </div>
-              <button onClick={() => { if (navigator.clipboard) navigator.clipboard.readText().then(t => setForm(p => ({ ...p, driveLink: t }))).catch(() => {}); }}
+              <button onClick={() => {
+                if (navigator.clipboard) navigator.clipboard.readText().then(t => {
+                  setForm(p => ({ ...p, driveLink: t }));
+                  setFieldError("drive", problem("drive", t, false));
+                }).catch(() => {});
+              }}
                 disabled={extractState === "extracting"}
                 className="paste-btn"
                 title="Paste from clipboard">
@@ -219,6 +320,7 @@ export function RegisterForm({ onBack, onSave }: {
                 Paste
               </button>
             </div>
+            {fieldError("drive")}
             <p className="hint">
               {pdfFile
                 ? "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it."
@@ -228,13 +330,18 @@ export function RegisterForm({ onBack, onSave }: {
 
           {/* Title */}
           <div className="field-mb">
-            <label className="field-label">Title <span className="field-req">*</span></label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
+            <label className="field-label" htmlFor={fieldId("title")}>Title <span className="field-req">*</span></label>
+            <input value={form.title} {...a11y("title")}
+              onChange={e => { setForm(p => ({ ...p, title: e.target.value })); recheck("title", e.target.value); }}
+              onBlur={e => setFieldError("title", problem("title", e.target.value, false))}
+              placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
+            {fieldError("title")}
+            {titleLength >= TITLE_COUNTER_FROM && <p className="hint">{titleLength} / {TITLE_MAX}</p>}
           </div>
 
           {/* Authors */}
           <div className="field-mb">
-            <label className="field-label">Authors <span className="field-req">*</span></label>
+            <label className="field-label" htmlFor={fieldId("author")}>Authors <span className="field-req">*</span></label>
             {authors.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                 {authors.map(a => (
@@ -249,48 +356,55 @@ export function RegisterForm({ onBack, onSave }: {
               </div>
             )}
             <div style={{ display: "flex", gap: 8 }}>
-              <input value={newAuthor} onChange={e => setNewAuthor(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") addAuthor(); }}
+              <input value={newAuthor} {...a11y("author")}
+                onChange={e => { setNewAuthor(e.target.value); setNotes(p => ({ ...p, author: undefined })); recheck("author", e.target.value); }}
+                onKeyDown={e => { if (e.key === "Enter") addTypedAuthor(); }}
                 placeholder="e.g. Juan Dela Cruz" disabled={extractState === "extracting"} className="input" />
-              <button onClick={addAuthor} disabled={extractState === "extracting"} className="chip-add">
+              <button onClick={addTypedAuthor} disabled={extractState === "extracting" || authors.length >= MAX_AUTHORS} className="chip-add">
                 + Add
               </button>
             </div>
-            <p className="hint">Add one author at a time, in the order listed on the study.</p>
+            {fieldError("author")}
+            {notes.author && <p className="field-note">{notes.author}</p>}
+            <p className="hint">
+              {authors.length >= MAX_AUTHORS ? MSG.authorsMax : "Add one author at a time, in the order listed on the study."}
+            </p>
           </div>
 
           {/* Dept + Year */}
           <div className="form-grid-2">
             <div>
-              <label className="field-label">Department <span className="field-req">*</span></label>
-              <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} disabled={extractState === "extracting"}
+              <label className="field-label" htmlFor={fieldId("department")}>Department <span className="field-req">*</span></label>
+              <select value={form.department} {...a11y("department")}
+                onChange={e => { setForm(p => ({ ...p, department: e.target.value })); setFieldError("department", null); }}
+                disabled={extractState === "extracting"}
                 className="input" style={{ color: form.department ? undefined : "var(--text-subtle)", appearance: "none" }}>
                 <option value="">Select dept.</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
+              {fieldError("department")}
             </div>
             <div>
-              <label className="field-label">Academic Year</label>
-              <select value={form.year} onChange={e => setForm(p => ({ ...p, year: e.target.value }))} disabled={extractState === "extracting"}
-                className="input" style={{ appearance: "none" }}>
-                {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <label className="field-label" htmlFor={fieldId("year")}>Academic Year</label>
+              {/* Only the year is stored, so a text box, not a date picker.
+                  Letters, spaces and symbols typed or pasted are dropped. */}
+              <input value={form.year} {...a11y("year")} type="text" inputMode="numeric" autoComplete="off"
+                onChange={e => { const year = yearInput(e.target.value); setForm(p => ({ ...p, year })); recheck("year", year); }}
+                onBlur={e => setFieldError("year", problem("year", e.target.value, false))}
+                placeholder={String(THIS_YEAR)} disabled={extractState === "extracting"} className="input" />
+              {fieldError("year")}
             </div>
           </div>
 
           {/* Adviser */}
           <div>
-            <label className="field-label">Adviser <span className="field-req">*</span></label>
-            <input value={form.adviser} onChange={e => setForm(p => ({ ...p, adviser: e.target.value }))}
+            <label className="field-label" htmlFor={fieldId("adviser")}>Adviser <span className="field-req">*</span></label>
+            <input value={form.adviser} {...a11y("adviser")}
+              onChange={e => { setForm(p => ({ ...p, adviser: e.target.value })); recheck("adviser", e.target.value); }}
+              onBlur={e => setFieldError("adviser", problem("adviser", e.target.value, false))}
               placeholder="e.g. Dr. Maria Santos" disabled={extractState === "extracting"} className="input" />
+            {fieldError("adviser")}
           </div>
-
-          {error && (
-            <div className="error-box" role="alert">
-              <Icon name="alert" size={16} />
-              {error}
-            </div>
-          )}
         </div>
       )}
 
@@ -337,29 +451,36 @@ export function RegisterForm({ onBack, onSave }: {
             </div>
           )}
 
-          {/* Thesis summary */}
+          {/* Thesis summary: shown as it will be saved */}
           <div className="review-card">
-            <p className="review-title">{form.title}</p>
+            <p className="review-title">{checkTitle(form.title).value}</p>
             <p className="result-meta" style={{ marginBottom: 8 }}>{authors.join("; ")}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <DeptBadge dept={form.department} small />
-              <span className="result-meta">{form.year} · {cleanAdviser(form.adviser)}</span>
+              <span className="result-meta">{form.year} · {checkAdviser(form.adviser).value}</span>
             </div>
           </div>
 
           {/* Editable abstract */}
           <div className="review-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <label className="field-label" style={{ marginBottom: 0 }}>Abstract</label>
+              <label className="field-label" htmlFor={fieldId("abstract")} style={{ marginBottom: 0 }}>Abstract</label>
               <span className="overlap-lbl">Editable</span>
             </div>
-            <textarea value={abstract} onChange={e => setAbstract(e.target.value)} rows={5} className="textarea" />
-            <div className="word-count">{abstract.split(" ").filter(Boolean).length} words</div>
+            <textarea value={abstract} {...a11y("abstract")}
+              onChange={e => { setAbstract(e.target.value); recheck("abstract", e.target.value); }}
+              onBlur={e => setFieldError("abstract", problem("abstract", e.target.value, false))}
+              rows={5} className="textarea" />
+            {fieldError("abstract")}
+            <div className="word-count">
+              {countWords(abstract)} words
+              {abstractLength >= ABSTRACT_COUNTER_FROM && ` · ${abstractLength.toLocaleString("en-US")} / ${ABSTRACT_MAX.toLocaleString("en-US")} characters`}
+            </div>
           </div>
 
           {/* Keywords chips */}
           <div className="review-card">
-            <label className="field-label" style={{ marginBottom: 10 }}>Keywords</label>
+            <label className="field-label" htmlFor={fieldId("keyword")} style={{ marginBottom: 10 }}>Keywords</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
               {keywords.map(kw => (
                 <span key={kw} className="kw-chip">
@@ -371,13 +492,17 @@ export function RegisterForm({ onBack, onSave }: {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <input value={newKw} onChange={e => setNewKw(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }}
+              <input value={newKw} {...a11y("keyword")}
+                onChange={e => { setNewKw(e.target.value); setNotes(p => ({ ...p, keyword: undefined })); recheck("keyword", e.target.value); }}
+                onKeyDown={e => { if (e.key === "Enter") addTypedKeywords(); }}
                 placeholder="Add a keyword and press Enter" className="input" style={{ padding: "8px 12px", fontSize: 13 }} />
-              <button onClick={() => { if (newKw.trim()) { setKeywords(p => [...p, newKw.trim()]); setNewKw(""); } }} className="chip-add">
+              <button onClick={addTypedKeywords} disabled={keywords.length >= MAX_KEYWORDS} className="chip-add">
                 + Add
               </button>
             </div>
+            {fieldError("keyword")}
+            {notes.keyword && <p className="field-note">{notes.keyword}</p>}
+            {keywords.length >= MAX_KEYWORDS && <p className="hint">{MSG.keywordsMax}</p>}
           </div>
 
           {saveError && (
@@ -404,4 +529,3 @@ export function RegisterForm({ onBack, onSave }: {
     </div>
   );
 }
-

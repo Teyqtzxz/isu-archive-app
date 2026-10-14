@@ -16,12 +16,12 @@ export const APA_PUBLISHER = "Isabela State University – Echague Campus";
 
 /** Words that belong to the surname when they come right before it:
  *  "Juan Dela Cruz", "Maria De los Santos", "Ana Sta. Maria". */
-const PARTICLES = new Set([
+export const PARTICLES = new Set([
   "de", "del", "dela", "della", "la", "las", "los", "delos", "di", "da", "du",
   "san", "santa", "sta.", "sto.", "santo", "van", "von", "der", "le", "y",
 ]);
 /** Name suffixes APA keeps after the initials: "Rizal, J., Jr." */
-const SUFFIX = /^(jr|sr)\.?$|^(ii|iii|iv|v)$/i;
+export const SUFFIX = /^(jr|sr)\.?$|^(ii|iii|iv|v)$/i;
 
 /** "Jr" / "jr." → "Jr."; "iii" → "III". */
 function normaliseSuffix(s: string): string {

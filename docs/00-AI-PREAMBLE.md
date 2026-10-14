@@ -157,6 +157,10 @@ src/
                         apaReference, apaInText, apaInTextLabels;
                         examples in citation.check.ts
                         (node src/citation.check.ts)              ✅ EXISTS
+  validation.ts       ← pure: the Register form and search box
+                        input rules and their messages; examples
+                        in validation.check.ts
+                        (node src/validation.check.ts)            ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -240,6 +244,24 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   recorded shows **"Not recorded"**, never a reference without authors.
 - Never build a citation inline: use `citation.ts`, and add an example to
   `citation.check.ts` for any naming rule you change.
+
+### Input validation — one module, one example per rule
+
+- Every Register input and both search boxes are checked by `validation.ts`;
+  never write a check or an error message inline in a component. Add an
+  example to `validation.check.ts` for any rule you add or change.
+- Messages sit under their own field (`aria-invalid` + `aria-describedby`).
+  Format checks run on leaving a field (or on **+ Add**), required fields on
+  submit; nothing shows an error while typing. Search boxes never show one.
+- Names: an author needs a first name and a surname (`J. Dela Cruz` counts;
+  `Dela Cruz` alone does not; `Dela Cruz, Juan` is accepted). The adviser may
+  start with a title and end with degrees after a comma (`Dr. Maria Santos,
+  PhD`); the `Surname, Given` form is for authors only. A name typed all in
+  lowercase or ALL CAPS is saved with capitals; mixed case is kept as typed.
+- Academic Year is a text box, not a dropdown or date picker: digits only, 4
+  digits, any past year up to this year, saved as a number.
+- These checks run in the browser only; `firestore.rules` does not check field
+  contents yet.
 
 ## Rules
 
