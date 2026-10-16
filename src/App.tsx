@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
@@ -14,6 +14,7 @@ import { CombinedSummaryPanel } from "./components/CombinedSummaryPanel";
 import { SignOutDialog } from "./components/SignOutDialog";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { RankedThesis } from "./summary";
+import { buildSmartSearch } from "./smartSearch";
 import { ISUSeal, Icon, Toast } from "./components/shared";
 
 export default function App() {
@@ -30,6 +31,9 @@ export default function App() {
   const [theses, setTheses] = useState<Thesis[]>([]);
   const [thesesLoaded, setThesesLoaded] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  // The smart search box's word list and Trie (smartSearch.ts, docs/16): built
+  // once per data change and shared by both search boxes, never per keystroke.
+  const smartIndex = useMemo(() => buildSmartSearch(theses), [theses]);
   const [toast, setToast] = useState<string | null>(null);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
@@ -230,13 +234,14 @@ export default function App() {
       )}
 
       {screen === "student-dashboard" && (
-        <StudentDashboard theses={theses} account={account} onSearch={goSearch}
+        <StudentDashboard theses={theses} smartIndex={smartIndex} account={account} onSearch={goSearch}
           onBrowseDepartment={dept => goSearch("", dept)} onOpenStudy={openStudy} onSignOut={handleSignOut} />
       )}
 
       {screen === "search" && role && (
         <SearchScreen
           theses={theses}
+          smartIndex={smartIndex}
           role={role}
           viewerEmail={account.email}
           initialQuery={searchInitialQuery}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score, relevancePercent, isNameTitle } from "../search";
@@ -9,11 +9,15 @@ import { abstractSnippet } from "../snippet";
 import { THRESHOLDS, buildSimilarityIndex, similarStudies } from "../similarity";
 import { ISUSeal, DeptBadge, Icon, SharedTerms, formatPosted, authorsPreviewParts, highlightKw, withAccount } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
+import { SmartSearchInput } from "./SmartSearchInput";
+import { searchPlan, type Correction, type SmartSearchIndex } from "../smartSearch";
 
 export function SearchScreen({
-  theses, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
+  theses, smartIndex, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role;
+  /** Autocomplete and "Did you mean" words (built once in App.tsx, docs/16). */
+  smartIndex: SmartSearchIndex;
   /** The signed-in e-library account; Drive links open with it (authuser). */
   viewerEmail: string;
   initialQuery?: string;
@@ -69,29 +73,49 @@ export function SearchScreen({
 
   const index = useMemo(() => buildIndex(filtered), [filtered]);
 
+  // The BM25 search (search.ts, unchanged) of the filtered studies for one
+  // query: the studies it finds, best first.
+  const rank = useCallback((q: string) => {
+    const df = computeDocFreq(tokenize(q), index);
+    return filtered
+      .map((t, i) => ({ thesis: t, score: bm25Score(q, t, i, index, df).score }))
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score);
+  }, [filtered, index]);
+
+  // "Search instead for …" was clicked for this typed query: search it exactly
+  // as typed. Typing anything resets it (changeQuery).
+  const [exactQuery, setExactQuery] = useState<string | null>(null);
+
+  // Which query to actually search (smartSearch.ts searchPlan, docs/16 §7):
+  //   as-typed       → the typed query, nothing extra shown;
+  //   auto-corrected → the correction, with "Showing results for …";
+  //   suggest        → the typed query, with the "Did you mean" button.
+  // The box keeps what was typed; only the search uses `searched`.
+  const plan = useMemo(
+    () => searchPlan(smartIndex, searchQuery, q => rank(q).length, { exact: exactQuery === searchQuery }),
+    [smartIndex, searchQuery, rank, exactQuery],
+  );
+  const searched = plan.query;
+
   const results = useMemo(() => {
     // No query: everything, newest first.
-    if (!searchQuery) {
+    if (!searched) {
       return filtered
         .map(t => ({ thesis: t, score: 0 }))
         .sort((a, b) => registeredAtISO(b.thesis).localeCompare(registeredAtISO(a.thesis)));
     }
-
-    const df = computeDocFreq(tokenize(searchQuery), index);
-    return filtered
-      .map((t, i) => ({ thesis: t, score: bm25Score(searchQuery, t, i, index, df).score }))
-      .filter(r => r.score > 0)
-      .sort((a, b) => b.score - a.score);
-  }, [filtered, index, searchQuery]);
+    return rank(searched);
+  }, [filtered, rank, searched]);
 
   // One short abstract snippet per result, only while searching (snippet.ts).
   // No query (newest-first list) → no snippets.
   const snippets = useMemo(() => {
     const m = new Map<string, string>();
-    if (!searchQuery) return m;
-    for (const { thesis: t } of results) m.set(t.id, abstractSnippet(splitSentences(t.abstract), searchQuery));
+    if (!searched) return m;
+    for (const { thesis: t } of results) m.set(t.id, abstractSnippet(splitSentences(t.abstract), searched));
     return m;
-  }, [results, searchQuery]);
+  }, [results, searched]);
 
   // Citation chip → scroll to that result and flash it (docs/07 §4). The panel
   // is already closed by then, so the card is not hidden behind the overlay.
@@ -138,7 +162,7 @@ export function SearchScreen({
   // it, flash it). If the search words or a filter hide it, they are cleared first.
   function openSimilar(thesisId: string) {
     if (!results.some(r => r.thesis.id === thesisId)) {
-      setQuery("");
+      changeQuery("");
       setDebouncedQuery("");
       setDeptFilter("");
       setYearFilter("");
@@ -162,6 +186,21 @@ export function SearchScreen({
     ...(yearFilter ? [{ label: yearFilter, clear: () => setYearFilter("") }] : []),
   ];
   const typing = query.trim() !== debouncedQuery.trim();
+
+  // Every change to the box goes through here, so a "Search instead for …"
+  // only holds for the query it was clicked on.
+  function changeQuery(next: string) {
+    setQuery(next);
+    setExactQuery(null);
+  }
+
+  // The "Did you mean" button: put the correction in the box and search it.
+  function applyCorrection(corrected: string) {
+    // Both at once, so the corrected search runs now, not after the debounce.
+    changeQuery(corrected);
+    setDebouncedQuery(corrected);
+    inputRef.current?.focus();
+  }
 
   return (
     <div className="app-root">
@@ -188,12 +227,12 @@ export function SearchScreen({
           <div className="search-bar-row">
             <div className="search-bar">
               <span className="search-bar-icon"><Icon name="search" size={18} /></span>
-              <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} maxLength={SEARCH_MAX}
+              <SmartSearchInput index={smartIndex} inputRef={inputRef} value={query} onChange={changeQuery} maxLength={SEARCH_MAX}
                 placeholder="Search by title, keyword or abstract…"
-                aria-label="Search studies"
+                ariaLabel="Search studies"
                 className="search-input" />
               {query && (
-                <button onClick={() => setQuery("")} className="search-clear" aria-label="Clear search">
+                <button onClick={() => changeQuery("")} className="search-clear" aria-label="Clear search">
                   <Icon name="x" size={14} />
                 </button>
               )}
@@ -248,20 +287,43 @@ export function SearchScreen({
           <div className="results-count" aria-live="polite">
             {typing ? (
               <span className="results-typing">Searching…</span>
-            ) : searchQuery ? (
-              <>{results.length} result{results.length !== 1 ? "s" : ""} for <em>“{searchQuery}”</em></>
+            ) : searched ? (
+              <>{results.length} result{results.length !== 1 ? "s" : ""} for <em>“{searched}”</em></>
             ) : (
               <>{results.length} {results.length === 1 ? "study" : "studies"}{hasActiveFilters ? " match the filters" : ", newest first"}</>
             )}
           </div>
           {ticked.length > 0 && (
-            <button onClick={() => onCombinedSummary(ticked, searchQuery)}
+            <button onClick={() => onCombinedSummary(ticked, searched)}
               className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }}>
               <Icon name="layers" size={16} />
               View Summary ({ticked.length})
             </button>
           )}
         </div>
+
+        {/* The search corrected itself (all three rules of searchPlan held):
+            say so, and offer the typed words exactly as typed. */}
+        {plan.mode === "auto-corrected" && plan.correction && !typing && (
+          <div className="search-corrected">
+            <p className="search-corrected-line">
+              Showing results for <BoldFixes correction={plan.correction} />
+            </p>
+            <p className="search-corrected-instead">
+              Search instead for{" "}
+              <button type="button" className="search-instead-link" onClick={() => setExactQuery(searchQuery)}>
+                “{searchQuery}”
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* A correction that is not safe enough to search by itself: only a button. */}
+        {plan.mode === "suggest" && plan.correction && !typing && (
+          <button type="button" className="did-you-mean" onClick={() => { if (plan.correction) applyCorrection(plan.correction.query); }}>
+            Did you mean: <BoldFixes correction={plan.correction} />?
+          </button>
+        )}
 
         {/* Two different empty states (docs/05 §5): no data at all vs no match. */}
         {theses.length === 0 ? (
@@ -288,7 +350,7 @@ export function SearchScreen({
             results; fade it so it is not mistaken for the answer to what is typed. */}
         <div className={`results-list${typing ? " results-list--stale" : ""}`} aria-busy={typing}>
           {results.map(({ thesis: t, score }, i) => {
-            const pct = searchQuery && score > 0 ? relevancePercent(score, maxScore) : 0;
+            const pct = searched && score > 0 ? relevancePercent(score, maxScore) : 0;
             const isSelected = selected.has(t.id);
             const showPreview = previewId === t.id;
             // APA 7 reference (citation.ts); null when no authors are recorded.
@@ -317,7 +379,7 @@ export function SearchScreen({
                           Titles and degrees are not searched, so never marked. */}
                       {authors && (
                         <p className="result-authors">
-                          {authors.label}: {highlightKw(authors.names, searchQuery, isNameTitle)}{authors.more}
+                          {authors.label}: {highlightKw(authors.names, searched, isNameTitle)}{authors.more}
                         </p>
                       )}
                     </div>
@@ -331,11 +393,11 @@ export function SearchScreen({
                   {/* No status badge: every study is POSTED. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, paddingLeft: 28 }}>
                     <DeptBadge dept={t.department} small />
-                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {highlightKw(t.adviser, searchQuery, isNameTitle)}</>}</span>
+                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {highlightKw(t.adviser, searched, isNameTitle)}</>}</span>
                   </div>
 
                   {snippet && (
-                    <p className="result-snippet">{highlightKw(snippet, searchQuery)}</p>
+                    <p className="result-snippet">{highlightKw(snippet, searched)}</p>
                   )}
 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 28 }}>
@@ -439,5 +501,15 @@ export function SearchScreen({
         </div>
       </main>
     </div>
+  );
+}
+
+/** A corrected query with the fixed words in bold ("Did you mean: …?" and
+ *  "Showing results for …"). */
+function BoldFixes({ correction }: { correction: Correction }) {
+  return (
+    <>
+      {correction.parts.map((p, i) => p.changed ? <strong key={i}>{p.text}</strong> : <span key={i}>{p.text}</span>)}
+    </>
   );
 }
