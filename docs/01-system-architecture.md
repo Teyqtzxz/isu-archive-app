@@ -14,7 +14,7 @@
 
 ## 1. What This System Is
 
-A web app for the **ISU Thesis Archive Search** at Isabela State University —
+A web app for the **ISU Research Study E-Library** at Isabela State University —
 Echague Campus. Two types of users:
 
 | Role | Can do |
@@ -105,8 +105,8 @@ Staff Dashboard → "Register New Thesis"
 ```
 Any search bar → query
    → debounce 300ms (queries under 2 characters count as "no query")
-   → apply filters first: Department / Year / Status
-   → build the index from what survives, then BM25-score it (title, abstract, keywords)
+   → apply filters first: Department / Year
+   → build the index from what survives, then BM25F-score it (title, keywords, authors, adviser, abstract, Academic Year)
    → sort by score (or newest first when there is no query)
    → render cards with "Relevance: %"
 ```

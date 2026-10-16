@@ -20,13 +20,18 @@ doing before the demo.
   avatar menu below that — on the staff dashboard, student dashboard **and**
   the search screen (the step 03 gap is closed).
 - Emoji icons were replaced by one stroke-icon set (`Icon` in `shared.tsx`).
-- Status badges follow `09` §3: ARCHIVED green, NEEDS REVIEW yellow, DRAFT gray.
+- No status badges: every study is posted, so `StatusBadge` was removed (errata #60).
 - The summary panel is a bottom sheet on phones and a centred 640px dialog from
   768px, and closes on Esc.
 - The page title comes from `.figma/make/site.json` (`title`).
 **Owner:** A (data) + C (CSS) · **Depends on:** 03 · **Next:** 05
 
 ### How the shipped Part 2 differs from the sketches below
+
+> **Partly superseded (errata #50, 2026-10-12).** Saving always posts
+> (`saveThesis(t)`, no status argument); `ARCHIVED` / `NEEDS_REVIEW`, "Mark as
+> Archived" and `isPending` are gone. The Status line at the top and the bullets
+> below that mention them are history.
 
 - `saveThesis(t: NewThesis, status)` — `NewThesis` is a named type in
   `types.ts`. `deleteThesis` was not added: nothing calls it yet.

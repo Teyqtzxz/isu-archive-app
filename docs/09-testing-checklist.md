@@ -31,14 +31,24 @@ seconds and catch the regressions that are easiest to reintroduce.
       Student Dashboard. The Summary panel is a modal over Search — Close, then
       Sign Out from Search
 - [ ] Sign Out on mobile is reachable via the avatar dropdown
+- [ ] **Profile cannot be loaded → student view, said out loud (errata #67).**
+      Writes nothing. Sign in as staff, open DevTools → Network → **Offline**,
+      then refresh. The student dashboard opens (never the staff one) with the
+      toast "Couldn't load your profile, so you're seeing the student view.
+      Check your connection and sign in again.", the header shows your name
+      (not blank) and the console has `[auth] could not read the user profile`.
+      Switch back to **No throttling**: the studies load; on Search, "Read full
+      study" opens a URL ending in `authuser=<your ISU email>`. Refresh → staff
+      dashboard again
 - [ ] Every Sign Out button first shows "Sign out?" with Cancel and Sign Out.
       Cancel, Escape and a click outside the box keep you signed in on the same
       screen; Sign Out goes to the login screen
 
 ## 2. Roles and security
 
-Run all four rows in the Firestore **Rules Playground**. Row 4 is the one that
-matters most.
+Run all seven rows below in the Firestore **Rules Playground**. The
+`role: "STAFF"` row (a student promoting themselves) is the one that matters
+most.
 
 - [ ] Student writes to `theses` → **denied**
 - [ ] Staff writes to `theses` → **allowed**
@@ -59,6 +69,13 @@ matters most.
 ## 3. Staff dashboard
 
 - [ ] Stats count real data: Department Studies / Added this month / Added this year
+- [ ] **[auto]** `node src/stats.check.ts` ends with "All passed." "Added this
+      month / this year" count in the viewer's **local** time, not UTC: a study
+      posted 00:00–07:59 on the 1st (Philippine time) counts in the new month,
+      and on 1 January in the new year (errata #67)
+- [ ] "Added this month" equals the number of Recent studies rows (and
+      Search results, newest first) whose "Posted" date is in this month;
+      "Added this year" likewise for this year
 - [ ] There is **no** "Pending review" card, bell, status filter or "Mark as
       Archived" button — the review step was removed (errata #50)
 - [ ] Recent studies lists only the staff member's department, and the badge
@@ -575,6 +592,7 @@ node src/keywordModel.check.ts                         # expect: All passed.
 node src/levenshtein.check.ts                          # expect: All passed.
 node src/trie.check.ts                                 # expect: All passed.
 node src/smartSearch.check.ts                          # expect: All passed.
+node src/stats.check.ts                                # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

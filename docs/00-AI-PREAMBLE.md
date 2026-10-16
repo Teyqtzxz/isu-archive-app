@@ -165,7 +165,10 @@ src/
                         scores sentences via textOnly() only      ✅ EXISTS
   extractPdf.ts       ← pure: Drive API download or a local file +
                         pdf.js text extraction (step 06)          ✅ EXISTS
-  stats.ts            ← pure: countByDepartment, topKeywords      ✅ EXISTS
+  stats.ts            ← pure: countByDepartment, topKeywords,
+                        countAdded (this month/year in LOCAL
+                        time, never UTC); examples in
+                        stats.check.ts (node src/stats.check.ts) ✅ EXISTS
   snippet.ts          ← pure: abstractSnippet — the one abstract
                         sentence on a search result card, from
                         splitSentences() output — plus queryTerms /

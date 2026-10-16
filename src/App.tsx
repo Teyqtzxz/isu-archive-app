@@ -84,7 +84,11 @@ export default function App() {
         // Firestore unreachable or rules not published yet. If the role cannot
         // be confirmed, show the read-only view. Never default to staff — but
         // say why, or a permissions problem is indistinguishable from a student.
+        // The name and email still come from the Google account, so the Drive
+        // links keep authuser; only the department is unknown.
         console.error("[auth] could not read the user profile; showing the student view", err);
+        setAccount({ displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
+        setToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.");
         setRole("student");
         setScreen("student-dashboard");
       }

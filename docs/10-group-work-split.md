@@ -75,7 +75,7 @@ Note the summary file is `CombinedSummaryPanel.tsx`, not `SummaryPanel.tsx`.
 pdf.js extraction, the safe-area header and ISU theme, deployment, and the final
 QA pass. Owning QA means nothing ships broken.
 
-**Shared:** `components/shared.tsx` (ISUSeal, StatusBadge, DeptBadge, Toast) — nobody
+**Shared:** `components/shared.tsx` (ISUSeal, DeptBadge, Toast) — nobody
 edits it except C's safe-area additions, and only additively.
 
 ---
@@ -166,7 +166,7 @@ Decide these now, not in a panic.
 
 | Risk | Mitigation |
 |---|---|
-| **Drive blocks the PDF download (CORS)** | Direct Drive links are blocked by the browser, so `06` downloads through the Drive API with a key. C runs the day-1 spike (`06` §0) before building. Files must still be "Anyone with the link → Viewer". The `needs_review` manual-entry state covers any failure — rehearse that path too |
+| **Drive blocks the PDF download (CORS)** | Direct Drive links are blocked by the browser, so `06` downloads through the Drive API with a key. C runs the day-1 spike (`06` §0) before building. Files are shared "Isabela State University → Viewer" with download/print limited to Editors (errata #53, `08` §7b), which also blocks the Drive API download, so staff register from a PDF on their computer. The `needs_review` manual-entry state covers any failure — rehearse that path too |
 | **Google sign-in is one account per browser profile** | Use a normal window for one account and incognito for the other. Have all three sign in once so three user docs exist |
 | **Only 8 sample theses** | Resolved, then superseded: all sample theses removed on the professor's request (2026-10-12); real studies only |
 | **`onSnapshot` reads the whole collection** | Fine for hundreds of docs. Only a problem in the thousands — note it, do not build for it |

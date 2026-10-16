@@ -394,7 +394,7 @@ are separate profiles from each other.
 
 ## 9. Verification
 
-Run the **Rules Playground** (Firestore → Rules → Playground). All four, not just
+Run the **Rules Playground** (Firestore → Rules → Playground). All five, not just
 the first two:
 
 | Simulation | Expected |

@@ -201,8 +201,8 @@ plugins: [
     registerType: "autoUpdate",
     includeAssets: ["favicon.ico"],
     manifest: {
-      name: "ISU Thesis Archive",
-      short_name: "ISU Archive",
+      name: "ISU Research Study E-Library",
+      short_name: "ISU E-Library",
       theme_color: "#006439",
       background_color: "#FFFFFF",
       display: "standalone",
