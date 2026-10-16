@@ -390,8 +390,8 @@ wrapped in `useMemo`, and the index is built from the *filtered* set so that N,
 document frequency and `avgDocLen` all describe the same corpus.
 
 ```typescript
-const filtered = useMemo(() => { /* dept / year / status filters */ },
-  [theses, deptFilter, yearFilter, statusFilter]);
+const filtered = useMemo(() => { /* dept / year filters */ },
+  [theses, deptFilter, yearFilter]);
 
 const index = useMemo(() => buildIndex(filtered), [filtered]);
 

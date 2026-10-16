@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { NewThesis, StaffTab, Thesis } from "../types";
 import { registeredAtISO } from "../types";
+import { countAdded } from "../stats";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
@@ -53,13 +54,8 @@ export function StaffDashboard({
   const deptLabel = dept ? `${dept} Staff` : "Research Staff";
   const name = account.displayName || account.email;
 
-  const thisMonthPrefix = new Date().toISOString().slice(0, 7); // "2026-09"
-  const thisYearPrefix = thisMonthPrefix.slice(0, 4); // "2026"
-  const stats = {
-    total: mine.length,
-    thisMonth: mine.filter(t => registeredAtISO(t).startsWith(thisMonthPrefix)).length,
-    thisYear: mine.filter(t => registeredAtISO(t).startsWith(thisYearPrefix)).length,
-  };
+  // Local time, not UTC: see countAdded() in stats.ts.
+  const stats = { total: mine.length, ...countAdded(mine) };
 
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {

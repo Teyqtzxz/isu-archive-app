@@ -1,7 +1,7 @@
 // Department statistics — pure counting over the live thesis list. No React,
 // no Firestore: the dashboards already hold every thesis, so the numbers are
 // always in step with what Search finds.
-import { DEPARTMENTS, type Thesis } from "./types";
+import { DEPARTMENTS, registeredAtISO, type Thesis } from "./types.ts";
 
 export interface DepartmentCount {
   department: string;
@@ -55,4 +55,29 @@ export function topKeywords(theses: Pick<Thesis, "keywords">[], limit = 10): Key
   return [...counts.values()]
     .sort((a, b) => b.count - a.count || a.keyword.localeCompare(b.keyword))
     .slice(0, limit);
+}
+
+export interface AddedCount {
+  thisMonth: number;
+  thisYear: number;
+}
+
+/**
+ * Studies registered in `now`'s month and year, in the viewer's LOCAL time.
+ * Comparing ISO strings would compare in UTC: in the Philippines (UTC+8) a
+ * study registered at 07:00 on 1 October is still 30 September in UTC.
+ * A record with no registeredAt ("") is never counted.
+ */
+export function countAdded(theses: Pick<Thesis, "registeredAt">[], now = new Date()): AddedCount {
+  let thisMonth = 0;
+  let thisYear = 0;
+  for (const t of theses) {
+    const iso = registeredAtISO(t);
+    if (!iso) continue;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime()) || d.getFullYear() !== now.getFullYear()) continue;
+    thisYear++;
+    if (d.getMonth() === now.getMonth()) thisMonth++;
+  }
+  return { thisMonth, thisYear };
 }
