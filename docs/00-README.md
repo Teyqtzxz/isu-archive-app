@@ -53,6 +53,7 @@ one at a time.
 | 12 | `12-how-to-contribute.md` | everyone | **read once if you have never used GitHub** |
 | 13 | `13-prompt-templates.md` | everyone | **copy-paste prompts for every step — start here** |
 | 14 | `14-similarity.md` | — | document similarity (TF-IDF + cosine): originality check and Similar studies — method, worked example, thresholds, limits (for the defense) |
+| 15 | `15-keyword-model.md` | — | keyword model (Naive Bayes + TF-IDF phrases): suggested keywords on Register / Edit and the staff accuracy card — what a model is, Naive Bayes by hand, leave-one-out vs baseline, limits (for the defense) |
 
 Steps 06 and 07 are independent — take whichever you prefer.
 
@@ -123,6 +124,7 @@ Verified against the code on 2026-09-30.
 - ☑ "Sign out?" confirmation on every Sign Out
 - ☑ Click a result title → abstract preview → "Open in Drive"
 - ☑ APA 7 citation in Study Details (professor, 2026-10-14)
+- ☑ Keyword model: suggested keywords on the save step + accuracy card in staff Statistics (professor: "build a model in your system", `15`)
 - ☑ Combined summary of ticked results, extractive (MMR over BM25), with APA 7 in-text citations (step 07, `07` §8)
 - ☑ Responsive headers with safe-area handling
 - ☑ Security: only STAFF can write; students read-only; ISU accounts only

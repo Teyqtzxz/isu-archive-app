@@ -269,6 +269,35 @@ matters most.
       prints nothing
 - [ ] Search results, ranking and relevance % are exactly as before
 
+## 4d. Keyword model — suggested keywords and accuracy card (`15`)
+
+- [ ] **[auto]** `node src/keywordModel.check.ts` ends with "All passed."
+      (label normalisation, learned vs extracted, the P ≥ 0.9 + 5-evidence
+      guard, no duplicates, validation rules, phrase rules, Edit exclusion,
+      no leakage in leave-one-out, empty library)
+- [ ] **Register:** fill in a study → Read PDF & continue → a **"Suggested
+      keywords"** box above Keywords, at most **6** chips, each saying
+      "learned from N studies" or "from this abstract". Nothing is added
+      until a chip is clicked
+- [ ] Click a chip → it moves into Keywords exactly as if typed; the chip
+      disappears and another may take its place. A keyword already in the
+      list (any capitals or plural) is never suggested
+- [ ] At **10** keywords every chip is greyed out ("Up to 10 keywords can
+      be added.")
+- [ ] **Edit study** on a study with copies (e.g. "thesis sample 2"): remove
+      one of its keywords → it comes back as a chip "learned from **2**
+      studies" (its copies — the study itself is never counted)
+- [ ] An abstract about a topic no stored study has → phrases only, no
+      "learned" chip
+- [ ] **Statistics tab (staff):** a **"Keyword model"** card under the
+      department charts: training studies, known keywords, "Testing the
+      model…" then "*N* studies tested, *M* copies hidden", Model vs
+      Baseline for the three measures, and **"Fewer than 30 studies with
+      keywords — not reliable yet."** while under 30. Students never see it
+- [ ] Dark mode: chips and the card readable in Light and Dark
+- [ ] Nothing is saved by the suggestions or the card (Firestore console:
+      no change until Confirm & Save / Save changes)
+
 ## 5. Search (both roles)
 
 - [ ] **[auto]** `grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts`
@@ -474,13 +503,14 @@ matters most.
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
 node src/search.check.ts                               # expect: All passed.
 node src/theme.check.ts                                # expect: All passed.
 node src/similarity.check.ts                           # expect: All passed.
+node src/keywordModel.check.ts                         # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

@@ -8,6 +8,7 @@ import {
   cleanAuthorList, cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
 } from "../validation";
 import { buildOriginalityIndex, originalityCheck, originalityReason, type SimilarityLevel } from "../similarity";
+import { suggestKeywords, suggestionSource, trainKeywordModel } from "../keywordModel";
 import { DeptBadge, Icon, SharedTerms, withAccount } from "./shared";
 
 /** The Academic Year box starts at this year; any past year can be typed. */
@@ -97,6 +98,14 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
   /** The match whose details are shown inside the warning (no leaving the form). */
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
+  // Keyword model (keywordModel.ts, docs/15): trained once per data change on
+  // every stored study except this one (Edit study must not learn its own
+  // keywords); suggestions only on the save step, never added automatically.
+  const keywordModel = useMemo(() => trainKeywordModel(theses, { excludeId: study?.id }), [theses, study?.id]);
+  const suggestions = useMemo(() => onSaveStep
+    ? suggestKeywords(keywordModel, { title: draftTitle, abstract, keywords })
+    : [], [onSaveStep, keywordModel, draftTitle, abstract, keywords]);
+
   const steps = [
     { label: editing ? "Edit study" : "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
     { label: "Processing", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
@@ -169,6 +178,15 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
     setKeywords(r.list);
     setNotes(p => ({ ...p, keyword: r.note }));
     setNewKw("");
+  }
+
+  /** A suggested keyword chip: added exactly as if typed and + Add pressed. */
+  function addSuggestedKeyword(keyword: string) {
+    const r = addKeywords(keywords, keyword);
+    setFieldError("keyword", r.error ?? null);
+    if (r.error) return;
+    setKeywords(r.list);
+    setNotes(p => ({ ...p, keyword: r.note }));
   }
 
   /** A chosen PDF is checked at once: not a PDF or empty → not taken; too
@@ -552,6 +570,26 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
               {abstractLength >= ABSTRACT_COUNTER_FROM && ` · ${abstractLength.toLocaleString("en-US")} / ${ABSTRACT_MAX.toLocaleString("en-US")} characters`}
             </div>
           </div>
+
+          {/* Suggested keywords (keyword model): click to add, never automatic. */}
+          {suggestions.length > 0 && (
+            <div className="review-card">
+              <span className="field-label" id="register-suggested-label" style={{ marginBottom: 4 }}>Suggested keywords</span>
+              <p className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
+                Click one to add it. Learned from the keywords of earlier studies, or taken from this abstract.
+              </p>
+              <div className="suggest-list" role="group" aria-labelledby="register-suggested-label">
+                {suggestions.map(s => (
+                  <button key={s.key} type="button" onClick={() => addSuggestedKeyword(s.keyword)}
+                    disabled={keywords.length >= MAX_KEYWORDS} className="suggest-chip"
+                    aria-label={`Add keyword ${s.keyword}, ${suggestionSource(s)}`}>
+                    <span className="suggest-chip-text">+ {s.keyword}</span>
+                    <span className={`suggest-chip-source${s.source === "learned" ? " suggest-chip-source--learned" : ""}`}>{suggestionSource(s)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Keywords chips */}
           <div className="review-card">
