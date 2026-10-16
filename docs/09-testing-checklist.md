@@ -372,6 +372,67 @@ matters most.
 - [ ] The checkbox, the Study Details panel (tap the title), citation-chip and
       "View details" jumps (scroll + yellow flash) work exactly as before
 
+## 5b. Smart search box — autocomplete and "Did you mean" (`16`)
+
+- [ ] **[auto]** `node src/levenshtein.check.ts`, `node src/trie.check.ts`
+      and `node src/smartSearch.check.ts` each end with "All passed." (the
+      last also prints the 300-study timing)
+- [ ] **Search screen (staff Search tab and student):** type `irr` → a list
+      under the box: **irrigation** (Keyword · N studies), **irrigate**
+      (Abstract). Nothing shows for 1 letter, for `zzz`, or after a space
+- [ ] **"ma"** → **machine** (more studies) above **management**; words
+      found only in abstracts (*many*, *massive*) are last
+- [ ] ↓ highlights the first row, ↓ / ↑ move and wrap around, **Enter**
+      picks it: the box reads `irrigation ` (with a space), the list closes,
+      the cursor stays in the box. **Tab** on a highlighted row does the same
+- [ ] Type `Rice  fa` → the first row is **rice farming**; pick it → the box
+      reads `rice farming `. Type `Rice  fa` again and pick **farming** →
+      `Rice  farming ` (the first word kept exactly as typed)
+- [ ] The list closes on **Esc**, on clicking outside the box, after a pick
+      and on the clear (✕) button; it never opens while the box is empty
+- [ ] `acos` → **acosta** (Author); `pag` → **pagulayan** (Adviser); `dr` never
+      offers "dr"; `th` never offers "the"
+- [ ] **Corrects itself** (All Departments, All Years): search
+      `machne lerning` → results appear **at once**, the result line says
+      **9 results for "machine learning"**, highlights mark *machine* /
+      *learning*, and above the results: "Showing results for **machine
+      learning**" and a small link *Search instead for "machne lerning"*.
+      The box still reads `machne lerning`
+- [ ] Click *Search instead for "machne lerning"* → "0 results for
+      "machne lerning"", no note, no button. Type the same words again → it
+      corrects itself again (the link only holds for that one query)
+- [ ] Search `irigation` (corrects itself), tick a result, **View Summary**
+      → the panel says *for "irrigation"*, with *irrigation* highlighted
+- [ ] **Button only** (never searched by itself): `moistrue` (2 edits) →
+      "0 results" and **"Did you mean: moisture?"**; `yeld` (4 letters) →
+      "Did you mean: **yield**?"; `rice irigation` → results through "rice"
+      **and** "Did you mean: rice **irrigation**?". Click a button → the box
+      reads the correction, results appear, the line is gone (never a second
+      correction)
+- [ ] **Filters:** Year = 2018, search `irigation` → it does **not**
+      correct itself (irrigation finds nothing in 2018): "0 results" and the
+      button only
+- [ ] **Nothing shown** for `GIS`, `IoT`, `ICT` (3-letter acronyms are never
+      changed), `eskwela` (a correct rare word), `2024`, `the`, `of`, `Rice`,
+      `Dr. Villanueva`, `the 2024 eskwela`
+- [ ] The box text is never changed unless a row or the button is clicked
+- [ ] **Student dashboard:** `pag` → the list under the hero box; ↓ + Enter
+      fills `pagulayan ` **without** searching; a second Enter opens the
+      Search screen. The Search screen opens with the list **closed**
+- [ ] **Phone (360px):** the list fits inside the screen (no sideways
+      scroll), each row is easy to tap, and a tap fills the box. The "Did
+      you mean" line and the "Showing results for / Search instead for" note
+      wrap instead of overflowing
+- [ ] **Dark and Light:** the list, the highlighted row, the bold words and
+      the "Search instead" link are readable in both
+- [ ] **Input method** (optional; Windows Japanese IME or a phone keyboard
+      that underlines words): while a word is still underlined, Enter only
+      confirms it — it does not pick a row or search
+- [ ] Screen reader / DevTools: the box has `role="combobox"` and
+      `aria-expanded` true only while the list shows; ↓ sets
+      `aria-activedescendant` to the highlighted row
+- [ ] Nothing is saved (Firestore console: no change)
+
 ## 6. Abstract preview
 
 - [ ] Clicking (or tapping) a result title expands the full abstract under it
@@ -503,7 +564,7 @@ matters most.
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts src/levenshtein.ts src/trie.ts src/smartSearch.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
@@ -511,6 +572,9 @@ node src/search.check.ts                               # expect: All passed.
 node src/theme.check.ts                                # expect: All passed.
 node src/similarity.check.ts                           # expect: All passed.
 node src/keywordModel.check.ts                         # expect: All passed.
+node src/levenshtein.check.ts                          # expect: All passed.
+node src/trie.check.ts                                 # expect: All passed.
+node src/smartSearch.check.ts                          # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

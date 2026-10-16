@@ -6,9 +6,13 @@ import { SEARCH_MAX, cleanQuery } from "../validation";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted } from "./shared";
 import { DepartmentStats } from "./DepartmentStats";
 import { ThemePicker, ThemeToggle } from "./ThemeToggle";
+import { SmartSearchInput } from "./SmartSearchInput";
+import type { SmartSearchIndex } from "../smartSearch";
 
-export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment, onOpenStudy, onSignOut }: {
+export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrowseDepartment, onOpenStudy, onSignOut }: {
   theses: Thesis[];
+  /** Autocomplete words for the search box (built once in App.tsx). */
+  smartIndex: SmartSearchIndex;
   account: { displayName: string; email: string };
   /** department: undefined or "" = all departments. */
   onSearch: (q: string, department?: string) => void;
@@ -101,14 +105,15 @@ export function StudentDashboard({ theses, account, onSearch, onBrowseDepartment
           <div className="hero-search">
             <div className="search-box">
               <span className="search-icon"><Icon name="search" size={20} /></span>
-              <input
-                ref={inputRef}
+              <SmartSearchInput
+                index={smartIndex}
+                inputRef={inputRef}
                 value={heroQuery}
-                onChange={e => setHeroQuery(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                onChange={setHeroQuery}
+                onEnter={handleSearch}
                 maxLength={SEARCH_MAX}
                 placeholder="Search by topic, keyword or title…"
-                aria-label="Search studies"
+                ariaLabel="Search studies"
                 className="search-input-lg"
               />
             </div>

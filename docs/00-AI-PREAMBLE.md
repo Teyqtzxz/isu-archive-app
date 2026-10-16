@@ -212,6 +212,22 @@ src/
                         keywordModel.check.ts
                         (node src/keywordModel.check.ts); method
                         in docs/15-keyword-model.md              ✅ EXISTS
+  levenshtein.ts      ← pure: levenshtein(a, b, max) — two rows,
+                        early exit over max, code points after
+                        NFC — and levenshteinTable (the full
+                        table, for teaching/checks); examples in
+                        levenshtein.check.ts                      ✅ EXISTS
+  trie.ts             ← pure: Trie<T> (insert, withPrefix), keys
+                        by code point; examples in trie.check.ts  ✅ EXISTS
+  smartSearch.ts      ← pure: the smart search box —
+                        buildSmartSearch (from buildIndex, once
+                        per data change), autocomplete,
+                        applyCompletion, didYouMean, searchPlan,
+                        correctionFor, wordSpans, foldKey,
+                        SMART_SEARCH; examples + the 300-study
+                        timing in smartSearch.check.ts
+                        (node src/smartSearch.check.ts); method
+                        in docs/16-smart-search.md               ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -227,6 +243,9 @@ src/
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
     KeywordModelCard.tsx (staff Statistics tab only: the keyword
                       model's leave-one-out accuracy vs baseline)
+    SmartSearchInput.tsx (both search boxes: the input + the
+                      autocomplete list, ARIA combobox — never put
+                      a plain <input> back in a search box)
     ConfirmDialog.tsx (the one "Are you sure?" dialog: Cancel
                       focused, red confirm, Escape/backdrop =
                       Cancel — never copy it, reuse it)
@@ -254,7 +273,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts` and `keywordModel.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts` and `smartSearch.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -297,6 +316,9 @@ Real, working — **do not rewrite**:
 - Keyword model, Naive Bayes + TF-IDF phrases (`keywordModel.ts`, errata
   #65): "Suggested keywords" on the Register / Edit save step and the
   "Keyword model" accuracy card in the staff Statistics tab
+- Smart search box, Trie autocomplete + Levenshtein "Did you mean" /
+  "Showing results for" (`smartSearch.ts`, errata #66): both search boxes
+  and the Search screen
 - Every screen's UI, one file per screen in `src/components/`
 
 Four things in there are **deliberate and must survive a refactor** — each one
@@ -380,6 +402,40 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
 - Change a threshold only in `KEYWORD_MODEL` (`keywordModel.ts`), with an
   example in `keywordModel.check.ts`. Search ranking, similarity scores and
   validation rules are not affected.
+
+### Smart search box — autocomplete and "Did you mean" (`docs/16`)
+
+- Built from the studies already loaded, once per data change (one `useMemo`
+  in `App.tsx`, passed to both screens as `smartIndex`); nothing is stored.
+  Words come from `buildIndex()` / `tokenize()` in `search.ts`, so a
+  suggestion is always a word search can find. Search ranking is untouched.
+- **Autocomplete** (`SmartSearchInput`, both boxes): completes the **last**
+  word once it has **2+ letters**, and the last 2–3 words against keyword
+  phrases ("rice fa" → "rice farming"); at most **6** rows: title/keyword/
+  author/adviser words before abstract-only words, then more studies, then
+  A–Z ("ma" → machine (8) before management (1)).
+  Never stop words, numbers or Dr./Engr. Accents ignored for finding only.
+  Picking replaces only the matched words (earlier words kept as typed).
+  ↑/↓, Enter/Tab pick the highlighted row, Esc closes; closes on blur, pick
+  and empty box; never opens while empty. Keys are ignored while an input
+  method is composing (`e.nativeEvent.isComposing`).
+- **"Did you mean: …?"** (Search screen only): when a searched word matches
+  nothing search indexes (search's own `findMatchScore`, common words
+  included), the closest e-library word within **1 edit (4 letters) / 2
+  edits (5+)**; tie-breaks: edits, same first letter, length, studies, A–Z.
+  Never for < **4** letters (acronyms: GIS, IoT, ICT), numbers/years, titles,
+  stop words. Never offers a second correction.
+- **Corrects itself** only when `searchPlan()` says so — ALL of: the typed
+  query finds **0** results with the current filters; **every** fixed word
+  was typed with **5+ letters** and is **exactly 1 edit** away; the
+  correction finds **≥ 1** result with the same filters. Then it searches
+  the correction and shows "Showing results for **…**" + a "Search instead
+  for "…"" link (that query only, as typed). Otherwise only the button. The
+  box always keeps what was typed; everything after the search (result line,
+  highlights, snippets, %, summary) uses the query actually searched.
+- Change a number only in `SMART_SEARCH` (incl. `minTypoLetters`,
+  `minAutoLetters`, `autoEdits`) / `maxDistanceFor()`
+  (`smartSearch.ts`), with an example in `smartSearch.check.ts`.
 
 ### Input validation — one module, one example per rule
 
