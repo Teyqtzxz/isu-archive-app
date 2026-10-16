@@ -4,6 +4,7 @@ import { registeredAtISO } from "../types";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
+import { KeywordModelCard } from "./KeywordModelCard";
 import { ThemePicker, ThemeToggle } from "./ThemeToggle";
 
 /** Who is signed in, for the header, welcome card and settings. */
@@ -264,6 +265,8 @@ export function StaffDashboard({
               onSelectDepartment={d => onSearch("", d)}
               onSelectKeyword={(k, d) => onSearch(k, d)}
             />
+            {/* Staff only: the student dashboard shows DepartmentStats without it. */}
+            <KeywordModelCard theses={theses} />
           </div>
         )}
 

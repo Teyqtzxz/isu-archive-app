@@ -1485,6 +1485,44 @@ p.apa-ref:last-child { margin-bottom: 0; }
 .keywords-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .key-term { font-size: 12px; font-weight: 500; color: var(--text-body); background: var(--warn-soft); border: 1px solid rgba(var(--isu-yellow-rgb), 0.45); border-radius: var(--radius-full); padding: 2px 10px; }
 
+/* ─── Keyword model (keywordModel.ts) ──────────────────────── */
+/* "Suggested keywords" chips on the Register save step: click to add. */
+.suggest-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggest-chip {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 6px 12px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px dashed var(--border-strong);
+  font-family: inherit; text-align: left; cursor: pointer; max-width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+.suggest-chip:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.suggest-chip:disabled { cursor: default; opacity: 0.55; }
+.suggest-chip-text { font-size: 13px; font-weight: 600; color: var(--text-body); overflow-wrap: anywhere; }
+.suggest-chip-source { font-size: 11px; color: var(--text-muted); }
+.suggest-chip-source--learned { color: var(--accent); }
+/* Staff Statistics tab: what the model learned and its leave-one-out scores. */
+.km-card { margin-top: 16px; }
+.km-body { padding: 16px 20px 20px; }
+.km-stats { display: flex; flex-wrap: wrap; gap: 12px 32px; margin-bottom: 14px; }
+.km-stat { display: flex; align-items: baseline; gap: 8px; }
+.km-stat-value { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.km-stat-label { font-size: 13px; color: var(--text-secondary); }
+.km-warn {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 12px;
+  background: var(--warn-soft); border: 1px solid rgba(var(--isu-yellow-rgb), 0.55);
+  border-radius: var(--radius-md); color: var(--warn-text); font-size: 13px; font-weight: 600;
+}
+.km-warn svg { flex-shrink: 0; }
+.km-overline { display: block; }
+.km-meta { font-size: 13px; color: var(--text-secondary); margin: 0 0 10px; }
+.km-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.km-table th, .km-table td { padding: 8px 10px; border-bottom: 1px solid var(--divider); text-align: right; font-variant-numeric: tabular-nums; }
+.km-table th:first-child { text-align: left; }
+.km-table thead th { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.km-table tbody th { font-weight: 500; color: var(--text-body); }
+.km-table td { color: var(--text-secondary); }
+.km-table td.km-model { color: var(--text); font-weight: 700; }
+
 /* ─── Similarity (similarity.ts) ───────────────────────────── */
 /* "Shared key terms" of a match: the key-term chips of the summary. */
 .sim-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

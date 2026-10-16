@@ -199,6 +199,19 @@ src/
                         similarity.check.ts
                         (node src/similarity.check.ts); method in
                         docs/14-similarity.md                     ✅ EXISTS
+  keywordModel.ts     ← pure: the keyword model — multinomial
+                        Naive Bayes one-vs-rest (Laplace) on title
+                        + abstract → keywords, plus TF-IDF two-word
+                        phrases of the abstract: keywordKey,
+                        trainKeywordModel (excludeId),
+                        predictKeywords, extractPhrases,
+                        suggestKeywords, leaveOneOutFolds,
+                        evaluateKeywordModel, KEYWORD_MODEL;
+                        words via similarity.ts (foldPlural,
+                        isCountedTerm); examples in
+                        keywordModel.check.ts
+                        (node src/keywordModel.check.ts); method
+                        in docs/15-keyword-model.md              ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (~180 lines; no screen UI inside) ✅ EXISTS
   components/
@@ -212,6 +225,8 @@ src/
     LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
+    KeywordModelCard.tsx (staff Statistics tab only: the keyword
+                      model's leave-one-out accuracy vs baseline)
     ConfirmDialog.tsx (the one "Are you sure?" dialog: Cancel
                       focused, red confirm, Escape/backdrop =
                       Cancel — never copy it, reuse it)
@@ -239,7 +254,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts` and `similarity.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts` and `keywordModel.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -279,6 +294,9 @@ Real, working — **do not rewrite**:
 - Document similarity, TF-IDF + cosine (`similarity.ts`, errata #64): the
   originality check on the Register / Edit save step and "Similar studies"
   in Study Details
+- Keyword model, Naive Bayes + TF-IDF phrases (`keywordModel.ts`, errata
+  #65): "Suggested keywords" on the Register / Edit save step and the
+  "Keyword model" accuracy card in the staff Statistics tab
 - Every screen's UI, one file per screen in `src/components/`
 
 Four things in there are **deliberate and must survive a refactor** — each one
@@ -336,6 +354,32 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
 - Change a threshold or word rule only in `similarity.ts`, with an example in
   `similarity.check.ts`. It is a screening aid, not a plagiarism verdict:
   paraphrasing is not caught (`docs/14` §5).
+
+### Keyword model — suggested keywords and accuracy (`docs/15`)
+
+- A machine-learning model trained in the browser from the studies already
+  loaded (once per data change, `useMemo`); nothing is stored, no AI service,
+  no library. Learned part: multinomial **Naive Bayes**, one-vs-rest per known
+  keyword, Laplace smoothing, features = title + abstract words (similarity's
+  word rules), labels = keywords normalised by `keywordKey()` ("Rice" = "rices").
+  Only studies with keywords are training studies. Extracted part: the top
+  **TF-IDF two-word phrases** of the abstract (never across punctuation; shown
+  as written, "low-cost sensors").
+- **Save step (Register and Edit study):** "Suggested keywords", at most **6**,
+  learned first — only at **P ≥ 0.9 and ≥ 5 evidence words** — then phrases;
+  each chip says "learned from N studies" or "from this abstract". Never a
+  keyword the study already has; clicking adds it through `addKeywords()`
+  exactly like typing (same rules, max 10); **never added automatically**.
+  **Edit study never trains on the study being edited** (`excludeId`).
+- **Staff Statistics tab:** "Keyword model" card — training studies, known
+  keywords, leave-one-out **with near-copies (≥ 80%) hidden**: "N studies
+  tested, M copies hidden", model vs baseline (6 most common keywords) for
+  ≥ 1 correct / precision / recall, and below 30 studies with keywords
+  "Fewer than 30 studies with keywords — not reliable yet." Never show the
+  plain (copies kept) score on screen; it is explained in `docs/15` §5.
+- Change a threshold only in `KEYWORD_MODEL` (`keywordModel.ts`), with an
+  example in `keywordModel.check.ts`. Search ranking, similarity scores and
+  validation rules are not affected.
 
 ### Input validation — one module, one example per rule
 

@@ -54,8 +54,9 @@ export const STOP_WORDS: ReadonlySet<string> = new Set([
 
 /** Plural folding, so "students" and "student" count as one word, "studies"
  *  is "study" and "switches" is "switch". Short words and words ending in
- *  -ss, -us, -is ("process", "campus", "analysis") are left alone. */
-function foldPlural(word: string): string {
+ *  -ss, -us, -is ("process", "campus", "analysis") are left alone. Also used
+ *  by keywordModel.ts, so "Rice" / "rices" are one keyword. */
+export function foldPlural(word: string): string {
   if (word.length > 4 && word.endsWith("ies")) return word.slice(0, -3) + "y";
   if (word.length > 4 && /(ch|sh|x|z|ss)es$/.test(word)) return word.slice(0, -2);
   return word.length > 3 && word.endsWith("s") && !/(ss|us|is)$/.test(word) ? word.slice(0, -1) : word;
@@ -66,9 +67,12 @@ function foldPlural(word: string): string {
  *  minus one-letter words, plain numbers and STOP_WORDS (after folding, so
  *  "studies" is dropped like "study"). */
 export function similarityTerms(text: string): string[] {
-  return tokenize(text)
-    .map(foldPlural)
-    .filter(t => t.length > 1 && !/^\d+$/.test(t) && !STOP_WORDS.has(t));
+  return tokenize(text).map(foldPlural).filter(isCountedTerm);
+}
+
+/** A folded word that counts: not one letter, not a plain number, not in STOP_WORDS. */
+export function isCountedTerm(t: string): boolean {
+  return t.length > 1 && !/^\d+$/.test(t) && !STOP_WORDS.has(t);
 }
 
 /** Weighted count of each word: 3 × in the title + 2 × in the keywords + 1 × in the abstract. */
