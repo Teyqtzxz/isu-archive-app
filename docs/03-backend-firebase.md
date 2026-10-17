@@ -21,6 +21,13 @@ The sketches in §4–§5 are the design; the real files are the reference:
   signed-in user refreshing the page never sees the login screen flash.
 - `LoginScreen` maps Firebase error codes to plain messages; closing the popup
   is silent, a blocked popup says so.
+- **Email + password login was added later (errata #68) — see `17`.** The
+  listener's body is now `routeSignedInUser(user)` (the verify screen re-runs
+  it), an unverified account is routed to "Check your ISU inbox" before the
+  profile is read, `signInWithGoogle()` now returns whether Google must first
+  be connected to an existing password account, `LoginScreen` takes an
+  optional `initialMode`, and the error words moved to `src/auth.ts`.
+  `getUserProfile()` and `firestore.rules` are unchanged.
 - Sign-out from `SearchScreen` was added later, with the UI pass (PR #9): the
   search header has a Sign Out button fed by the same `onSignOut` prop.
 
@@ -43,6 +50,9 @@ The AI cannot do any of §1. Do these in the Firebase console, in order.
 2. **Add a Web App** (`</>` icon) — name `isu-archive-web`
 3. Copy the `firebaseConfig` object. You will paste it into `src/firebase.ts`.
 4. **Authentication → Sign-in method → Google → Enable**
+   - Also **Email/Password → Enable** for the email + password login, plus
+     the account-linking, enumeration, password-policy, template and action
+     URL settings in `17` §6.
 5. **Firestore Database → Create** — Production mode, nearest region
    (`asia-southeast1`)
 6. **Authentication → Settings → Authorized domains → Add domain**, and add:

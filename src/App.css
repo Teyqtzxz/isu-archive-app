@@ -602,6 +602,149 @@ select.input {
 .gbtn:disabled { background: var(--surface-raised); cursor: default; box-shadow: none; }
 
 .login-foot { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 16px; }
+
+/* ─── Email + password sign-in (docs/17) ───────────────────── */
+.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-submit { width: 100%; padding: 12px 20px; font-size: 15px; margin-top: 4px; }
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--on-fill-rgb), 0.35);
+  border-top-color: var(--on-fill);
+}
+.page-spinner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 3px solid rgba(var(--accent-rgb), 0.15);
+  border-top-color: var(--accent);
+}
+.login-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.login-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+.login-link:hover:not(:disabled) { text-decoration: underline; }
+.login-link:disabled { color: var(--text-subtle); cursor: default; }
+.login-link--inline { font-size: inherit; }
+.login-switch { font-size: 13px; color: var(--text-muted); text-align: center; margin: 16px 0 0; }
+.login-switch--tight { margin-top: 0; }
+
+/* "@isu.edu.ph" shown inside the email box until the user types an "@". */
+.input-with-suffix { position: relative; }
+.input-with-suffix .input { padding-right: 104px; }
+.input-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.input-with-toggle { position: relative; }
+.input-with-toggle .input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.pw-toggle:hover:not(:disabled) { color: var(--text); background: var(--surface-hover); }
+.pw-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pw-toggle:disabled { cursor: default; }
+
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.login-or::before, .login-or::after { content: ""; flex: 1; height: 1px; background: var(--divider); }
+
+.login-notice {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--accent-soft);
+  color: var(--text-body);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.login-notice svg { flex-shrink: 0; margin-top: 1px; color: var(--accent); }
+.verify-email { color: var(--text); word-break: break-all; }
+
+/* Forgot password: 1 Email · 2 Check inbox · 3 New password */
+.reset-steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 16px; }
+.reset-steps li {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-subtle);
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--fill-muted);
+}
+.reset-steps li span {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-muted);
+  font-size: 11px;
+}
+.reset-steps li.is-current { color: var(--accent); border-bottom-color: var(--accent); }
+.reset-steps li.is-current span { background: var(--accent-fill); color: var(--on-fill); }
+.reset-steps li.is-done { color: var(--accent); border-bottom-color: rgba(var(--accent-rgb), 0.35); }
+.reset-steps li.is-done span { background: var(--accent-soft); color: var(--accent); }
+
+.reset-done { text-align: center; }
+.reset-done-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.reset-done-icon--warn { background: var(--danger-soft); color: var(--danger); }
+.reset-done-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 20px; }
 .site-foot { margin-top: 28px; text-align: center; }
 .site-foot p { font-size: 12px; color: var(--text-subtle); }
 

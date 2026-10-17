@@ -56,7 +56,7 @@ Drive API download in step 06 is the one sanctioned external call.
 ## Stack
 
 React 19 · Vite 8 · TypeScript 5.7 (strict) · Tailwind CSS v4 · Firebase Auth
-(Google) + Cloud Firestore + Hosting · Google Drive API v3 (PDF download) ·
+(Google + Email/Password) + Cloud Firestore + Hosting · Google Drive API v3 (PDF download) ·
 pdf.js (`pdfjs-dist`) · `oxfmt`
 
 ## Canonical types (`src/types.ts`)
@@ -83,7 +83,7 @@ export interface Thesis {
 }
 
 export type Role = "staff" | "student";
-export type Screen = "login" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
+export type Screen = "login" | "verify-email" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
 export type StaffTab = "dashboard" | "register" | "search" | "statistics" | "settings";
 export type ExtractionState = "idle" | "extracting" | "success" | "needs_review";
 
@@ -137,7 +137,9 @@ Research Department staff register, so a saved study is **posted** at once.
 ```
 src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
-  data.ts             ← the ONLY Firestore module: sign-in, user profile,
+  data.ts             ← the ONLY Firestore module: sign-in (Google;
+                        email + password, Create account, reset and
+                        verify links — docs/17), user profile,
                         live theses (all read as POSTED), saveThesis
                         (adviser is typed freely: no option list),
                         updateThesis(id, fields) (keeps registeredAt/
@@ -186,6 +188,14 @@ src/
                         input rules and their messages; examples
                         in validation.check.ts
                         (node src/validation.check.ts)            ✅ EXISTS
+  auth.ts             ← pure: sign-in / Create account rules —
+                        toIsuEmail, isIsuEmail, checkEmail,
+                        checkPassword, checkNewPassword (≥ 8),
+                        checkConfirm, checkFullName (author-name
+                        rules), maskEmail, AUTH_MSG, and Firebase
+                        error code → words (authErrorMessage,
+                        messageFor); examples in auth.check.ts
+                        (node src/auth.check.ts); docs/17         ✅ EXISTS
   theme.ts            ← Light / Dark / System: parseChoice,
                         resolveTheme, toggledChoice (pure) +
                         read/save (localStorage, try/catch) and
@@ -232,7 +242,10 @@ src/
                         (node src/smartSearch.check.ts); method
                         in docs/16-smart-search.md               ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
-                        routing (~180 lines; no screen UI inside) ✅ EXISTS
+                        routing (routeSignedInUser: unverified →
+                        verify-email, never a dashboard), email-link
+                        screen (?mode=&oobCode=) (~340 lines; no
+                        screen UI inside)                         ✅ EXISTS
   components/
     shared.tsx        ← ISUSeal, DeptBadge, Toast, Icon, initialsOf,
                         formatPosted (the one "Posted" date
@@ -240,8 +253,15 @@ src/
                         highlightKw (query words in <mark>: the
                         summary, the result snippet, author
                         names and adviser on result cards —
-                        names skip titles/degrees, isNameTitle)  ✅ EXISTS
-    LoginScreen.tsx   StaffDashboard.tsx   RegisterForm.tsx
+                        names skip titles/degrees, isNameTitle),
+                        IsuEmailInput + PasswordInput (every
+                        password box has its own eye button)    ✅ EXISTS
+    LoginScreen.tsx   (Sign in · Create account · Forgot password
+                      · Continue with Google — docs/17)
+    ForgotPassword.tsx VerifyEmailScreen.tsx ("Check your ISU
+                      inbox") AuthActionScreen.tsx (reset /
+                      verify links)
+    StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
     KeywordModelCard.tsx (staff Statistics tab only: the keyword
@@ -276,7 +296,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts` and `smartSearch.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts`, `smartSearch.ts` and `auth.ts` are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -296,6 +316,17 @@ Real, working — **do not rewrite**:
   (step 05)
 - Google sign-in (ISU accounts only), role routing, session restore, sign-out
   with a "Sign out?" confirmation, and `firestore.rules` (step 03)
+- Email + password login (`docs/17`, errata #68): ISU email (or username) +
+  an e-library **system** password — never the Gmail password, which no
+  Google API lets a site check. Create account → verification email →
+  "Check your ISU inbox" (I've verified = reload + `getIdToken(true)`);
+  Forgot password by email link (also adds a password to a Google-only
+  account). Passwords live only in Firebase Auth, hashed — never in
+  Firestore, browser storage or a log. Unverified accounts see only the
+  verify screen; `firestore.rules` is unchanged. One email = one uid
+  (Google and password); new profiles are always `STUDENT`. Rules and
+  messages only in `auth.ts`, with an example in `auth.check.ts`; wrong
+  password and unknown email give the same "Email or password is incorrect."
 - Live Firestore data, save (always POSTED), staff department (step 04)
 - Staff **Edit** and **Delete** in Study Details (students never see them).
   Edit is `RegisterForm` in edit mode (`study` prop): pre-filled and cleaned

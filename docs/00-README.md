@@ -55,6 +55,7 @@ one at a time.
 | 14 | `14-similarity.md` | — | document similarity (TF-IDF + cosine): originality check and Similar studies — method, worked example, thresholds, limits (for the defense) |
 | 15 | `15-keyword-model.md` | — | keyword model (Naive Bayes + TF-IDF phrases): suggested keywords on Register / Edit and the staff accuracy card — what a model is, Naive Bayes by hand, leave-one-out vs baseline, limits (for the defense) |
 | 16 | `16-smart-search.md` | — | smart search box: Trie autocomplete and Levenshtein "Did you mean" — the distance table by hand, a Trie drawing, ranking and tie-breaks, when the search corrects itself ("Showing results for"), real-data examples, limits (for the defense) |
+| 17 | `17-email-login.md` | — | email + password login next to Continue with Google: why a system password (not the Gmail password), where passwords are stored (hashed by Firebase, never visible), Create account / verify / Forgot password flows, one person = one uid, console steps, limits (for the defense) |
 
 Steps 06 and 07 are independent — take whichever you prefer.
 
@@ -101,6 +102,7 @@ Verified against the code on 2026-09-30.
 | 06 pdf.js extraction | C | ☑ done — PRs #14–#16 + second fix round; checked by script on ten real theses and by registering one through the app (abstract matched word for word, `06` status) |
 | 07 Extractive summary | B | ☑ done — PRs #12, #13, #19, #20 (one sentence per ticked study); §6 checked in the browser 2026-10-02 |
 | Professor's feedback | all | ☑ done — PRs #21, #22: adviser as text, sign-out confirmation, department statistics, rename to ISU Research Study E-Library, review step removed (errata #48–#50) |
+| Email + password login (professor) | all | ◐ built on `feat/email-password-login` (errata #68, `17`); console steps (`17` §6) and the case-B browser test (`17` §3, `09` §1) still to do |
 | 08 Deployed | C | ☐ |
 | 09 QA passed | C | ☐ |
 
@@ -109,6 +111,9 @@ Verified against the code on 2026-09-30.
 ## Feature tracker
 
 - ☑ Sign in with an ISU Google account (`@isu.edu.ph` only)
+- ◐ Sign in with ISU email + e-library password (show/hide on every password
+  box), Create account → "Check your ISU inbox", Forgot password by email
+  link; Google and password reach the same account (`17`)
 - ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☑ Sign out from every screen
 - ☑ Staff registers a study by pasting a Google Drive link (or reads the PDF from this computer)

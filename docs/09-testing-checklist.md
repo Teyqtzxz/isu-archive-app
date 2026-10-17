@@ -44,6 +44,74 @@ seconds and catch the regressions that are easiest to reintroduce.
       Cancel, Escape and a click outside the box keep you signed in on the same
       screen; Sign Out goes to the login screen
 
+### 1b. Email + password login (`17`, errata #68)
+
+Do `17` §6 steps 1–3 in the console first. Use a **new test ISU account**
+made for this (e.g. a spare `@isu.edu.ph` address you can open the inbox of)
+— never the owner's or a staff member's real account. Afterwards, the test
+account can be deleted in the console (Authentication → Users, and its
+`users/{uid}` document) by the owner.
+
+- [ ] **[auto]** `node src/auth.check.ts` ends with "All passed."
+- [ ] Login card: Email or ISU username · Password with an eye button ·
+      **Sign in** · "Forgot password?" and "Create account" · "or" ·
+      **Continue with Google**. Light and dark both readable
+- [ ] Every password box has its own eye: Sign in (1), Create account (2:
+      Password and Confirm, each toggles only itself), new-password screen (2)
+- [ ] Sign in with an empty form → "Please fill in your ISU email." and
+      "Please type your password." under their own boxes. `juan@gmail.com` →
+      "Use your ISU email address (@isu.edu.ph)." on leaving the box
+- [ ] Wrong password for the test account → "Email or password is
+      incorrect." A made-up `nobody.x@isu.edu.ph` → **the same words**
+- [ ] **Create account** with the test account: a 7-character password →
+      "The password must be at least 8 characters." on leaving the box;
+      Confirm different → "The passwords don't match." under Confirm, and
+      **nothing is created** (Authentication → Users has no new row). The
+      hint "At least 8 characters. Not your Gmail password." is under the box
+- [ ] Full name `maria` → "Type your full name, e.g. Juan Dela Cruz"
+- [ ] Correct form → "Check your ISU inbox" with the address. **I've
+      verified** before clicking the link → "Not verified yet. Open the link
+      in your ISU inbox first." under the button. No dashboard, no data banner
+- [ ] Double-click Create account / Send reset link / Resend: one email
+      arrives, not two (buttons go grey while a request runs)
+- [ ] Open the email (check Spam), click the link, come back, **I've
+      verified** → student dashboard **without signing in again**, greeted by
+      the full name. Console: Authentication → Users shows the account;
+      Firestore `users/{uid}` has `role: "STUDENT"`
+- [ ] Refresh → still signed in. Sign out → sign in with username only
+      (`test.account`) + password → same dashboard
+- [ ] Create account again with the same email → "This ISU email already has
+      an account. Sign in, or use Forgot password? to set a password." under
+      the email box
+- [ ] **Forgot password** → ① email → ② "If an account exists for t•••@…"
+      → email arrives → link (on localhost: Firebase's page; deployed:
+      "Create a new password") → set a new one → old password fails, new
+      one works. A made-up email shows the same step ② (no email arrives)
+- [ ] Open an **older** reset link after a newer one was sent → "This link no
+      longer works" → Send a new link opens Forgot password
+- [ ] Five or more wrong passwords in a row → eventually "Too many attempts.
+      Wait a few minutes and try again, or use Forgot password?"
+- [ ] **Case A — Google first, then a password** (a test account that has
+      only used Google): Forgot password → set a password → password sign-in
+      and Continue with Google reach the **same** dashboard; the console
+      shows **one** user row with both providers
+- [ ] **Case B — password first, then Google** (the test account from
+      Create account): sign out → **Continue with Google** with the same ISU
+      address. Record in `17` §3 which happened:
+      **B1** the dashboard opens and the old password now says "Email or
+      password is incorrect." (Google replaced it; Forgot password? adds it
+      back), or **B2** the notice "… already has an e-library password. Sign
+      in with it once below to connect Google…" with a **Forgot password?**
+      link (pre-fills the email) → sign in with the password → dashboard; then
+      sign out and Continue with Google → straight in. Either way:
+      **one** user row, one User UID, same role
+- [ ] **Case C** — Create account with an address that has only used Google
+      → the "already has an account" message; no second user row
+- [ ] A STAFF test account signed in with a password gets the Staff Dashboard
+      (promotion stays a console step, `03` §8)
+- [ ] DevTools → Application → Local/Session Storage and Console: **no
+      password** anywhere (only error codes such as `auth/invalid-credential`)
+
 ## 2. Roles and security
 
 Run all seven rows below in the Firestore **Rules Playground**. The
