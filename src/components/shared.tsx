@@ -1,5 +1,5 @@
 // Small presentational pieces used by more than one screen.
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Thesis } from "../types";
 import { registeredAtISO } from "../types";
 import { highlightParts } from "../snippet";
@@ -36,6 +36,8 @@ const ICON_PATHS = {
   sun: "M12 17a5 5 0 100-10 5 5 0 000 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
   moon: "M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z",
   monitor: "M4 4h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zM8 20h8M12 16v4",
+  eye: "M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12zM12 15a3 3 0 100-6 3 3 0 000 6z",
+  eyeOff: "M17.9 17.9A10.4 10.4 0 0112 19c-7 0-11-7-11-7a19 19 0 015.1-5.9M9.9 5.2A9.6 9.6 0 0112 5c7 0 11 7 11 7a19 19 0 01-2.2 3.2M14.1 14.1a3 3 0 01-4.2-4.2M1 1l22 22",
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;
@@ -163,3 +165,76 @@ export function Toast({ message, onClose }: { message: string; onClose: () => vo
   );
 }
 
+
+// ─── Sign-in form fields (docs/17) ──────────────────────────────────────────
+
+/** The input's aria wiring for a message under it (as RegisterForm does). */
+type FieldProps = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  error?: string;
+  /** Grey help text under the box, e.g. the password rule. */
+  hint?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+};
+
+function describedBy(id: string, error?: string, hint?: string): string | undefined {
+  return [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
+}
+
+function FieldMessages({ id, error, hint }: { id: string; error?: string; hint?: string }) {
+  return (
+    <>
+      {hint && <p id={`${id}-hint`} className="field-note">{hint}</p>}
+      {error && <p id={`${id}-error`} className="field-error">{error}</p>}
+    </>
+  );
+}
+
+/** The email box: typing only the ISU username is enough ("juan.delacruz");
+ *  "@isu.edu.ph" shows inside the box until an "@" is typed. */
+export function IsuEmailInput({ id, value, onChange, onBlur, error, hint, disabled, autoFocus }: FieldProps) {
+  return (
+    <>
+      <div className="input-with-suffix">
+        <input id={id} className="input" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
+          type="text" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false}
+          placeholder="juan.delacruz" disabled={disabled} autoFocus={autoFocus}
+          aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)} />
+        {!value.includes("@") && <span className="input-suffix" aria-hidden="true">@isu.edu.ph</span>}
+      </div>
+      <FieldMessages id={id} error={error} hint={hint} />
+    </>
+  );
+}
+
+/** A password box with its own show/hide (eye) button. The value lives only in
+ *  the parent's state while the form is open — never stored, never logged. */
+export function PasswordInput({ id, value, onChange, onBlur, error, hint, disabled, autoFocus, autoComplete }: FieldProps & {
+  autoComplete: "current-password" | "new-password";
+}) {
+  const [shown, setShown] = useState(false);
+  return (
+    <>
+      <div className="input-with-toggle">
+        <input id={id} className="input" type={shown ? "text" : "password"} value={value}
+          onChange={e => onChange(e.target.value)} onBlur={onBlur} autoComplete={autoComplete}
+          autoCapitalize="none" spellCheck={false} disabled={disabled} autoFocus={autoFocus}
+          aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, error, hint)} />
+        <button type="button" className="pw-toggle" onClick={() => setShown(s => !s)} disabled={disabled}
+          aria-label={shown ? "Hide password" : "Show password"} aria-pressed={shown} aria-controls={id}>
+          <Icon name={shown ? "eyeOff" : "eye"} size={18} />
+        </button>
+      </div>
+      <FieldMessages id={id} error={error} hint={hint} />
+    </>
+  );
+}
+
+/** "Sending..." spinner for a full-width button while a request runs. */
+export function ButtonSpinner() {
+  return <span className="animate-spin btn-spinner" aria-hidden="true" />;
+}

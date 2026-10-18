@@ -1,7 +1,7 @@
 // Canonical types. Single source of truth for shape and enums.
 import type { Timestamp } from "firebase/firestore";
 
-export type Screen = "login" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
+export type Screen = "login" | "verify-email" | "staff-dashboard" | "register" | "search" | "summary" | "student-dashboard";
 export type Role = "staff" | "student";
 // ExtractionState is UI-only workflow state and deliberately stays lowercase.
 // It is NOT ThesisStatus — do not uppercase it to "make it consistent".
