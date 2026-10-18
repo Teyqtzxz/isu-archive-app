@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { applyVerifyLink, checkResetLink, setNewPassword } from "../data";
-import { AUTH_MSG, authErrorCode, checkConfirm, checkNewPassword, messageFor } from "../auth";
-import { ResetSteps } from "./ForgotPassword";
+import { AUTH_MSG, PASSWORD_MIN, authErrorCode, checkConfirm, checkNewPassword, messageFor } from "../auth";
+import { ResetSteps, StateBadge, type BadgeKind } from "./ForgotPassword";
 import { ButtonSpinner, ISUSeal, Icon, PasswordInput } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -107,36 +107,41 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
     view.kind === "disabled" ? "Password sign-in is turned off" :
     "Link not recognised";
 
+  const badge: BadgeKind =
+    view.kind === "checking" ? "busy" :
+    view.kind === "reset-form" ? "lock" :
+    view.kind === "reset-done" || view.kind === "verified" ? "success" :
+    "warn";
+
+  // The live checklist under the boxes only shows the same checks Save runs;
+  // the messages under each box still come from handleSave and onBlur.
+  const longEnough = checkNewPassword(password) === null;
+  const matches = confirm !== "" && checkConfirm(password, confirm) === null;
+
   return (
     <div className="login-wrap">
       <div className="login-stripe" />
       <ThemeToggle variant="page" />
 
       <div className="animate-fade-in login-card">
-        <div className="login-seal-row">
-          <ISUSeal size={72} />
+        <div className="login-seal-row login-seal-row--small">
+          <ISUSeal size={56} />
         </div>
-        <h1 className="login-h1">{heading}</h1>
-        <p className="login-sub-title">Isabela State University</p>
-        <p className="login-sub-campus">Echague Campus</p>
+        <p className="state-brand">Isabela State University · Echague Campus</p>
         <div className="login-divider" />
 
-        {view.kind === "checking" && (
-          <div className="reset-done" role="status" aria-label="Checking the link">
-            <span className="animate-spin page-spinner" aria-hidden="true" />
-          </div>
-        )}
+        {view.kind === "reset-form" && <ResetSteps current={3} />}
+        {view.kind === "checking"
+          ? <div role="status" aria-label="Checking the link"><StateBadge kind="busy" /></div>
+          : <StateBadge kind={badge} />}
+        <h1 className="login-h1">{heading}</h1>
 
         {view.kind === "reset-form" && (
           <>
-            <ResetSteps current={3} />
-            <div className="info-pill">
-              <Icon name="info" size={16} />
-              <p>
-                Choose a new e-library password for <strong>{view.email}</strong>. It is only for
-                this site; your Gmail password does not change.
-              </p>
-            </div>
+            <p className="state-help">
+              For <strong className="verify-email">{view.email}</strong>. Only for this site; your Gmail
+              password does not change.
+            </p>
 
             {error && (
               <div role="alert" className="login-error">
@@ -162,6 +167,10 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
                   onChange={v => { setConfirm(v); setConfirmError(""); }}
                   onBlur={() => { if (confirm && password) setConfirmError(checkConfirm(password, confirm) ?? ""); }} />
               </div>
+              <ul className="pw-checklist">
+                <CheckItem ok={longEnough} label={`At least ${PASSWORD_MIN} characters`} />
+                <CheckItem ok={matches} label="Passwords match" />
+              </ul>
               <button type="submit" disabled={busy} className="btn btn-primary login-submit">
                 {busy ? <><ButtonSpinner /><span>Saving...</span></> : "Save password"}
               </button>
@@ -170,35 +179,35 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
         )}
 
         {view.kind === "reset-done" && (
-          <Result icon="check" text="Your new e-library password is saved. Sign in with your ISU email and this password. Your Gmail password is unchanged."
+          <Result text="Your new e-library password is saved. Sign in with your ISU email and this password. Your Gmail password is unchanged."
             button="Sign in" onClick={() => onExit("sign-in")} />
         )}
 
         {view.kind === "verified" && (
-          <Result icon="check" text="Your ISU email is confirmed. You can now use the e-library."
+          <Result text="Your ISU email is confirmed. You can now use the e-library."
             button="Continue" onClick={() => onExit("sign-in")} />
         )}
 
         {view.kind === "bad-link" && view.reset && (
-          <Result icon="alert" warn
-            text="The link has expired or was already used. A link works for 1 hour, and each new request cancels the older links, so always open the newest email."
+          <Result
+            text="The link has expired or was already used. Each new request cancels the older links, so always open the newest email."
             button="Send a new link" onClick={() => onExit("forgot")} />
         )}
 
         {view.kind === "bad-link" && !view.reset && (
-          <Result icon="alert" warn
+          <Result
             text="The link has expired or was already used. If you already verified your email, just continue. Otherwise sign in and tap Resend email."
             button="Continue" onClick={() => onExit("sign-in")} />
         )}
 
         {view.kind === "disabled" && (
-          <Result icon="alert" warn
+          <Result
             text="Passwords cannot be set yet because password sign-in is turned off for this e-library. Contact the Research Department. You can still use Continue with Google."
             button="Back to sign in" onClick={() => onExit("sign-in")} />
         )}
 
         {view.kind === "unsupported" && (
-          <Result icon="alert" warn text="This link could not be opened. Check your connection, or request a new email."
+          <Result text="This link could not be opened. Check your connection, or request a new email."
             button="Back to sign in" onClick={() => onExit("sign-in")} />
         )}
       </div>
@@ -206,18 +215,23 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
   );
 }
 
-function Result({ icon, text, button, onClick, warn }: {
-  icon: "check" | "alert";
-  text: string;
-  button: string;
-  onClick: () => void;
-  warn?: boolean;
-}) {
+/** The badge above the heading carries the icon; this is the text and the one button. */
+function Result({ text, button, onClick }: { text: string; button: string; onClick: () => void }) {
   return (
     <div className="reset-done">
-      <div className={`reset-done-icon${warn ? " reset-done-icon--warn" : ""}`}><Icon name={icon} size={24} /></div>
       <p className="reset-done-desc">{text}</p>
       <button type="button" onClick={onClick} className="btn btn-primary login-submit">{button}</button>
     </div>
+  );
+}
+
+/** One line of the new-password checklist: an empty circle, ticked green when met. */
+function CheckItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className={ok ? "is-ok" : undefined}>
+      <span className="pw-check-dot" aria-hidden="true">{ok && <Icon name="check" size={11} strokeWidth={3} />}</span>
+      {label}
+      <span className="sr-only">{ok ? " (done)" : " (not yet)"}</span>
+    </li>
   );
 }

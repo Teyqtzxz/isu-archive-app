@@ -1,8 +1,8 @@
 # 17 — Email + Password Login (for the defense)
 
 **Status:** ◐ BUILT — branch `feat/email-password-login` (errata #68). The
-browser test of §3 case B (password account, then Continue with Google) and
-the console steps in §6 are still to be done by the owner.
+browser test of §3 cases A and B was done on 2026-10-18 (result in §3); the
+console steps in §6 are still to be done by the owner.
 **Code:** `src/auth.ts` (pure: rules, messages, Firebase error code → words)
 · examples in `src/auth.check.ts` (`node src/auth.check.ts`) · Firebase calls
 in `src/data.ts` (auth section) · UI in `src/components/LoginScreen.tsx`
@@ -134,9 +134,8 @@ This is also how:
 - the **real owner takes back** an account someone else created with their
   email (§3 case B2).
 
-A link works for 1 hour and only once; each new request cancels the older
-links. An old or used link shows "This link no longer works" + **Send a new
-link**.
+A link works only once; each new request cancels the older links. An old or
+used link shows "This link no longer works" + **Send a new link**.
 
 ### Continue with Google
 
@@ -157,7 +156,7 @@ untrusted too. That decides what happens:
 | Case | What Firebase does | What the app does | Same uid? |
 |---|---|---|---|
 | **A.** Used Google, now wants a password | Forgot password → the link sets a password on the **existing** user | nothing special | yes |
-| **B.** Created a password account, later Continue with Google | Either **(B1)** Google *replaces* the password method ("the trusted provider overwrites the untrusted provider"), or **(B2)** `auth/account-exists-with-different-credential` | B1: nothing — Forgot password? adds the password back. B2: the "connect Google" notice below | yes |
+| **B.** Created a password account, later Continue with Google | **Verified** account (tested 2026-10-18): **(B3)** Firebase links Google to the existing user by itself; the password is kept. **Unverified** account (not tested): either **(B1)** Google *replaces* the password method ("the trusted provider overwrites the untrusted provider"), or **(B2)** `auth/account-exists-with-different-credential` | B3: nothing. B1: nothing — Forgot password? adds the password back. B2: the "connect Google" notice below | yes |
 | **C.** Create account with an email that already has a Google account | `auth/email-already-in-use` | "This ISU email already has an account. Sign in, or use Forgot password? to set a password." under the email box | — (no second account) |
 
 ### Case B2: the "connect Google" notice
@@ -189,17 +188,32 @@ own inbox:
 
 ### Which branch does our project take? (case B, real browser test)
 
-**Result: _not tested yet_** — fill in after `09` §1 "Case B" with a **new**
-test ISU account (never an owner or staff account):
+**Result (2026-10-18, a second ISU test account — never an owner or staff
+account):**
 
-- [ ] B1 — Google replaced the password (old password → "Email or password is
-      incorrect."; Forgot password? works; same dashboard).
-- [ ] B2 — the "connect Google" notice appeared; after the password sign-in,
-      Google and password both reach the same dashboard.
+1. Create account → "Check your ISU inbox" → verification link → dashboard
+   with the full name, role `STUDENT`. **Pass.**
+2. **Case B, verified account → B3, linked automatically.** With the
+   *verified* password account, Continue with Google (same email) signed
+   straight in with no notice. The Firebase console (Authentication → Users)
+   shows **one** row for that email with **both** providers (Google and
+   Email/Password) and one User UID, and signing in with email + the
+   original password still works. So it was neither B1 (the password was not
+   removed) nor B2 (no error, no notice): Firebase linked Google to the
+   existing user by itself.
+3. **Case A.** Forgot password on the owner's Google-first account: the email
+   arrived, the new password works, the role is still `STAFF`. **Pass.**
 
-In both cases the Firebase console (Authentication → Users) must show **one**
-row for that email with one User UID. Record the date and which box was
-ticked here and in errata #68.
+**Not tested: Continue with Google on an *unverified* password account.**
+An unverified email/password account is untrusted (above), so Firebase may
+remove its password there (**B1**): the same uid signs in with Google, and
+Forgot password? adds a password back. If it answers with
+`auth/account-exists-with-different-credential` instead (**B2**), the
+"connect Google" notice above appears. Either way the result is one uid.
+
+**The B2 notice stays in the code as a safety net**, for the untested case
+and in case Firebase's behaviour changes; it costs nothing when B3 happens.
+
 
 ---
 
@@ -230,6 +244,32 @@ opens. Set to the deployed app (§6 step 7), a link opens
 - `verifyEmail` → "Email verified" → Continue. If this browser is signed in to
   that account, Continue goes straight to the dashboard.
 - Expired or used → "This link no longer works" (+ Send a new link for a reset).
+
+### Design (errata #69)
+
+All three email-link screens share one look, in `App.css` next to the
+`reset-*` block, using the existing tokens only (light and dark):
+
+- A 56px round **badge** above the heading (inline SVG, `aria-hidden`):
+  envelope = email sent / Check your ISU inbox, lock = Forgot password step ①
+  and Create a new password, green check = Password changed / Email verified
+  (pops in and draws the tick; off under `prefers-reduced-motion`), amber
+  warning = This link no longer works / turned off / not recognised, spinner
+  = One moment.
+- A heading and one short help line; the user's email in bold where the
+  screen knows it (masked on Forgot password, as before).
+- **"Didn't get it?"** on Forgot password ② and Check your ISU inbox: Spam
+  and All Mail, the sender `noreply@isu-archive-9253b.firebaseapp.com`, open
+  the newest email. No screen states how long a link lasts.
+- The step indicator (`ResetSteps`): numbered circles joined by a line, done
+  = tick, current = solid green with a ring.
+- Create a new password: a live checklist under the boxes, "At least 8
+  characters" and "Passwords match". It only displays — it calls the same
+  `checkNewPassword()` / `checkConfirm()`, and the messages under each box
+  still appear only on leaving a box or on Save. No `aria-live`; each line
+  has hidden "(done)" / "(not yet)" text.
+- Every password box shows only our eye button: Edge's own reveal button
+  (`::-ms-reveal`) is hidden in `App.css`.
 
 **The console refuses a `localhost` action URL**, so while testing on this
 computer the links open Firebase's own page. That page works too (it sets the
@@ -297,9 +337,12 @@ methods.
   deploying.
 - **Password strength beyond length is not checked** (no common-password
   list); 8 characters is the agreed minimum.
-- **Case B depends on Firebase's provider rules** (§3). Both branches end at
-  one uid; which one our project takes is recorded in §3 after the browser
-  test.
+- **Case B depends on Firebase's provider rules** (§3). Tested 2026-10-18:
+  a **verified** password account followed by Continue with Google was
+  linked automatically (B3: one uid, both providers, password kept). An
+  **unverified** account was not tested; there Firebase may remove the
+  password (B1, Forgot password? adds it back) or ask to connect (B2, the
+  notice kept as a safety net). Every branch ends at one uid.
 
 ---
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { checkEmailVerified, resendVerification, signOutUser } from "../data";
 import { AUTH_MSG, messageFor } from "../auth";
+import { DidntGetIt, StateBadge } from "./ForgotPassword";
 import { ButtonSpinner, ISUSeal, Icon } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -78,25 +79,18 @@ export function VerifyEmailScreen({ email, onVerified }: { email: string; onVeri
       <ThemeToggle variant="page" />
 
       <div className="animate-fade-in login-card">
-        <div className="login-seal-row">
-          <ISUSeal size={72} />
+        <div className="login-seal-row login-seal-row--small">
+          <ISUSeal size={56} />
         </div>
-
-        <h1 className="login-h1">Check your ISU inbox</h1>
-        <p className="login-sub-campus">
-          We sent a verification link to <strong className="verify-email">{email}</strong>
-        </p>
-
+        <p className="state-brand">Isabela State University · Echague Campus</p>
         <div className="login-divider" />
 
-        <div className="info-pill">
-          <Icon name="mail" size={16} />
-          <p>
-            Open the email from the ISU Research Study E-Library and click the link. This
-            proves the ISU address is yours. Then come back here and tap{" "}
-            <strong>I've verified</strong>.
-          </p>
-        </div>
+        <StateBadge kind="mail" />
+        <h1 className="login-h1">Check your ISU inbox</h1>
+        <p className="state-help">
+          We sent a verification link to <strong className="verify-email">{email}</strong>.
+          Open it and click the link, then come back and tap <strong>I've verified</strong>.
+        </p>
 
         {error && (
           <div role="alert" className="login-error">
@@ -123,6 +117,7 @@ export function VerifyEmailScreen({ email, onVerified }: { email: string; onVeri
           <button type="button" onClick={handleResend} disabled={busy || cooldown > 0} className="gbtn">
             {sending ? "Sending..." : cooldown > 0 ? `Resend email (${cooldown}s)` : "Resend email"}
           </button>
+          <DidntGetIt />
         </div>
 
         <p className="login-switch">
