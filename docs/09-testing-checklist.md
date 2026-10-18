@@ -384,6 +384,61 @@ most.
 - [ ] Nothing is saved by the suggestions or the card (Firestore console:
       no change until Confirm & Save / Save changes)
 
+## 4e. Unsaved draft, remembered tab and "Leave site?" (errata #71)
+
+Drafts live in **sessionStorage** (this browser tab only, gone when it
+closes), never localStorage or Firestore. Open DevTools → Application →
+Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
+`isu-staff-view`. Never press the final Save while testing on real data.
+
+- [ ] **[auto]** `node src/draft.check.ts` ends with "All passed." (round
+      trip, bad JSON / wrong shape / old or future version / another uid /
+      another study ignored, unknown department → blank, "changed or not",
+      staff tab, storage blocked → no draft and no error)
+- [ ] **Register, reload:** type a title (and an author) → F5 → the Register
+      tab reopens with everything typed and **"We restored your unsaved
+      study. Discard draft"** above the steps
+- [ ] **Discard draft** → a blank form, the notice gone, `isu-draft:new`
+      removed
+- [ ] **PDF chosen but not read:** choose a PDF, do not continue → F5 → the
+      notice adds **"Choose the PDF again (name.pdf): a browser cannot keep
+      a chosen file after a reload."**; the PDF button says "Choose PDF from
+      this computer" (nothing pretends the file is there)
+- [ ] **Save step, reload:** Read PDF & continue → edit the abstract → F5 →
+      the save step reopens with the abstract, keywords and (manual entry)
+      the read error; no PDF is needed to save. After a good read,
+      Edit details → Continue with no PDF keeps the abstract (no Drive read)
+- [ ] **"I checked — register anyway"** is never restored: after a reload a
+      possible duplicate asks for the tick again
+- [ ] **Save waits for the studies:** reload on the save step → while
+      "Loading the e-library…" shows, the save button is disabled with
+      **"Loading the e-library to check for duplicates…"** under it; once
+      loaded the originality check and suggested keywords appear as before
+      and the button works. If the e-library fails to load, the button stays
+      disabled and says **"Could not load the e-library. Check your
+      connection and reload the page."**
+- [ ] **Cleared:** Back to dashboard, Cancel (Edit), Discard and a successful
+      save each remove the draft (the next visit to Register is blank, no
+      notice). Switching tabs inside the app **keeps** it
+- [ ] **Edit study, reload:** Study Details → Edit → change the title → F5 →
+      the edit form for that study reopens with the change and the notice
+- [ ] Edit draft for a study **someone else saved since** → the draft is
+      dropped with the toast "This study was changed since your unsaved
+      edits, so they were discarded. Please edit it again."; a study
+      **deleted since** → dashboard + "That study is no longer in the
+      e-library, so your unsaved changes were discarded."
+- [ ] **Sign out** → every `isu-draft:*` key and `isu-staff-view` removed;
+      a draft stored under **another account's uid** is never shown (and is
+      removed)
+- [ ] **Tab remembered (staff):** Dashboard, Register, Search, Statistics and
+      Settings each come back after F5 (Search opens with an empty query).
+      **Students:** a reload still opens the student dashboard
+- [ ] **"Leave site?":** with something typed, closing or reloading the tab
+      shows the browser's own prompt; not on an untouched form, not after
+      Discard, Back / Cancel or saving
+- [ ] **Storage blocked** (Chrome → site settings → cookies and site data
+      blocked): the form works exactly as before, just nothing is restored
+
 ## 5. Search (both roles)
 
 - [ ] **[auto]** `grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts`
@@ -652,7 +707,7 @@ most.
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts src/levenshtein.ts src/trie.ts src/smartSearch.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts src/levenshtein.ts src/trie.ts src/smartSearch.ts src/draft.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
@@ -664,6 +719,7 @@ node src/levenshtein.check.ts                          # expect: All passed.
 node src/trie.check.ts                                 # expect: All passed.
 node src/smartSearch.check.ts                          # expect: All passed.
 node src/stats.check.ts                                # expect: All passed.
+node src/draft.check.ts                                # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

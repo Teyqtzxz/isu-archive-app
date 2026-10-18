@@ -10,6 +10,8 @@ import { ThemePicker, ThemeToggle } from "./ThemeToggle";
 
 /** Who is signed in, for the header, welcome card and settings. */
 export interface StaffAccount {
+  /** Firebase uid; the unsaved Register / Edit draft belongs to it (draft.ts). */
+  uid: string;
   displayName: string;
   email: string;
   /** One of DEPARTMENTS, or "" when the console record has none. */
@@ -18,6 +20,8 @@ export interface StaffAccount {
 
 export function StaffDashboard({
   theses,
+  studiesReady,
+  studiesError,
   account,
   activeTab,
   onTabChange,
@@ -28,8 +32,13 @@ export function StaffDashboard({
   onSearch,
   onOpenStudy,
   onSignOut,
+  onDraftDiscarded,
 }: {
   theses: Thesis[];
+  /** False until the live list has arrived; the form's save waits for it. */
+  studiesReady: boolean;
+  /** Why the list could not be loaded, or null. */
+  studiesError: string | null;
   account: StaffAccount;
   activeTab: StaffTab;
   onTabChange: (t: StaffTab) => void;
@@ -45,6 +54,8 @@ export function StaffDashboard({
   /** Open the search screen at this study, with its Study Details expanded. */
   onOpenStudy: (thesisId: string) => void;
   onSignOut: () => void;
+  /** A toast when an Edit draft is dropped (the study was saved by someone since). */
+  onDraftDiscarded: (message: string) => void;
 }) {
   // Staff see their own department's theses on the dashboard. A client-side
   // filter over the same live list (docs/04 §2.3); with no department set in
@@ -142,8 +153,9 @@ export function StaffDashboard({
         {/* Edit study: the Register form in edit mode, keyed so another study starts fresh. */}
         {editing && onEditSave && onEditCancel && (
           <div className="register-wrap">
-            <RegisterForm key={editing.id} study={editing} theses={theses} viewerEmail={account.email}
-              onBack={onEditCancel} onSave={onEditSave} />
+            <RegisterForm key={editing.id} study={editing} theses={theses} studiesReady={studiesReady}
+              studiesError={studiesError} viewerEmail={account.email} uid={account.uid}
+              onBack={onEditCancel} onSave={onEditSave} onDraftDiscarded={onDraftDiscarded} />
           </div>
         )}
 
@@ -242,7 +254,10 @@ export function StaffDashboard({
           <div className="register-wrap">
             <RegisterForm
               theses={theses}
+              studiesReady={studiesReady}
+              studiesError={studiesError}
               viewerEmail={account.email}
+              uid={account.uid}
               onBack={() => onTabChange("dashboard")}
               onSave={async thesis => { await onSave(thesis); onTabChange("dashboard"); }}
             />
