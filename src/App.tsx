@@ -17,6 +17,7 @@ import { SignOutDialog } from "./components/SignOutDialog";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { RankedThesis } from "./summary";
 import { buildSmartSearch } from "./smartSearch";
+import { clearAllDrafts, clearDraft, editViewId, readDraft, readStaffView, saveStaffView } from "./draft";
 import { ISUSeal, Icon, Toast } from "./components/shared";
 
 export default function App() {
@@ -26,7 +27,7 @@ export default function App() {
   // false until Firebase has told us whether a session exists, so a signed-in
   // user refreshing the page does not see the login screen flash first.
   const [authReady, setAuthReady] = useState(false);
-  const [account, setAccount] = useState<StaffAccount>({ displayName: "", email: "", department: "" });
+  const [account, setAccount] = useState<StaffAccount>({ uid: "", displayName: "", email: "", department: "" });
   // Live from Firestore once signed in. `thesesLoaded` and `dataError` keep
   // "still loading", "failed to load" and "genuinely empty" distinguishable —
   // otherwise all three look like an empty archive (docs/04 §2.3).
@@ -51,6 +52,9 @@ export default function App() {
   // A copy taken when Edit was pressed, so a live update cannot reset the form.
   const [editing, setEditing] = useState<Thesis | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Thesis | null>(null);
+  // Staff only. A reload while editing (remembered view "edit:<id>", draft.ts):
+  // the study to reopen in the edit form once the live list has arrived.
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   const cancelDelete = useCallback(() => setConfirmDelete(null), []);
   // A link from a Firebase email (?mode=resetPassword|verifyEmail&oobCode=…)
   // opens AuthActionScreen over everything else (docs/17 §5).
@@ -73,6 +77,10 @@ export default function App() {
       setSummaryData(null);
       setEditing(null);
       setConfirmDelete(null);
+      setPendingEditId(null);
+      // Signed out (here or in another tab): no unsaved draft or remembered
+      // tab may outlive the session on a shared PC.
+      clearAllDrafts();
       setAuthReady(true);
       return;
     }
@@ -97,10 +105,27 @@ export default function App() {
       if (import.meta.env.DEV) {
         console.info("[auth] signed in", { email: user.email, uid: user.uid, profile });
       }
-      setAccount({ displayName: user.displayName ?? "", email: user.email ?? "", department: profile.department });
+      setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: profile.department });
       const r: Role = profile.role === "STAFF" ? "staff" : "student";
       setRole(r);
-      setScreen(r === "staff" ? "staff-dashboard" : "student-dashboard");
+      if (r === "staff") {
+        // A reload returns staff to the tab they were on (sessionStorage,
+        // draft.ts; another account's tab is ignored). Students: dashboard.
+        const view = readStaffView(user.uid);
+        const editId = view && editViewId(view);
+        if (view === "search") {
+          setSearchInitialQuery("");
+          setSearchInitialDept(undefined);
+          setCiteJump(null);
+          setScreen("search");
+        } else {
+          setStaffTab(view && !editId ? view as StaffTab : "dashboard");
+          setPendingEditId(editId || null);
+          setScreen("staff-dashboard");
+        }
+      } else {
+        setScreen("student-dashboard");
+      }
     } catch (err) {
       // Firestore unreachable or rules not published yet. If the role cannot
       // be confirmed, show the read-only view. Never default to staff — but
@@ -108,7 +133,7 @@ export default function App() {
       // The name and email still come from the auth account, so the Drive
       // links keep authuser; only the department is unknown.
       console.error("[auth] could not read the user profile; showing the student view", err);
-      setAccount({ displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
+      setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
       setToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.");
       setRole("student");
       setScreen("student-dashboard");
@@ -137,6 +162,33 @@ export default function App() {
       },
     ); // the returned unsubscribe is the cleanup — no leaked listener per role change
   }, [role]);
+
+  // Reopen the study that was being edited before a reload, once the live
+  // list is here (a copy, as Edit takes). Deleted since → back to the
+  // dashboard, and its unsaved draft goes, never silently.
+  useEffect(() => {
+    if (!pendingEditId || !thesesLoaded) return;
+    const study = theses.find(t => t.id === pendingEditId);
+    setPendingEditId(null);
+    if (study) {
+      setEditing(study);
+      return;
+    }
+    const hadDraft = !!readDraft(account.uid, pendingEditId);
+    clearDraft(pendingEditId);
+    setToast(hadDraft
+      ? "That study is no longer in the e-library, so your unsaved changes were discarded."
+      : "That study is no longer in the e-library.");
+  }, [pendingEditId, thesesLoaded, theses, account.uid]);
+
+  // Remember the staff screen for a reload (sessionStorage, draft.ts).
+  // Not while an edit is waiting to reopen, or it would overwrite "edit:<id>".
+  useEffect(() => {
+    if (role !== "staff" || pendingEditId) return;
+    if (editing) saveStaffView(account.uid, `edit:${editing.id}`);
+    else if (screen === "search") saveStaffView(account.uid, "search");
+    else if (screen === "staff-dashboard") saveStaffView(account.uid, staffTab);
+  }, [role, pendingEditId, editing, screen, staffTab, account.uid]);
 
   // Every screen and staff tab shares one page scroll, so each change starts at
   // the top — except opening a study ("View details", a staff row): SearchScreen
@@ -221,6 +273,7 @@ export default function App() {
     setSearchInitialDept(department);
     // An old jump would otherwise fire again when the search screen remounts.
     setCiteJump(null);
+    setPendingEditId(null); // staff moved on before a reloaded edit reopened
     setScreen("search");
   }
 
@@ -231,6 +284,7 @@ export default function App() {
     setSearchInitialQuery("");
     setSearchInitialDept("");
     setCiteJump({ thesisId, nonce: Date.now(), open: true });
+    setPendingEditId(null);
     setScreen("search");
   }
 
@@ -271,9 +325,11 @@ export default function App() {
       {screen === "staff-dashboard" && (
         <StaffDashboard
           theses={theses}
+          studiesReady={thesesLoaded}
+          studiesError={dataError}
           account={account}
           activeTab={staffTab}
-          onTabChange={t => { setEditing(null); setStaffTab(t); }}
+          onTabChange={t => { setEditing(null); setPendingEditId(null); setStaffTab(t); }}
           onSave={handleSave}
           editing={editing}
           onEditSave={handleEditSave}
@@ -281,6 +337,7 @@ export default function App() {
           onSearch={(q, dept) => { setEditing(null); goSearch(q, dept); }}
           onOpenStudy={openStudy}
           onSignOut={handleSignOut}
+          onDraftDiscarded={setToast}
         />
       )}
 

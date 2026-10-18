@@ -232,6 +232,15 @@ src/
                         levenshtein.check.ts                      ✅ EXISTS
   trie.ts             ← pure: Trie<T> (insert, withPrefix), keys
                         by code point; examples in trie.check.ts  ✅ EXISTS
+  draft.ts            ← unsaved Register / Edit draft + the last
+                        staff tab, in sessionStorage (per tab;
+                        never localStorage, never Firestore):
+                        parseDraft (uid + study id + version
+                        checked), sameAsStart, parseStaffView
+                        (pure) + read/write/clear wrappers in
+                        try/catch (blocked storage = no draft);
+                        examples in draft.check.ts
+                        (node src/draft.check.ts); errata #71     ✅ EXISTS
   smartSearch.ts      ← pure: the smart search box —
                         buildSmartSearch (from buildIndex, once
                         per data change), autocomplete,
@@ -298,7 +307,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts`, `smartSearch.ts` and `auth.ts` are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts`, `smartSearch.ts`, `auth.ts` and `draft.ts` (its parsing; storage access only in try/catch wrappers) are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -355,6 +364,13 @@ Real, working — **do not rewrite**:
 - Smart search box, Trie autocomplete + Levenshtein "Did you mean" /
   "Showing results for" (`smartSearch.ts`, errata #66): both search boxes
   and the Search screen
+- Unsaved draft and remembered staff tab (`draft.ts`, errata #71): a reload
+  reopens the Register / Edit form with "We restored your unsaved study.
+  Discard draft" (sessionStorage, per tab, keyed by uid; a chosen PDF file
+  cannot be kept — "Choose the PDF again"; "I checked" is asked again),
+  cleared on save, Back / Cancel, Discard, sign-out and another account;
+  "Leave site?" while there is unsaved input; the save button waits until
+  the studies have loaded (the duplicate check needs them)
 - Every screen's UI, one file per screen in `src/components/`
 
 Four things in there are **deliberate and must survive a refactor** — each one

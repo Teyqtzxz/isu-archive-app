@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ExtractionState, NewThesis, Thesis } from "../types";
-import { DEPARTMENTS } from "../types";
+import { DEPARTMENTS, registeredAtISO } from "../types";
 import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
 import {
   ABSTRACT_COUNTER_FROM, ABSTRACT_MAX, MAX_AUTHORS, MAX_KEYWORDS, MSG, TITLE_COUNTER_FROM, TITLE_MAX,
@@ -9,6 +9,7 @@ import {
 } from "../validation";
 import { buildOriginalityIndex, originalityCheck, originalityReason, type SimilarityLevel } from "../similarity";
 import { suggestKeywords, suggestionSource, trainKeywordModel } from "../keywordModel";
+import { clearDraft, readDraft, sameAsStart, writeDraft, type DraftFields, type RegisterDraft } from "../draft";
 import { DeptBadge, Icon, SharedTerms, withAccount } from "./shared";
 
 /** The Academic Year box starts at this year; any past year can be typed. */
@@ -20,6 +21,8 @@ const FIELDS = ["pdf", "drive", "title", "author", "department", "year", "advise
 type Field = typeof FIELDS[number];
 type FieldErrors = Partial<Record<Field, string>>;
 const fieldId = (f: Field) => `register-${f}`;
+/** Which PDF was read: the same file chosen again is not read twice. */
+const pdfSource = (file: File) => `file:${file.name}:${file.size}:${file.lastModified}`;
 const errorId = (f: Field) => `register-${f}-error`;
 
 /** The originality check's three messages (similarity.ts THRESHOLDS: 80 / 50 / 30%,
@@ -30,41 +33,111 @@ const SIMILARITY_BOXES: { level: SimilarityLevel; className: string; heading: (c
   { level: "related", className: "sim-box sim-box--info", heading: () => "Related studies" },
 ];
 
-export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
+/** Shown when an Edit draft is dropped because someone saved the study since. */
+const STALE_DRAFT = "This study was changed since your unsaved edits, so they were discarded. Please edit it again.";
+
+/** The study's updatedAt as an ISO string ("" if never edited), to tell
+ *  whether someone saved it after an Edit draft began. */
+const updatedISO = (study: Thesis) => registeredAtISO({ registeredAt: study.updatedAt ?? null });
+
+interface RegisterFormProps {
   /** Edit mode: the saved study, pre-filled (cleaned as when typed). Reading a
    *  PDF is then optional; with none chosen the current abstract and keywords
    *  are kept. Key the form by study id so a different study starts fresh. */
   study?: Thesis;
   /** Every stored study, for the originality check on the save step. */
   theses: Thesis[];
+  /** False until the live list has arrived: saving waits for it, because the
+   *  originality check and the keyword suggestions are computed from it. */
+  studiesReady: boolean;
+  /** Why the list could not be loaded (App's data error), or null. */
+  studiesError: string | null;
   /** The signed-in account; "Open in Drive" on a match opens with it (authuser). */
   viewerEmail: string;
+  /** The signed-in uid: the unsaved draft (draft.ts) belongs to it. */
+  uid: string;
   onBack: () => void;
   /** Persists the thesis. Rejects on failure so the form can show the error. */
   onSave: (thesis: NewThesis) => Promise<void>;
+  /** A toast for an Edit draft that had to be dropped (the study changed since). */
+  onDraftDiscarded?: (message: string) => void;
+}
+
+/**
+ * The Register / Edit form with an unsaved draft kept in sessionStorage
+ * (draft.ts), so a reload reopens it. A draft from another account, or an
+ * Edit draft for a study someone has saved since, is never shown. Discard
+ * remounts the form fresh.
+ */
+export function RegisterForm(props: RegisterFormProps) {
+  const { study, uid, onDraftDiscarded } = props;
+  const studyId = study?.id ?? null;
+  // Read once on mount, no side effects here (StrictMode runs this twice).
+  const [start] = useState(() => {
+    const d = readDraft(uid, studyId);
+    const stale = !!d && !!study && d.baseUpdatedAt !== updatedISO(study);
+    return { draft: stale ? null : d, stale };
+  });
+  const [draft, setDraft] = useState<RegisterDraft | null>(start.draft);
+  /** Bumped by Discard: the form remounts with nothing filled in. */
+  const [run, setRun] = useState(0);
+
+  useEffect(() => {
+    if (!start.stale) return;
+    clearDraft(studyId);
+    onDraftDiscarded?.(STALE_DRAFT);
+    // Once, for the draft read on mount.
+  }, []);
+
+  function discard() {
+    clearDraft(studyId);
+    setDraft(null);
+    setRun(r => r + 1);
+  }
+
+  return <RegisterFormBody key={run} {...props} draft={draft} onDiscard={discard} />;
+}
+
+function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEmail, uid, onBack, onSave, draft, onDiscard }: RegisterFormProps & {
+  /** The restored draft, or null for a fresh form. */
+  draft: RegisterDraft | null;
+  onDiscard: () => void;
 }) {
   const editing = !!study;
-  const [extractState, setExtractState] = useState<ExtractionState>("idle");
-  const [form, setForm] = useState(() => study
+  /** The form as it opens with nothing typed: blank, or the saved study
+   *  (Edit). A draft is kept, and "Leave site?" asked, only when it differs. */
+  const [startFields] = useState<DraftFields>(() => study
     ? {
-      driveLink: study.driveLink.trim(), title: checkTitle(study.title).value,
-      // Not one of DEPARTMENTS (typed by hand long ago) → blank, so saving asks for one.
-      department: (DEPARTMENTS as readonly string[]).includes(study.department) ? study.department : "",
-      year: yearInput(String(study.year ?? "")), adviser: checkAdviser(study.adviser).value,
+      form: {
+        driveLink: study.driveLink.trim(), title: checkTitle(study.title).value,
+        // Not one of DEPARTMENTS (typed by hand long ago) → blank, so saving asks for one.
+        department: (DEPARTMENTS as readonly string[]).includes(study.department) ? study.department : "",
+        year: yearInput(String(study.year ?? "")), adviser: checkAdviser(study.adviser).value,
+      },
+      authors: cleanAuthorList(study.authors).list, newAuthor: "",
+      abstract: cleanAbstract(study.abstract), keywords: cleanKeywordList(study.keywords), newKw: "",
     }
-    : { driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" });
+    : {
+      form: { driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" },
+      authors: [], newAuthor: "", abstract: "", keywords: [], newKw: "",
+    });
+  // A restored draft (draft.ts) fills everything it saved; the PDF file
+  // itself cannot be kept, so pdfFile always starts empty.
+  const init = draft ?? startFields;
+  const [extractState, setExtractState] = useState<ExtractionState>(draft?.readState ?? "idle");
+  const [form, setForm] = useState(init.form);
   /** One entry per author. A list, not a comma string, because names like
    *  "Santos, Maria" contain commas themselves. */
-  const [authors, setAuthors] = useState<string[]>(() => study ? cleanAuthorList(study.authors).list : []);
-  const [newAuthor, setNewAuthor] = useState("");
-  const [abstract, setAbstract] = useState(() => study ? cleanAbstract(study.abstract) : "");
-  const [keywords, setKeywords] = useState<string[]>(() => study ? cleanKeywordList(study.keywords) : []);
+  const [authors, setAuthors] = useState<string[]>(init.authors);
+  const [newAuthor, setNewAuthor] = useState(init.newAuthor);
+  const [abstract, setAbstract] = useState(init.abstract);
+  const [keywords, setKeywords] = useState<string[]>(init.keywords);
   /** Edit mode, no PDF chosen: the save step shows the abstract and keywords
    *  already in the form instead of ones just read from a PDF. */
-  const [keptCurrent, setKeptCurrent] = useState(false);
-  const [newKw, setNewKw] = useState("");
+  const [keptCurrent, setKeptCurrent] = useState(draft?.keptCurrent ?? false);
+  const [newKw, setNewKw] = useState(init.newKw);
   /** Why the PDF could not be read (shown on the save step). */
-  const [error, setError] = useState("");
+  const [error, setError] = useState(draft?.readState === "needs_review" ? draft.readError : "");
   /** One message per input, shown under it. The rules are in validation.ts. */
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   /** Grey notes, not errors: a repeat that was skipped, a PDF too large to read. */
@@ -76,7 +149,61 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
   const fileInput = useRef<HTMLInputElement>(null);
   /** The last PDF read and how it went, so "Edit details" → continue does not
    *  download the same file again or wipe the staff member's edits. */
-  const lastRead = useRef<{ source: string; ok: boolean } | null>(null);
+  const lastRead = useRef<{ source: string; ok: boolean } | null>(draft?.lastRead ?? null);
+  /** Restored after a PDF was read fine: the abstract and keywords are here,
+   *  so Continue with no PDF chosen keeps them (as Edit does) instead of
+   *  reading the Drive link and possibly wiping them. */
+  const restoredRead = !editing && draft?.lastRead?.ok === true;
+  /** Restored with an abstract already there (read or typed): a failed read
+   *  of another PDF keeps it rather than blanking staff's work. */
+  const restoredWork = !!draft && (draft.step === "save" || draft.abstract.trim() !== "");
+  /** The chosen PDF's name, for the draft, when it has not been read yet:
+   *  after a reload staff must choose it again. */
+  const unreadPdf = pdfFile && lastRead.current?.source !== pdfSource(pdfFile) ? pdfFile.name : "";
+  /** Set once saved or left (Cancel / Back): no more draft writes, no "Leave site?". */
+  const left = useRef(false);
+
+  // The unsaved draft: written on every change while the form differs from
+  // how it opened, removed when it does not (draft.ts; storage errors ignored).
+  const fieldsNow: DraftFields = { form, authors, newAuthor, abstract, keywords, newKw };
+  const changed = !sameAsStart(fieldsNow, startFields);
+  const studyId = study?.id ?? null;
+  const baseUpdatedAt = study ? updatedISO(study) : "";
+  const readState = extractState === "success" || extractState === "needs_review" ? extractState : null;
+  useEffect(() => {
+    if (left.current) return;
+    if (!changed) {
+      clearDraft(studyId);
+      return;
+    }
+    writeDraft({
+      v: 1, uid, studyId, form, authors, newAuthor, abstract, keywords, newKw,
+      step: readState ? "save" : "details", readState,
+      keptCurrent, readError: readState === "needs_review" ? error : "",
+      lastRead: lastRead.current, pdfName: unreadPdf, baseUpdatedAt,
+    });
+  }, [changed, uid, studyId, form, authors, newAuthor, abstract, keywords, newKw, readState,
+    keptCurrent, error, unreadPdf, baseUpdatedAt]);
+
+  // "Leave site?" (the browser's own prompt) on close / refresh while there
+  // is unsaved input. Not while nothing was typed, and not after saving.
+  useEffect(() => {
+    if (!changed) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      if (left.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [changed]);
+
+  /** Cancel / Back to dashboard: nothing saved, the draft goes too. */
+  function leave() {
+    left.current = true;
+    clearDraft(studyId);
+    onBack();
+  }
 
   // Originality check (similarity.ts) on the save step: the study as it will
   // be saved, compared with every stored study except itself (Edit study).
@@ -226,8 +353,9 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
     const driveLink = form.driveLink.trim();
     // Edit study with no PDF chosen: no Drive download (protected files cannot
     // be read anyway); go straight to saving, with the abstract and keywords
-    // already in the form — the saved ones, or a PDF's read earlier.
-    if (editing && !pdfFile) {
+    // already in the form — the saved ones, or a PDF's read earlier. The same
+    // for a restored draft whose PDF was already read (restoredRead).
+    if ((editing || restoredRead) && !pdfFile) {
       setError("");
       setKeptCurrent(true);
       setExtractState("success");
@@ -235,9 +363,7 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
     }
     setKeptCurrent(false);
 
-    const source = pdfFile
-      ? `file:${pdfFile.name}:${pdfFile.size}:${pdfFile.lastModified}`
-      : `drive:${driveLink}`;
+    const source = pdfFile ? pdfSource(pdfFile) : `drive:${driveLink}`;
     const sameSource = lastRead.current?.source === source;
     // Back from "Edit details" with the same PDF, and it was read fine last
     // time: keep that result and the edits made to it.
@@ -262,7 +388,8 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
       setError(err instanceof Error ? err.message : "Could not read that PDF.");
       // Same PDF failed again (e.g. Drive still busy): keep what staff typed.
       // Editing: keep the study's current abstract and keywords, never blank them.
-      if (!sameSource && !editing) {
+      // A restored draft: keep the abstract it brought back (staff's work).
+      if (!sameSource && !editing && !restoredWork) {
         setAbstract("");
         setKeywords([]);
       }
@@ -280,7 +407,8 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
 
   async function handleSave() {
     // The button is disabled too; this keeps a double tap from slipping through.
-    if (mustConfirm) return;
+    // Not before the studies have loaded: the duplicate check needs them.
+    if (mustConfirm || !studiesReady) return;
     // "Confirm & Save" and "Save Manually" both post the study: staff have
     // already checked the details here, so there is no later review step.
     // That makes this the last check: search ranks studies on the abstract,
@@ -304,6 +432,9 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
         abstract: checkedAbstract.value, keywords: typed.list,
         driveLink: form.driveLink.trim(),
       });
+      // Saved: the draft is no longer needed (and must not come back).
+      left.current = true;
+      clearDraft(studyId);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not save the study. Try again.");
       setSaving(false);
@@ -318,11 +449,28 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
       {/* Back: leave the form (Edit study: Cancel, nothing saved), or return
           from review to fix the details */}
       {extractState !== "extracting" && !saving && (
-        <button onClick={extractState === "idle" ? onBack : editDetails}
+        <button onClick={extractState === "idle" ? leave : editDetails}
           className="btn btn-outline-green btn-sm" style={{ marginBottom: 14 }}>
           <Icon name="arrowLeft" size={14} />
           {extractState !== "idle" ? "Edit details" : editing ? "Cancel" : "Back to dashboard"}
         </button>
+      )}
+
+      {/* A draft restored after a reload (draft.ts). The PDF file itself
+          cannot be kept by a browser; say so instead of pretending. */}
+      {draft && (
+        <div className="info-pill" role="status">
+          <Icon name="info" size={16} />
+          <div>
+            <p>
+              We restored your unsaved study.{" "}
+              <button type="button" onClick={onDiscard} className="link-btn">Discard draft</button>
+            </p>
+            {draft.pdfName && !pdfFile && extractState === "idle" && (
+              <p>Choose the PDF again ({draft.pdfName}): a browser cannot keep a chosen file after a reload.</p>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Step indicator */}
@@ -685,12 +833,19 @@ export function RegisterForm({ study, theses, viewerEmail, onBack, onSave }: {
             </div>
           )}
 
-          <button onClick={handleSave} disabled={saving || mustConfirm} className="btn-submit"
-            aria-describedby={mustConfirm ? "register-confirm-hint" : undefined}>
+          <button onClick={handleSave} disabled={saving || mustConfirm || !studiesReady} className="btn-submit"
+            aria-describedby={!studiesReady ? "register-loading-hint" : mustConfirm ? "register-confirm-hint" : undefined}>
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {saving ? "Saving..." : editing ? "Save changes" : extractState === "success" ? "Confirm & Save" : "Save Manually"}
           </button>
-          {mustConfirm && (
+          {/* The originality check and suggestions need the stored studies:
+              after a reload the save step can open before they arrive. */}
+          {!studiesReady && (
+            <p id="register-loading-hint" className="hint sim-confirm-hint" role="status">
+              {studiesError ?? "Loading the e-library to check for duplicates…"}
+            </p>
+          )}
+          {studiesReady && mustConfirm && (
             <p id="register-confirm-hint" className="hint sim-confirm-hint">Tick “I checked — register anyway” above to save.</p>
           )}
         </div>
