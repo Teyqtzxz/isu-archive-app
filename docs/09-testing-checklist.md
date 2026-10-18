@@ -30,7 +30,8 @@ seconds and catch the regressions that are easiest to reintroduce.
 - [ ] Sign Out works from: Staff Dashboard (every tab, incl. Register) · Search ·
       Student Dashboard. The Summary panel is a modal over Search — Close, then
       Sign Out from Search
-- [ ] Sign Out on mobile is reachable via the avatar dropdown
+- [ ] Sign Out on mobile is the icon-only header button (tooltip and screen
+      reader: "Sign out"); the avatar menu shows account info only (errata #70)
 - [ ] **Profile cannot be loaded → student view, said out loud (errata #67).**
       Writes nothing. Sign in as staff, open DevTools → Network → **Offline**,
       then refresh. The student dashboard opens (never the staff one) with the
@@ -581,7 +582,9 @@ most.
       visible below the notch
 - [ ] **375px** — tabs scroll, long titles truncate, "View Summary (N)" is not
       cut off
-- [ ] **768–1023px** — full title, visible Sign Out button
+- [ ] **360px** — seal, title (ellipsis), theme toggle, icon-only Sign Out and
+      avatar fit with no sideways scroll
+- [ ] **768–1023px** — full title, visible Sign Out button with its words
 - [ ] **1366px+** — centred container, all navigation visible
 - [ ] No breakpoint where content sits under the header
 - [ ] Colours: green `#006439` primary · blue `#23305B` secondary · yellow
@@ -597,9 +600,9 @@ most.
 - [ ] The moon/sun button is in every header (staff, student, search) and in
       the top-right corner of the login screen; one click flips Light ↔ Dark,
       and the icon changes (moon in light, sun in dark)
-- [ ] Staff Settings → Theme and the student avatar menu → Theme show Light /
-      Dark / System; the choice and the header button always agree; the student
-      menu stays open while choosing
+- [ ] Staff Settings → Theme shows Light / Dark / System; the choice and the
+      header button always agree. Students have only the header button (Light ↔
+      Dark): no System choice since errata #70
 - [ ] Keyboard: Tab reaches the picker, arrow keys move between the three
       options, the focus ring is visible
 - [ ] **System follows the device**: choose System, then switch Windows
