@@ -273,10 +273,12 @@ src/
                       focused, red confirm, Escape/backdrop =
                       Cancel — never copy it, reuse it)
     SignOutDialog.tsx ("Sign out?", built on ConfirmDialog)
-    ThemeToggle.tsx   (moon/sun button in every header and on the
-                      login screen; ThemePicker = Light / Dark /
-                      System in staff Settings and the student
-                      account menu; useTheme keeps them in step)  ✅ EXIST
+    ThemeToggle.tsx   (moon/sun button in every header, next to
+                      Sign Out, and on the login screen;
+                      ThemePicker = Light / Dark / System in staff
+                      Settings only — avatar menus hold account
+                      info only, errata #70; useTheme keeps them
+                      in step)                                    ✅ EXIST
 
 firestore.rules       ← project root, not src/ — ISU-only, role immutable,
                         theses writes staff-only; pasted into the console ✅ EXISTS

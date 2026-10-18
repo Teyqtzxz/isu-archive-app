@@ -284,8 +284,10 @@ Today `StaffDashboard` (which also hosts the Register tab) and
 
 Wire it at:
 
-- **Mobile (< 768px):** avatar tap → dropdown → "Sign Out"
-- **Tablet/desktop (≥ 768px):** the visible "Sign Out" button in the header
+- **Every width:** the "Sign Out" button in the header, next to the theme
+  toggle — icon only below 768px (`aria-label="Sign out"`), icon + words
+  from 768px. The avatar menu has no Sign Out (errata #70); staff also have
+  one in the Settings tab
 - **Staff dashboard (every tab, including Register), student dashboard, search
   screen** — the three full screens. The summary panel is a modal over the
   search screen: Close returns to it, and Sign Out is there. It does not need

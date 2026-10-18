@@ -5,7 +5,7 @@ import { countByDepartment } from "../stats";
 import { SEARCH_MAX, cleanQuery } from "../validation";
 import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted } from "./shared";
 import { DepartmentStats } from "./DepartmentStats";
-import { ThemePicker, ThemeToggle } from "./ThemeToggle";
+import { ThemeToggle } from "./ThemeToggle";
 import { SmartSearchInput } from "./SmartSearchInput";
 import type { SmartSearchIndex } from "../smartSearch";
 
@@ -61,7 +61,7 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
           <ThemeToggle />
-          <button onClick={onSignOut} className="header-signout">
+          <button onClick={onSignOut} className="header-signout" aria-label="Sign out" title="Sign out">
             <Icon name="logout" size={16} />
             Sign Out
           </button>
@@ -71,6 +71,7 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="Account menu"
+              title="Account"
               className="avatar avatar-student">{initialsOf(account.displayName, account.email)}</button>
             {menuOpen && (
               <div className="dropdown" role="menu">
@@ -79,15 +80,6 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
                   <div className="dropdown-sub">{account.email}</div>
                   <div className="dropdown-sub">Student · read-only access</div>
                 </div>
-                {/* Choosing a theme keeps the menu open (a click anywhere else closes it). */}
-                <div className="dropdown-theme" onClick={e => e.stopPropagation()}>
-                  <div className="dropdown-label">Theme</div>
-                  <ThemePicker />
-                </div>
-                <button role="menuitem" onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
-                  <Icon name="logout" size={16} />
-                  Sign Out
-                </button>
               </div>
             )}
           </div>

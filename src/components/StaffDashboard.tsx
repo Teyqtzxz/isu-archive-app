@@ -92,7 +92,7 @@ export function StaffDashboard({
             <div className="header-sub">Isabela State University · Echague Campus</div>
           </div>
           <ThemeToggle />
-          <button onClick={onSignOut} className="header-signout">
+          <button onClick={onSignOut} className="header-signout" aria-label="Sign out" title="Sign out">
             <Icon name="logout" size={16} />
             Sign Out
           </button>
@@ -102,6 +102,7 @@ export function StaffDashboard({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="Account menu"
+              title="Account"
               className="avatar avatar-staff"
             >{initialsOf(account.displayName, account.email)}</button>
             {menuOpen && (
@@ -114,10 +115,6 @@ export function StaffDashboard({
                 <button role="menuitem" onClick={e => { e.stopPropagation(); setMenuOpen(false); onTabChange("settings"); }} className="dropdown-item">
                   <Icon name="settings" size={16} />
                   Settings
-                </button>
-                <button role="menuitem" onClick={e => { e.stopPropagation(); setMenuOpen(false); onSignOut(); }} className="dropdown-item dropdown-item-danger">
-                  <Icon name="logout" size={16} />
-                  Sign Out
                 </button>
               </div>
             )}

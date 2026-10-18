@@ -16,9 +16,11 @@ doing before the demo.
   `.main-content` top padding to keep in sync — one fewer place for the
   "hardcoded in two places" bug §4.2 warns about. Side padding and the notch
   inset still come from `--header-left/right/top`.
-- Sign Out is a visible header button at ≥768px (`.header-signout`) and in the
-  avatar menu below that — on the staff dashboard, student dashboard **and**
-  the search screen (the step 03 gap is closed).
+- Sign Out is a visible header button (`.header-signout`) at every width —
+  icon only below 768px, icon + "Sign Out" from 768px — on the staff
+  dashboard, student dashboard **and** the search screen (the step 03 gap is
+  closed). The avatar menu holds account info only (+ Settings for staff),
+  errata #70.
 - Emoji icons were replaced by one stroke-icon set (`Icon` in `shared.tsx`).
 - No status badges: every study is posted, so `StatusBadge` was removed (errata #60).
 - The summary panel is a bottom sheet on phones and a centred 640px dialog from
@@ -305,8 +307,8 @@ tablet, and a 1440px desktop.
 
 | Device | Behaviour |
 |--------|-----------|
-| < 640px | 56px + safe-area-top. Truncated title. Avatar only (tap → Sign Out). Tabs scroll horizontally. |
-| 640–1023px | 60px + safe-area-top. Full title. Avatar + visible Sign Out. |
+| < 640px | 56px + safe-area-top. Truncated title. Theme toggle + icon-only Sign Out + avatar. Tabs scroll horizontally. |
+| 640–1023px | 60px + safe-area-top. Full title. Theme toggle + Sign Out (words from 768px) + avatar. |
 | 1024–1365px | 64px. Full title + breadcrumb (staff). |
 | ≥ 1366px | 64px, centred container, max-width ~1400px. |
 
@@ -385,7 +387,8 @@ Only if time allows. See `08-deployment.md` §4.
       the bottom (proves the `serverTimestamps: "estimate"` sort)
 - [ ] The staff badge shows the signed-in user's department, not "CAS"
 - [ ] At 375×667 with a 48px top inset the header logo and title are fully visible
-- [ ] At 768px the Sign Out button is visible; below 768px it is not
+- [ ] At 768px the Sign Out button shows icon + "Sign Out"; below 768px it is
+      the icon only, the size of the theme toggle (errata #70)
 - [ ] At 1024px the content does not sit under the header
 - [ ] Colours match the palette in §3.1
 
