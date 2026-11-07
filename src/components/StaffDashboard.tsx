@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import type { NewThesis, StaffTab, Thesis } from "../types";
-import { registeredAtISO } from "../types";
 import { countAdded } from "../stats";
-import { ISUSeal, DeptBadge, Icon, initialsOf, authorsPreview, formatPosted, type IconName } from "./shared";
+import { ISUSeal, Icon, RecentStudyCard, initialsOf, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
 import { KeywordModelCard } from "./KeywordModelCard";
@@ -193,10 +192,10 @@ export function StaffDashboard({
             </div>
 
             <div className="dash-layout">
-              {/* Recent theses */}
-              <div className="card">
-                <div className="card-title-row card-title-row--wrap">
-                  <span className="card-title">Recent studies</span>
+              {/* Recent theses: the student "Recently added" cards and grid. */}
+              <section>
+                <div className="section-head section-head--wrap">
+                  <h2 className="section-title">Recent studies</h2>
                   <span className="card-meta">{mine.length} total</span>
                   {/* The whole library, not `mine`: "" = All Departments, so staff
                       whose department has no studies yet can still reach the list. */}
@@ -207,39 +206,18 @@ export function StaffDashboard({
                     </button>
                   )}
                 </div>
-                {mine.length === 0 && (
-                  <div className="empty-state">
+                {mine.length === 0 ? (
+                  <div className="card empty-state">
                     <div className="empty-state-icon"><Icon name="book" size={22} /></div>
                     <div className="empty-state-title">{dept ? `No ${dept} studies yet` : "No studies in the e-library yet"}</div>
                     <div className="empty-state-text">Register one to get started.</div>
                   </div>
+                ) : (
+                  <div className="recent-grid">
+                    {mine.slice(0, 6).map(t => <RecentStudyCard key={t.id} study={t} onOpen={onOpenStudy} />)}
+                  </div>
                 )}
-                {/* No status badge: every study is POSTED. The whole row opens the
-                    study, as "View details" does on the student dashboard. */}
-                {mine.slice(0, 6).map(t => {
-                  const authors = authorsPreview(t.authors);
-                  return (
-                    <button key={t.id} type="button" onClick={() => onOpenStudy(t.id)}
-                      className="list-row list-row-btn row-hover">
-                      <span className="list-row-title clamp-2">{t.title}</span>
-                      <span className="study-brief">
-                        {authors && <span className="study-brief-authors clamp-2">{authors}</span>}
-                        <span className="study-brief-line clamp-2">Adviser: {t.adviser}</span>
-                      </span>
-                      <span className="list-row-meta">
-                        <DeptBadge dept={t.department} small />
-                        <span>{t.year}</span>
-                      </span>
-                      {t.keywords.length > 0 && (
-                        <span className="study-brief-kws">
-                          {t.keywords.slice(0, 3).map(kw => <span key={kw} className="kw-mini kw-mini--clip">{kw}</span>)}
-                        </span>
-                      )}
-                      {registeredAtISO(t) && <span className="study-brief-line">Posted {formatPosted(t, "short")}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              </section>
 
               {/* Quick actions */}
               <div className="dash-side">

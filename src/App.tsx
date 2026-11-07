@@ -219,7 +219,7 @@ export default function App() {
   }, [role, pendingEditId, editing, screen, staffTab, account.uid]);
 
   // Every screen and staff tab shares one page scroll, so each change starts at
-  // the top — except opening a study ("View details", a staff row): SearchScreen
+  // the top — except opening a study ("View details"): SearchScreen
   // scrolls to it. A layout effect runs before every passive (useEffect) effect,
   // child or parent, so this can never undo the jump's scroll; skipping it when a
   // jump is pending also avoids a jump to the top first. (A summary citation does
