@@ -153,6 +153,41 @@ export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
   );
 }
 
+/** One study on a dashboard: the student "Recently added" and the staff "Recent
+ *  studies" both use it, inside `.recent-grid`, so the two cannot drift apart.
+ *  No status badge: every study is POSTED. */
+export function RecentStudyCard({ study, onOpen }: {
+  study: Thesis;
+  /** Open the search screen at this study, with its Study Details expanded. */
+  onOpen: (thesisId: string) => void;
+}) {
+  const authors = authorsPreview(study.authors);
+  return (
+    <article className="carousel-card">
+      <p className="carousel-title clamp-3">{study.title}</p>
+      <div className="study-brief">
+        {authors && <p className="study-brief-authors clamp-2">{authors}</p>}
+        <p className="study-brief-line clamp-2">Adviser: {study.adviser}</p>
+      </div>
+      <div className="carousel-meta">
+        <DeptBadge dept={study.department} small />
+        <span>{study.year}</span>
+      </div>
+      {study.keywords.length > 0 && (
+        <div className="study-brief-kws">
+          {study.keywords.slice(0, 3).map(kw => <span key={kw} className="kw-mini kw-mini--clip">{kw}</span>)}
+        </div>
+      )}
+      {registeredAtISO(study) && <p className="study-brief-line">Posted {formatPosted(study, "short")}</p>}
+      <button onClick={() => onOpen(study.id)}
+        className="btn btn-outline-green btn-sm" style={{ width: "100%", padding: "8px" }}>
+        View details
+        <Icon name="arrowRight" size={14} />
+      </button>
+    </article>
+  );
+}
+
 export function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
   return (

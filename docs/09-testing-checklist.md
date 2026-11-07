@@ -164,27 +164,38 @@ most.
       month / this year" count in the viewer's **local** time, not UTC: a study
       posted 00:00–07:59 on the 1st (Philippine time) counts in the new month,
       and on 1 January in the new year (errata #67)
-- [ ] "Added this month" equals the number of Recent studies rows (and
+- [ ] "Added this month" equals the number of Recent studies cards (and
       Search results, newest first) whose "Posted" date is in this month;
       "Added this year" likewise for this year
 - [ ] There is **no** "Pending review" card, bell, status filter or "Mark as
       Archived" button — the review step was removed (errata #50)
 - [ ] Recent studies lists only the staff member's department, and the badge
       shows that department (not a hardcoded "CAS")
-- [ ] Recent studies rows have **no** status badge (every study is posted;
+- [ ] Recent studies cards have **no** status badge (every study is posted;
       Search results have none either since errata #60)
-- [ ] Rows are newest first — a just-saved study appears at the top at once
-- [ ] Each Recent studies row shows, in this order: title; the author line
+- [ ] Cards are newest first — a just-saved study appears as the first card at
+      once
+- [ ] Recent studies uses the same cards in the same grid as the student
+      "Recently added" (`RecentStudyCard`, errata #75): at most 6, 3 across from
+      1024 px with the 300 px side panel (Register study, Search e-library)
+      beside them, 2 across from 640 px with the panel below, and on phones one
+      row that swipes sideways, where the last card can be fully reached
+- [ ] Each Recent studies card shows, in this order: title; the author line
       (full names, at most 2, then "+N more", labelled "Author:" for one and
       "Authors:" for two or more, e.g. "Authors: Jan Rhyanne Acosta, Luigi
       Mindanao +1 more"); "Adviser: …"; department badge and academic year; up to 3 keyword
       chips; "Posted Oct 12, 2026". An older study with no authors has no author
-      line (not "Not recorded"); a study with no keywords has no chip row
-- [ ] Clicking a Recent studies row (or Tab + Enter on it) opens Search with
+      line (not "Not recorded"); a study with no keywords has no chip row;
+      **View details** at the bottom
+- [ ] At 1024 px wide (the narrowest cards, about 204 px), on a study in
+      Business Administration, the longest department name: the year drops
+      below the badge, and neither leaves the card
+- [ ] **View details** on the 1st, 3rd and 6th Recent studies card (or Tab +
+      Enter on it) opens Search with
       **that** study's Study Details expanded and scrolled into view below the
       search bar, briefly flashed yellow, with no search text and "All
       departments"
-- [ ] **"View all studies"** (title row of Recent studies, or Tab + Enter on
+- [ ] **"View all studies"** (heading row of Recent studies, or Tab + Enter on
       it) opens Search on "All Departments" with every study, newest first:
       more than 6, other departments too, with or without a department set
       for the staff member (errata #74). The "N total" beside it still counts
@@ -195,17 +206,19 @@ most.
 - [ ] After "View all studies", Back, then the Search tab or "Search
       e-library": each opens on the staff member's **own** department, so "All
       Departments" does not stick
-- [ ] At 320 px wide the title row of Recent studies wraps: "View all studies"
-      drops to its own line, nothing is cut off and the page does not scroll
-      sideways. The title rows on the Statistics tab do not change
+- [ ] At 320 px wide the heading row of Recent studies wraps: the title and
+      "N total" stay on one line, "View all studies" drops to its own line,
+      nothing is cut off and the page does not scroll sideways. The student
+      dashboard headings do not change
 - [ ] **Statistics tab:** one bar per department (zeros included), the bars add
       up to the total, and the staff member's own department says "(mine)"
 - [ ] Clicking a bar opens Search filtered to that department; clicking a
       keyword searches it (in the department picked in the keyword box)
 - [ ] Student dashboard: department chips show counts, and "E-Library at a
       glance" shows the same two cards
-- [ ] Student dashboard "Recently added" cards show the same details as the
-      staff Recent studies rows, in the same order: title, "Author: …" /
+- [ ] Student dashboard "Recently added" uses the same card as the staff
+      Recent studies (`RecentStudyCard`), so the details and their order match:
+      title, "Author: …" /
       "Authors: …" (at most 2, "+N more"), "Adviser: …", department badge + year, up to 3 keyword chips,
       "Posted Oct 12, 2026" — the same date as "Date Posted" in Study Details
       (which spells the month out: "October 12, 2026")
@@ -224,7 +237,7 @@ most.
       the page. Back from Search (scrolled down) to either dashboard also opens
       at the top
 - [ ] **…except opening a study:** with the dashboard scrolled down, "View
-      details" / a staff row still lands on that study (Study Details open,
+      details" still lands on that study (Study Details open,
       just below the search bar), and on Search a summary citation still
       scrolls to its study
 - [ ] On a phone (360 px wide): a long title stops after 3 lines, long author
@@ -518,7 +531,7 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
       chip (every study is posted)
 - [ ] A study with one author reads "Author: …"; two or more read "Authors: …"
       — here, on the student "Recently added" cards and on the staff "Recent
-      studies" rows alike, matching the Author/Authors row in Study Details
+      studies" cards alike, matching the Author/Authors row in Study Details
 - [ ] An older study saved without authors has **no** author line (not an empty
       gap, not "Author:" alone, not "Not recorded")
 - [ ] Search `flood` (any word in an abstract): each result shows **one** short
