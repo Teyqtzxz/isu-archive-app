@@ -195,9 +195,17 @@ export function StaffDashboard({
             <div className="dash-layout">
               {/* Recent theses */}
               <div className="card">
-                <div className="card-title-row">
+                <div className="card-title-row card-title-row--wrap">
                   <span className="card-title">Recent studies</span>
                   <span className="card-meta">{mine.length} total</span>
+                  {/* The whole library, not `mine`: "" = All Departments, so staff
+                      whose department has no studies yet can still reach the list. */}
+                  {theses.length > 0 && (
+                    <button type="button" onClick={() => onSearch("", "")} className="link-btn">
+                      View all studies
+                      <Icon name="arrowRight" size={14} />
+                    </button>
+                  )}
                 </div>
                 {mine.length === 0 && (
                   <div className="empty-state">

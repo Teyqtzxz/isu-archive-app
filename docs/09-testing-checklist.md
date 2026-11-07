@@ -184,6 +184,20 @@ most.
       **that** study's Study Details expanded and scrolled into view below the
       search bar, briefly flashed yellow, with no search text and "All
       departments"
+- [ ] **"View all studies"** (title row of Recent studies, or Tab + Enter on
+      it) opens Search on "All Departments" with every study, newest first:
+      more than 6, other departments too, with or without a department set
+      for the staff member (errata #74). The "N total" beside it still counts
+      only the staff member's own department, so the list can be longer
+- [ ] Staff whose department has no studies, in a library that has some: the
+      button shows and works, and "No … studies yet" still shows. An empty
+      e-library: no button
+- [ ] After "View all studies", Back, then the Search tab or "Search
+      e-library": each opens on the staff member's **own** department, so "All
+      Departments" does not stick
+- [ ] At 320 px wide the title row of Recent studies wraps: "View all studies"
+      drops to its own line, nothing is cut off and the page does not scroll
+      sideways. The title rows on the Statistics tab do not change
 - [ ] **Statistics tab:** one bar per department (zeros included), the bars add
       up to the total, and the staff member's own department says "(mine)"
 - [ ] Clicking a bar opens Search filtered to that department; clicking a
@@ -205,9 +219,10 @@ most.
 - [ ] **Scroll position — every move starts at the top.** Scroll the dashboard
       down first each time, then: student — Search button, "View all", a
       department chip, a bar or keyword in "E-Library at a glance"; staff — the
-      Search tab, "Search e-library", and each tab (Dashboard, Register,
-      Statistics, Settings). Each opens at the **top** of the page. Back from
-      Search (scrolled down) to either dashboard also opens at the top
+      Search tab, "Search e-library", "View all studies", and each tab
+      (Dashboard, Register, Statistics, Settings). Each opens at the **top** of
+      the page. Back from Search (scrolled down) to either dashboard also opens
+      at the top
 - [ ] **…except opening a study:** with the dashboard scrolled down, "View
       details" / a staff row still lands on that study (Study Details open,
       just below the search bar), and on Search a summary citation still
