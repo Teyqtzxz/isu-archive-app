@@ -36,10 +36,14 @@
 .splash {
   min-height: 100dvh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
+  padding: 0 var(--gutter);
   background: var(--page-bg);
 }
+.splash .login-notice { max-width: 420px; margin: 0; }
 
 /* Thin status strip under the header: loading / load failed (App.tsx). */
 .data-banner {
@@ -808,21 +812,8 @@ input[type="password"]::-ms-clear { display: none; }
 .state-help strong { color: var(--text); }
 .info-pill--after { margin: 2px 0 0; }
 
-/* "Didn't get it?" */
-.help-block {
-  background: var(--surface-raised);
-  border: 1px solid var(--divider);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-.help-block-title { font-weight: 700; color: var(--text); margin: 0 0 4px; }
-.help-block ul { list-style: disc; margin: 0; padding-left: 18px; }
-.help-block-sender { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
-
-/* Create a new password: live checklist (display only; Save runs the real checks). */
+/* New password (Create account, Create a new password): live checklist
+   (display only; the buttons run the real checks). */
 .pw-checklist { list-style: none; margin: -2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .pw-checklist li { display: flex; align-items: center; gap: 8px; transition: color 0.15s; }
 .pw-checklist li.is-ok { color: var(--accent); font-weight: 600; }

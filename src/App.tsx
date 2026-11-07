@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
@@ -6,6 +6,7 @@ import { auth } from "./firebase";
 import {
   checkEmailVerified, deleteThesis, getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses, updateThesis,
 } from "./data";
+import { SLOW_WAIT_MS } from "./auth";
 import { LoginScreen } from "./components/LoginScreen";
 import { VerifyEmailScreen } from "./components/VerifyEmailScreen";
 import { AuthActionScreen, type AuthActionExit } from "./components/AuthActionScreen";
@@ -18,7 +19,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { RankedThesis } from "./summary";
 import { buildSmartSearch } from "./smartSearch";
 import { clearAllDrafts, clearDraft, editViewId, readDraft, readStaffView, saveStaffView } from "./draft";
-import { ISUSeal, Icon, Toast } from "./components/shared";
+import { ISUSeal, Icon, SlowNotice, Toast } from "./components/shared";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
@@ -27,6 +28,16 @@ export default function App() {
   // false until Firebase has told us whether a session exists, so a signed-in
   // user refreshing the page does not see the login screen flash first.
   const [authReady, setAuthReady] = useState(false);
+  // "This is taking longer than usual": one timer over the whole wait, from the
+  // splash or the Sign in press until routing ends. signingIn stays true after a
+  // sign-in succeeds, so the timer does not restart when the profile load takes
+  // over. Only a message: nothing is cancelled and the routing is not touched.
+  const [signingIn, setSigningIn] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
+  // Only the latest routeSignedInUser run clears the two flags: a stuck older
+  // run must not hide a newer wait, and a newer run ends an older one's wait.
+  const routeRun = useRef(0);
   const [account, setAccount] = useState<StaffAccount>({ uid: "", displayName: "", email: "", department: "" });
   // Live from Firestore once signed in. `thesesLoaded` and `dataError` keep
   // "still loading", "failed to load" and "genuinely empty" distinguishable —
@@ -70,82 +81,99 @@ export default function App() {
   // screen — for a fresh sign-in, a session restored on refresh, and a
   // password account that has just verified its email ("I've verified").
   const routeSignedInUser = useCallback(async (user: User | null) => {
-    if (!user) {
-      setRole(null);
-      setScreen("login");
-      setStaffTab("dashboard");
-      setSummaryData(null);
-      setEditing(null);
-      setConfirmDelete(null);
-      setPendingEditId(null);
-      // Signed out (here or in another tab): no unsaved draft or remembered
-      // tab may outlive the session on a shared PC.
-      clearAllDrafts();
-      setAuthReady(true);
-      return;
-    }
-    if (!isIsuEmail(user.email)) {
-      // A non-ISU account got through the popup (or a stale session was
-      // restored). Sign out; the auth listener then runs again with null.
-      await signOutUser();
-      return;
-    }
-    if (!user.emailVerified) {
-      // A password account whose link has not been clicked yet. The rules deny
-      // every read until then, so never try the profile (it would fail and
-      // fall back to the student view): "Check your ISU inbox" is all it sees.
-      // ISU Google accounts are always verified.
-      setRole(null);
-      setScreen("verify-email");
-      setAuthReady(true);
-      return;
-    }
+    const run = ++routeRun.current;
     try {
-      const profile = await getUserProfile(user);
-      if (import.meta.env.DEV) {
-        console.info("[auth] signed in", { email: user.email, uid: user.uid, profile });
+      if (!user) {
+        setRole(null);
+        setScreen("login");
+        setStaffTab("dashboard");
+        setSummaryData(null);
+        setEditing(null);
+        setConfirmDelete(null);
+        setPendingEditId(null);
+        // Signed out (here or in another tab): no unsaved draft or remembered
+        // tab may outlive the session on a shared PC.
+        clearAllDrafts();
+        setAuthReady(true);
+        return;
       }
-      setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: profile.department });
-      const r: Role = profile.role === "STAFF" ? "staff" : "student";
-      setRole(r);
-      if (r === "staff") {
-        // A reload returns staff to the tab they were on (sessionStorage,
-        // draft.ts; another account's tab is ignored). Students: dashboard.
-        const view = readStaffView(user.uid);
-        const editId = view && editViewId(view);
-        if (view === "search") {
-          setSearchInitialQuery("");
-          setSearchInitialDept(undefined);
-          setCiteJump(null);
-          setScreen("search");
-        } else {
-          setStaffTab(view && !editId ? view as StaffTab : "dashboard");
-          setPendingEditId(editId || null);
-          setScreen("staff-dashboard");
+      if (!isIsuEmail(user.email)) {
+        // A non-ISU account got through the popup (or a stale session was
+        // restored). Sign out; the auth listener then runs again with null.
+        await signOutUser();
+        return;
+      }
+      if (!user.emailVerified) {
+        // A password account whose link has not been clicked yet. The rules deny
+        // every read until then, so never try the profile (it would fail and
+        // fall back to the student view): "Check your ISU inbox" is all it sees.
+        // ISU Google accounts are always verified.
+        setRole(null);
+        setScreen("verify-email");
+        setAuthReady(true);
+        return;
+      }
+      setProfileLoading(true);
+      try {
+        const profile = await getUserProfile(user);
+        if (import.meta.env.DEV) {
+          console.info("[auth] signed in", { email: user.email, uid: user.uid, profile });
         }
-      } else {
+        setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: profile.department });
+        const r: Role = profile.role === "STAFF" ? "staff" : "student";
+        setRole(r);
+        if (r === "staff") {
+          // A reload returns staff to the tab they were on (sessionStorage,
+          // draft.ts; another account's tab is ignored). Students: dashboard.
+          const view = readStaffView(user.uid);
+          const editId = view && editViewId(view);
+          if (view === "search") {
+            setSearchInitialQuery("");
+            setSearchInitialDept(undefined);
+            setCiteJump(null);
+            setScreen("search");
+          } else {
+            setStaffTab(view && !editId ? view as StaffTab : "dashboard");
+            setPendingEditId(editId || null);
+            setScreen("staff-dashboard");
+          }
+        } else {
+          setScreen("student-dashboard");
+        }
+      } catch (err) {
+        // Firestore unreachable or rules not published yet. If the role cannot
+        // be confirmed, show the read-only view. Never default to staff — but
+        // say why, or a permissions problem is indistinguishable from a student.
+        // The name and email still come from the auth account, so the Drive
+        // links keep authuser; only the department is unknown.
+        console.error("[auth] could not read the user profile; showing the student view", err);
+        setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
+        setToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.");
+        setRole("student");
         setScreen("student-dashboard");
       }
-    } catch (err) {
-      // Firestore unreachable or rules not published yet. If the role cannot
-      // be confirmed, show the read-only view. Never default to staff — but
-      // say why, or a permissions problem is indistinguishable from a student.
-      // The name and email still come from the auth account, so the Drive
-      // links keep authuser; only the department is unknown.
-      console.error("[auth] could not read the user profile; showing the student view", err);
-      setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
-      setToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.");
-      setRole("student");
-      setScreen("student-dashboard");
+      setLoginForgot(false); // the next sign-out shows the normal sign-in card
+      setAuthReady(true);
+    } finally {
+      if (run === routeRun.current) {
+        setProfileLoading(false);
+        setSigningIn(false);
+      }
     }
-    setLoginForgot(false); // the next sign-out shows the normal sign-in card
-    setAuthReady(true);
   }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, routeSignedInUser);
     return unsub; // cleanup: without it every re-mount leaks a listener
   }, [routeSignedInUser]);
+
+  // When the wait ends, for any reason, the message goes with it.
+  const waiting = !authReady || signingIn || profileLoading;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_WAIT_MS);
+    return () => { clearTimeout(timer); setSlow(false); };
+  }, [waiting]);
 
   // Live theses. Only while signed in: the rules deny every read to signed-out
   // users, so subscribing earlier would just produce a permission error.
@@ -300,6 +328,7 @@ export default function App() {
     return (
       <div className="splash" role="status" aria-label="Loading">
         <div className="animate-fade-in"><ISUSeal size={56} /></div>
+        {slow && <SlowNotice />}
       </div>
     );
   }
@@ -315,10 +344,13 @@ export default function App() {
         </div>
       )}
 
-      {screen === "login" && <LoginScreen key={String(loginForgot)} initialMode={loginForgot ? "forgot" : "sign-in"} />}
+      {screen === "login" && (
+        <LoginScreen key={String(loginForgot)} initialMode={loginForgot ? "forgot" : "sign-in"}
+          slow={slow} onSigningIn={setSigningIn} />
+      )}
 
       {screen === "verify-email" && (
-        <VerifyEmailScreen email={auth.currentUser?.email ?? ""}
+        <VerifyEmailScreen email={auth.currentUser?.email ?? ""} slow={slow}
           onVerified={() => routeSignedInUser(auth.currentUser)} />
       )}
 

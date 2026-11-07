@@ -56,20 +56,6 @@ export function StateBadge({ kind }: { kind: BadgeKind }) {
   );
 }
 
-/** "Didn't get it?" under the email-sent screens (Forgot password, Check your ISU inbox). */
-export function DidntGetIt() {
-  return (
-    <div className="help-block">
-      <p className="help-block-title">Didn't get it?</p>
-      <ul>
-        <li>Check Spam and All Mail.</li>
-        <li>It comes from <strong className="help-block-sender">noreply@isu-archive-9253b.firebaseapp.com</strong>.</li>
-        <li>Open the newest email; older links stop working.</li>
-      </ul>
-    </div>
-  );
-}
-
 /**
  * The Forgot password view inside the login card. Firebase emails a link; the
  * link opens this app on AuthActionScreen to choose the new password. The same
@@ -178,7 +164,6 @@ export function ForgotPassword({ initialEmail }: { initialEmail: string }) {
 
       {step === "sent" && (
         <div className="login-form">
-          <DidntGetIt />
           <button type="button" onClick={() => send(true)} disabled={busy || cooldown > 0} className="gbtn">
             {busy ? "Sending..." : cooldown > 0 ? `Resend link (${cooldown}s)` : "Resend link"}
           </button>

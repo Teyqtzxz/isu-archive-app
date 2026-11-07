@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { checkEmailVerified, resendVerification, signOutUser } from "../data";
 import { AUTH_MSG, messageFor } from "../auth";
-import { DidntGetIt, StateBadge } from "./ForgotPassword";
-import { ButtonSpinner, ISUSeal, Icon } from "./shared";
+import { StateBadge } from "./ForgotPassword";
+import { ButtonSpinner, ISUSeal, Icon, SlowNotice } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 
 /** Firebase limits how often a verification email can be sent; this keeps users under it. */
@@ -12,9 +12,10 @@ const RESEND_COOLDOWN_S = 60;
  * "Check your ISU inbox": the only screen a signed-in but UNVERIFIED password
  * account ever sees. The rules deny every read until the email is verified, so
  * there is no dashboard to show. Offers: "I've verified" (reload + a fresh
- * token, then App.tsx routes on), resend the email, or sign out.
+ * token, then App.tsx routes on), resend the email, or sign out. `slow` comes
+ * from App.tsx: the profile load after "I've verified" is taking too long.
  */
-export function VerifyEmailScreen({ email, onVerified }: { email: string; onVerified: () => void }) {
+export function VerifyEmailScreen({ email, onVerified, slow }: { email: string; onVerified: () => void; slow: boolean }) {
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
   // Under "I've verified" (still unverified, or no connection).
@@ -92,6 +93,8 @@ export function VerifyEmailScreen({ email, onVerified }: { email: string; onVeri
           Open it and click the link, then come back and tap <strong>I've verified</strong>.
         </p>
 
+        {slow && <SlowNotice />}
+
         {error && (
           <div role="alert" className="login-error">
             <Icon name="alert" size={16} />
@@ -117,7 +120,6 @@ export function VerifyEmailScreen({ email, onVerified }: { email: string; onVeri
           <button type="button" onClick={handleResend} disabled={busy || cooldown > 0} className="gbtn">
             {sending ? "Sending..." : cooldown > 0 ? `Resend email (${cooldown}s)` : "Resend email"}
           </button>
-          <DidntGetIt />
         </div>
 
         <p className="login-switch">

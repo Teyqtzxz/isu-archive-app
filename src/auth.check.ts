@@ -2,8 +2,8 @@
 // (Node 22.18+ runs TypeScript directly; nothing to install.)
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 import {
-  AUTH_MSG, PASSWORD_MIN, authErrorCode, authErrorMessage, checkConfirm, checkEmail, checkFullName,
-  checkNewPassword, checkPassword, isIsuEmail, maskEmail, messageFor, toIsuEmail,
+  AUTH_MSG, PASSWORD_MIN, SLOW_WAIT_MS, authErrorCode, authErrorMessage, checkConfirm, checkEmail, checkFullName,
+  checkNewPassword, checkPassword, isIsuEmail, maskEmail, messageFor, passwordRules, toIsuEmail,
 } from "./auth.ts";
 import { MSG as FORM_MSG, type Checked } from "./validation.ts";
 
@@ -17,6 +17,9 @@ function check(label: string, got: unknown, want: unknown) {
 }
 const saved = (value: string): Checked => ({ value, error: null });
 const err = (value: string, error: string): Checked => ({ value, error });
+/** The labels of the rules a password does not meet yet. */
+const missing = (typed: string) => passwordRules(typed).filter(r => !r.ok).map(r => r.label);
+const LEN = `At least ${PASSWORD_MIN} characters`;
 
 console.log("— Username → ISU email —");
 check("username gets the ISU domain", toIsuEmail("juan.delacruz"), "juan.delacruz@isu.edu.ph");
@@ -40,12 +43,42 @@ check("isIsuEmail null", isIsuEmail(null), false);
 console.log("\n— Passwords —");
 check("sign in: blank", checkPassword(""), AUTH_MSG.passwordRequired);
 check("sign in: any length is sent (no hint)", checkPassword("abc"), null);
-check(`new: ${PASSWORD_MIN} characters is enough`, checkNewPassword("abcd1234"), null);
-check(`new: ${PASSWORD_MIN - 1} is too short`, checkNewPassword("abcd123"), AUTH_MSG.passwordShort);
+check("sign in: an older password still passes", checkPassword("abcd1234"), null);
 check("new: blank", checkNewPassword(""), AUTH_MSG.newPasswordRequired);
-check("new: spaces count, nothing trimmed", checkNewPassword("  abc   "), null);
-check("new: an emoji is one character", checkNewPassword("abcdef😀"), AUTH_MSG.passwordShort);
-check("hint text (agreed wording)", AUTH_MSG.passwordHint, "At least 8 characters. Not your Gmail password.");
+check("new: meets every rule", checkNewPassword("Abcd123!"), null);
+check("new: 8 letters and numbers are NOT enough", checkNewPassword("abcd1234"), AUTH_MSG.passwordShort);
+check(`new: ${PASSWORD_MIN - 1} is too short`, checkNewPassword("Abcd12!"), AUTH_MSG.passwordShort);
+check("new: no uppercase", checkNewPassword("abcd123!"), AUTH_MSG.passwordShort);
+check("new: no lowercase", checkNewPassword("ABCD123!"), AUTH_MSG.passwordShort);
+check("new: no number", checkNewPassword("Abcdefg!"), AUTH_MSG.passwordShort);
+check("new: no symbol", checkNewPassword("Abcd1234"), AUTH_MSG.passwordShort);
+check("rules: only the length is missing", missing("Abcd12!"), [LEN]);
+check("rules: only uppercase is missing", missing("abcd123!"), ["An uppercase letter"]);
+check("rules: only lowercase is missing", missing("ABCD123!"), ["A lowercase letter"]);
+check("rules: only the number is missing", missing("Abcdefg!"), ["A number"]);
+check("rules: only the symbol is missing", missing("Abcd1234"), ["A symbol"]);
+check("rules: blank misses all five", missing("").length, 5);
+check("rules: a good password misses none", missing("Abcd123!"), []);
+check("rules: checklist order and words", passwordRules("").map(r => r.label),
+  [LEN, "An uppercase letter", "A lowercase letter", "A number", "A symbol"]);
+check("new: spaces count towards the length", checkNewPassword("  Ab1!  "), null);
+check("new: nothing trimmed (7 + a space is 8)", checkNewPassword("Abcd12! "), null);
+check("new: a space is not a symbol", checkNewPassword("Abcd 123"), AUTH_MSG.passwordShort);
+check("new: other spaces are not symbols either", missing("Abcd\u00a0123\t"), ["A symbol"]);
+check("new: an emoji is one character (7, though 8 in UTF-16)", missing("Abc12😀!"), [LEN]);
+check("new: an emoji is a symbol", checkNewPassword("Abcd123😀"), null);
+check("new: Ñ is an uppercase letter", missing("Ñandu123!"), []);
+check("new: ñ is a lowercase letter", missing("ANDUñ123!"), []);
+check("new: an accent mark is part of its letter, not a symbol", missing("Cafe\u0301 1234"), ["A symbol"]);
+check("hint keeps the Gmail note, no rule of length alone", AUTH_MSG.passwordHint, "Not your Gmail password.");
+for (const [name, text] of [["passwordShort", AUTH_MSG.passwordShort], ["weakPassword", AUTH_MSG.weakPassword]]) {
+  check(`${name} states every rule`,
+    [`at least ${PASSWORD_MIN} characters`, "uppercase", "lowercase", "number", "symbol"].every(w => text.includes(w)), true);
+}
+
+console.log("\n— Slow sign-in message —");
+check("15 seconds", SLOW_WAIT_MS, 15_000);
+check("agreed wording", AUTH_MSG.slowWait, "This is taking longer than usual. Check your internet connection.");
 
 console.log("\n— Confirm password —");
 check("match", checkConfirm("abcd1234", "abcd1234"), null);

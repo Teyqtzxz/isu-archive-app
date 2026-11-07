@@ -36,8 +36,8 @@ e-library only:
 | Changed by | the university / Google | Forgot password? in the e-library |
 | Changing one changes the other? | **no** | **no** |
 
-The Create account form says so under the password box: *"At least 8
-characters. Not your Gmail password."*
+The Create account form says so under the password box: *"Not your Gmail
+password."* The password rules are in the live checklist under the boxes (§4).
 
 **Proof that the user owns the ISU address** is the verification link Firebase
 emails to that ISU inbox. Only someone who can open that inbox can verify the
@@ -94,15 +94,21 @@ role comes from `users/{uid}`, as for Google).
  Full name          [ Juan Dela Cruz ]           ← optional field (owner's call)
  ISU email          [ juan.delacruz  @isu.edu.ph ]
  Password           [ ••••••••            (eye) ]
-                    At least 8 characters. Not your Gmail password.
+                    Not your Gmail password.
  Confirm password   [ ••••••••            (eye) ]
                     The passwords don't match.   ← under its own field
+                    ○ At least 8 characters      ← live checklist, ticks as
+                    ○ An uppercase letter          you type
+                    ○ A lowercase letter
+                    ○ A number
+                    ○ A symbol
+                    ○ Passwords match
                     [        Create account      ]
 ```
 
 1. The form checks every field **before** calling Firebase (`auth.ts`):
-   full name (the Register form's author-name rules), ISU email, password
-   ≥ 8, passwords match. Each message sits under its own field.
+   full name (the Register form's author-name rules), ISU email, the password
+   rules (§4), passwords match. Each message sits under its own field.
 2. `createUserWithEmailAndPassword` — Firebase creates the account **and signs
    the user in**.
 3. `updateProfile(displayName)` — so the dashboards greet them by name.
@@ -141,6 +147,29 @@ used link shows "This link no longer works" + **Send a new link**.
 
 Unchanged: the first Google sign-in creates the account and the profile as
 `STUDENT`; no Create account needed. ISU Google accounts are always verified.
+
+### A slow connection (errata #73)
+
+Sign-in and loading the profile have no time limit of their own in our code.
+After `SLOW_WAIT_MS` (15 seconds, `auth.ts`) of waiting, the screen shows
+*"This is taking longer than usual. Check your internet connection."* with a
+**Try again** button that reloads the page.
+
+- **Covered:** the splash screen (`authReady` false), a password sign-in,
+  Create account, and `getUserProfile` after any sign-in or after "I've
+  verified". One timer in `App.tsx` runs over the whole wait, so a slow sign-in
+  followed by a slow profile counts as one wait.
+- **Not while the Google popup is open:** the popup never starts the timer, and
+  an older wait's message is hidden until the popup closes.
+- **Only a message:** nothing is cancelled, no sign-in is rejected, the routing
+  and the student-view fallback are unchanged. When the wait ends the message
+  goes. Every exit of `routeSignedInUser` ends the wait (`try`/`finally`, and
+  only the latest run clears the flags).
+- **Firebase's own limits can end a wait first:** a sign-in request fails after
+  30 s (5 s if the browser knows it is offline) with "No connection…", and on a
+  dead connection Firestore goes offline after about 10 s, so `getDoc` fails
+  and the student view opens with no message. The message is for a connection
+  that is up but very slow, and for the first-time `setDoc`, which has no limit.
 
 ---
 
@@ -221,7 +250,7 @@ and in case Firebase's behaviour changes; it costs nothing when B3 happens.
 
 | Rule | Where | Notes |
 |---|---|---|
-| Password **≥ 8 characters** (code points; spaces count, nothing trimmed) | `checkNewPassword()` (browser) **and** the console's password policy (§6 step 4) | Firebase's own default minimum is 6; the console policy makes 8 a server rule. Both `auth/weak-password` and `auth/password-does-not-meet-requirements` show "Choose a longer password: at least 8 characters." Sign in does not check the length (it would hint at what the password is not) |
+| A new password needs **at least 8 characters, an uppercase letter, a lowercase letter, a number and a symbol** (code points; spaces count, nothing trimmed; a symbol is anything that is not a letter, a number or a space; Unicode-safe, so Ñ is an uppercase letter and an emoji is one character and a symbol) | `passwordRules()` (one function, used by `checkNewPassword()` and both checklists), **in the app only**: the console's password policy stays off (§6 step 4) | Firebase's own minimum stays 6 with no character rules (§7). Both `auth/weak-password` and `auth/password-does-not-meet-requirements` show "Choose a stronger password. It must have at least 8 characters, an uppercase letter, a lowercase letter, a number and a symbol." **Sign in does not check the rules** (`checkPassword()`): existing accounts with older passwords still sign in, and saying the rules there would hint at what the password is not |
 | **Only `@isu.edu.ph`** | `checkEmail()` before every Firebase call; `isIsuEmail()` again in `data.ts` | **The real boundary is `firestore.rules`** (unchanged): `email_verified == true` and an email matching `@isu[.]edu[.]ph$`. An unverified or non-ISU account can read nothing, whichever way it signed in |
 | **No email enumeration on sign-in** | `authErrorMessage()` | Wrong password and unknown email both show **"Email or password is incorrect."** With enumeration protection on, Firebase itself returns the same code (`auth/invalid-credential`) for both |
 | **No enumeration on Forgot password** | `ForgotPassword.tsx` | The same "If an account exists…" words; Firebase sends nothing and says nothing for an unknown email |
@@ -258,16 +287,18 @@ All three email-link screens share one look, in `App.css` next to the
   = One moment.
 - A heading and one short help line; the user's email in bold where the
   screen knows it (masked on Forgot password, as before).
-- **"Didn't get it?"** on Forgot password ② and Check your ISU inbox: Spam
-  and All Mail, the sender `noreply@isu-archive-9253b.firebaseapp.com`, open
-  the newest email. No screen states how long a link lasts.
+- No screen states how long a link lasts. The short notice after Resend stays.
+  (The "Didn't get it?" block was removed at the professor's request, errata
+  #73.)
 - The step indicator (`ResetSteps`): numbered circles joined by a line, done
   = tick, current = solid green with a ring.
-- Create a new password: a live checklist under the boxes, "At least 8
-  characters" and "Passwords match". It only displays — it calls the same
-  `checkNewPassword()` / `checkConfirm()`, and the messages under each box
-  still appear only on leaving a box or on Save. No `aria-live`; each line
-  has hidden "(done)" / "(not yet)" text.
+- Create account and Create a new password: the same live checklist under the
+  boxes (`PasswordChecklist` in `shared.tsx`), "At least 8 characters", "An
+  uppercase letter", "A lowercase letter", "A number", "A symbol" and
+  "Passwords match". It only displays — it calls the same `passwordRules()` /
+  `checkConfirm()` as the buttons, and the messages under each box still appear
+  only on leaving a box or on submit. No `aria-live`; each line has hidden
+  "(done)" / "(not yet)" text.
 - Every password box shows only our eye button: Edge's own reveal button
   (`::-ms-reveal`) is hidden in `App.css`.
 
@@ -294,10 +325,14 @@ the same steps on the free plan, and the "no backend server" design stays.
    keeps one person = one uid.
 3. **Authentication → Settings → User actions:** check that **Email
    enumeration protection** is on (the default for new projects).
-4. **Authentication → Settings → Password policy:** minimum length **8**,
-   mode **Require (enforce)**, no character-type requirements. (If the page
-   asks to upgrade the project, skip this step: the browser check still
-   requires 8, and say so in the defense.)
+4. **Security → Authentication → Settings → Password policy: leave it OFF.**
+   Google's documentation treats `forceUpgradeOnSignin=true` as require mode,
+   so turning on Require could refuse older passwords at sign-in, STAFF accounts
+   included. Its symbol and letter rules are also stricter than ours, so a
+   password could tick every checklist line and still be refused. The rule is
+   enforced by the app on Create account and Create a new password, not by
+   Firebase's server, and Firebase's plain reset page stays weaker until the
+   deploy sets the action URL (step 7).
 5. **Authentication → Templates:** for *Email address verification* and
    *Password reset*, set the sender name to **ISU Research Study E-Library**
    (✏ → Sender name). Optionally edit the subject lines.
@@ -335,8 +370,15 @@ methods.
 - **The action URL cannot point at localhost** (§5), so the in-app "Create a
   new password" and "Email verified" screens are fully tested only after
   deploying.
-- **Password strength beyond length is not checked** (no common-password
-  list); 8 characters is the agreed minimum.
+- **Password strength beyond the five rules is not checked** (no
+  common-password list). `Password1!` passes.
+- **The new-password rules are enforced by the app, not by Firebase's server.**
+  Create account and Create a new password check them; Firebase's own minimum
+  stays 6 characters. The console's password policy stays off (§6 step 4):
+  Google's documentation treats `forceUpgradeOnSignin=true` as require mode, so
+  it could refuse older passwords, and its symbol and letter rules are stricter
+  than ours. Firebase's plain reset page stays weaker until the deploy sets the
+  action URL (§6 step 7). Say this plainly in the defense.
 - **Case B depends on Firebase's provider rules** (§3). Tested 2026-10-18:
   a **verified** password account followed by Continue with Google was
   linked automatically (B3: one uid, both providers, password kept). An
@@ -348,11 +390,13 @@ methods.
 
 ## 8. Checks
 
-`node src/auth.check.ts` — 55 examples: username → email, ISU only (including
-`juan@mail.isu.edu.ph` and `juan@isu.edu.ph.evil.com` rejected), password
-length (8 passes, 7 fails, an emoji counts as one), passwords match (case and a
-trailing space matter), full name (author rules), the masked email, and every
-Firebase error code → words, including "wrong password" and "unknown email"
-giving the **same** sentence.
+`node src/auth.check.ts` — 80 examples: username → email, ISU only (including
+`juan@mail.isu.edu.ph` and `juan@isu.edu.ph.evil.com` rejected), the password
+rules (each missing rule, 8 passes and 7 fails, spaces, an emoji is one
+character and a symbol, Ñ and ñ, sign-in still accepts an older password),
+passwords match (case and a trailing space matter), full name (author rules),
+the masked email, the 15-second constant and message, and every Firebase error
+code → words, including "wrong password" and "unknown email" giving the **same**
+sentence.
 
 Browser steps: `09` §1 (email + password sign-in).
