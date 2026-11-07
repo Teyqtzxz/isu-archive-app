@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ExtractionState, NewThesis, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
@@ -35,6 +35,9 @@ const SIMILARITY_BOXES: { level: SimilarityLevel; className: string; heading: (c
 
 /** Shown when an Edit draft is dropped because someone saved the study since. */
 const STALE_DRAFT = "This study was changed since your unsaved edits, so they were discarded. Please edit it again.";
+
+/** For this long after the save step opens, Save ignores clicks (errata #72). */
+const SAVE_GUARD_MS = 1000;
 
 /** The study's updatedAt as an ISO string ("" if never edited), to tell
  *  whether someone saved it after an Edit draft began. */
@@ -225,6 +228,18 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   /** The match whose details are shown inside the warning (no leaving the form). */
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
+  // A click aimed at something else must not post the study (errata #72). Each
+  // way into the save step (a read, a failed read, Edit study, back with the
+  // same PDF, a restored draft) goes to the top before the browser paints, so
+  // Save does not appear under the mouse. "instant": html scrolls smoothly
+  // (index.css), which would leave Save under the mouse for a moment.
+  const saveStepOpenedAt = useRef(0);
+  useLayoutEffect(() => {
+    if (!onSaveStep) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
+    saveStepOpenedAt.current = performance.now();
+  }, [onSaveStep]);
+
   // Keyword model (keywordModel.ts, docs/15): trained once per data change on
   // every stored study except this one (Edit study must not learn its own
   // keywords); suggestions only on the save step, never added automatically.
@@ -406,6 +421,9 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   }
 
   async function handleSave() {
+    // The step has only just opened, so this click was not aimed at Save. For a
+    // page that fits the window, where going to the top moves nothing (errata #72).
+    if (performance.now() - saveStepOpenedAt.current < SAVE_GUARD_MS) return;
     // The button is disabled too; this keeps a double tap from slipping through.
     // Not before the studies have loaded: the duplicate check needs them.
     if (mustConfirm || !studiesReady) return;
@@ -833,7 +851,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             </div>
           )}
 
-          <button onClick={handleSave} disabled={saving || mustConfirm || !studiesReady} className="btn-submit"
+          <button onClick={handleSave} disabled={saving || mustConfirm || !studiesReady} className="btn-submit btn-submit--save"
             aria-describedby={!studiesReady ? "register-loading-hint" : mustConfirm ? "register-confirm-hint" : undefined}>
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             {saving ? "Saving..." : editing ? "Save changes" : extractState === "success" ? "Confirm & Save" : "Save Manually"}
@@ -853,7 +871,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
 
       {/* Submit button */}
       {extractState === "idle" && (
-        <button onClick={handleSubmit} className="btn-submit">
+        <button onClick={handleSubmit} className="btn-submit btn-submit--read">
           <Icon name="file" size={18} />
           {editing && !pdfFile ? "Continue" : "Read PDF & continue"}
         </button>

@@ -397,6 +397,12 @@
 }
 .btn-submit:hover:not(:disabled) { background: var(--accent-fill-hover); }
 .btn-submit:disabled { opacity: 0.7; cursor: default; }
+/* "Read PDF & continue" on the left, Save on the right: both end the page at the
+   same height, so Save must never open under the mouse that clicked (errata #72). */
+@media (min-width: 480px) {
+  .btn-submit--read, .btn-submit--save { width: calc(50% - 6px); }
+  .btn-submit--save { margin-left: auto; }
+}
 
 /* ─── Badges ───────────────────────────────────────────────── */
 .dept-badge {

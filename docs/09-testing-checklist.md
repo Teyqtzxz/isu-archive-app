@@ -255,6 +255,24 @@ most.
 - [ ] Scanned/image-only PDF → NEEDS MANUAL ENTRY → "Save Manually" with an
       **empty** abstract shows "Please fill in: Abstract" and saves nothing
 - [ ] After typing the abstract, "Save Manually" writes `status: "POSTED"`
+- [ ] **A click not aimed at Save posts nothing** (errata #72). In a short
+      window (a laptop, 4 authors, a PDF with no keywords line), scroll to the
+      bottom, click "Read PDF & continue" and leave the mouse there → the save
+      step opens **at the top of the page**, with no visible scrolling, and
+      "Confirm & Save" is not under the mouse. Click again without moving the
+      mouse → nothing is posted
+- [ ] The save step also opens at the top after a failed read ("Save
+      Manually"), after Edit study → "Continue", after "Edit details" → "Read
+      PDF & continue" with the same PDF, and when a draft reopens on it after a
+      reload
+- [ ] Zoom the browser out until the whole save step fits in the window. Click
+      Save within a second of the step opening → nothing happens and no message
+      appears. Click it again after that second → the study is posted, once
+- [ ] On a 1080p screen in full screen (F11), click "Read PDF & continue" and
+      keep the mouse still. Wait 2 seconds and click twice → nothing is posted
+- [ ] After the read, wheel to the end of the page with the mouse still → the
+      mouse is not over Save. Move to Save and click → it posts on the first
+      click
 - [ ] Garbage link → specific error message, no crash
 - [ ] Non-Drive URL is rejected before any download starts
 
