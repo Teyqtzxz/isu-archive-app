@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { applyVerifyLink, checkResetLink, setNewPassword } from "../data";
-import { AUTH_MSG, PASSWORD_MIN, authErrorCode, checkConfirm, checkNewPassword, messageFor } from "../auth";
+import { AUTH_MSG, authErrorCode, checkConfirm, checkNewPassword, messageFor } from "../auth";
 import { ResetSteps, StateBadge, type BadgeKind } from "./ForgotPassword";
-import { ButtonSpinner, ISUSeal, Icon, PasswordInput } from "./shared";
+import { ButtonSpinner, ISUSeal, Icon, PasswordChecklist, PasswordInput } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 
 /** Where the user goes when they leave this screen. */
@@ -113,11 +113,6 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
     view.kind === "reset-done" || view.kind === "verified" ? "success" :
     "warn";
 
-  // The live checklist under the boxes only shows the same checks Save runs;
-  // the messages under each box still come from handleSave and onBlur.
-  const longEnough = checkNewPassword(password) === null;
-  const matches = confirm !== "" && checkConfirm(password, confirm) === null;
-
   return (
     <div className="login-wrap">
       <div className="login-stripe" />
@@ -167,10 +162,7 @@ export function AuthActionScreen({ mode, oobCode, onExit }: {
                   onChange={v => { setConfirm(v); setConfirmError(""); }}
                   onBlur={() => { if (confirm && password) setConfirmError(checkConfirm(password, confirm) ?? ""); }} />
               </div>
-              <ul className="pw-checklist">
-                <CheckItem ok={longEnough} label={`At least ${PASSWORD_MIN} characters`} />
-                <CheckItem ok={matches} label="Passwords match" />
-              </ul>
+              <PasswordChecklist password={password} confirm={confirm} />
               <button type="submit" disabled={busy} className="btn btn-primary login-submit">
                 {busy ? <><ButtonSpinner /><span>Saving...</span></> : "Save password"}
               </button>
@@ -222,16 +214,5 @@ function Result({ text, button, onClick }: { text: string; button: string; onCli
       <p className="reset-done-desc">{text}</p>
       <button type="button" onClick={onClick} className="btn btn-primary login-submit">{button}</button>
     </div>
-  );
-}
-
-/** One line of the new-password checklist: an empty circle, ticked green when met. */
-function CheckItem({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <li className={ok ? "is-ok" : undefined}>
-      <span className="pw-check-dot" aria-hidden="true">{ok && <Icon name="check" size={11} strokeWidth={3} />}</span>
-      {label}
-      <span className="sr-only">{ok ? " (done)" : " (not yet)"}</span>
-    </li>
   );
 }

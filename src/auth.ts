@@ -3,13 +3,19 @@
 // every rule can be checked on its own (node src/auth.check.ts).
 //
 // These are browser-side checks only. The security boundary is firestore.rules
-// (a verified @isu.edu.ph email) and, for the password length, the console's
-// password policy (docs/17 §4). Passwords are never stored or logged here:
+// (a verified @isu.edu.ph email). The new-password rules are enforced here by the
+// app, not by Firebase's server: the console's password policy stays off
+// (docs/17 §6 step 4). Passwords are never stored or logged here:
 // they go straight from the form to Firebase Auth, which keeps only a hash.
 import { MSG as FORM_MSG, checkAuthor, type Checked } from "./validation.ts";
 
 export const ISU_DOMAIN = "@isu.edu.ph";
 export const PASSWORD_MIN = 8;
+
+/** How long a sign-in or profile wait runs before "taking longer than usual". */
+export const SLOW_WAIT_MS = 15_000;
+
+const PASSWORD_RULES_TEXT = `at least ${PASSWORD_MIN} characters, an uppercase letter, a lowercase letter, a number and a symbol`;
 
 export const AUTH_MSG = {
   emailRequired: "Please fill in your ISU email.",
@@ -17,12 +23,13 @@ export const AUTH_MSG = {
   notIsu: "Use your ISU email address (@isu.edu.ph).",
   passwordRequired: "Please type your password.",
   newPasswordRequired: "Please type a password.",
-  passwordShort: `The password must be at least ${PASSWORD_MIN} characters.`,
+  passwordShort: `The password must have ${PASSWORD_RULES_TEXT}.`,
   confirmRequired: "Please type the password again.",
   mismatch: "The passwords don't match.",
   nameRequired: "Please fill in your full name.",
   nameFull: "Type your full name, e.g. Juan Dela Cruz",
-  passwordHint: `At least ${PASSWORD_MIN} characters. Not your Gmail password.`,
+  // The rules themselves are in the checklist under the boxes.
+  passwordHint: "Not your Gmail password.",
   // Firebase answers the same for a wrong password and an unknown email (email
   // enumeration protection), so this page cannot be used to find out who has
   // an account.
@@ -30,7 +37,7 @@ export const AUTH_MSG = {
   tooManySignIn: "Too many attempts. Wait a few minutes and try again, or use Forgot password?",
   tooManyEmails: "Too many emails sent. Wait a few minutes and try again.",
   emailInUse: "This ISU email already has an account. Sign in, or use Forgot password? to set a password.",
-  weakPassword: `Choose a longer password: at least ${PASSWORD_MIN} characters.`,
+  weakPassword: `Choose a stronger password. It must have ${PASSWORD_RULES_TEXT}.`,
   offline: "No connection. Check your internet and try again.",
   passwordOff: "Password sign-in is not turned on yet. Contact the Research Department.",
   disabled: "This account is turned off. Contact the Research Department.",
@@ -41,6 +48,7 @@ export const AUTH_MSG = {
   googleInUse: "This Google account is already connected to another e-library account.",
   notVerified: "Not verified yet. Open the link in your ISU inbox first.",
   failed: "Something went wrong. Try again.",
+  slowWait: "This is taking longer than usual. Check your internet connection.",
 } as const;
 
 const ok = (value: string): Checked => ({ value, error: null });
@@ -67,18 +75,35 @@ export function checkEmail(typed: string): Checked {
   return ok(email);
 }
 
-/** Sign in only needs something typed: the length rule is for new passwords,
- *  and saying it here would hint at what the password is not. */
+/** Sign in only needs something typed: the rules are for new passwords (older
+ *  accounts may not meet them), and saying them here would hint at what the
+ *  password is not. */
 export function checkPassword(typed: string): string | null {
   return typed ? null : AUTH_MSG.passwordRequired;
+}
+
+/**
+ * The new-password rules, in checklist order: the one place they are written,
+ * used by checkNewPassword and by both live checklists. Unicode-safe, so Ñ is
+ * an uppercase letter. A symbol is anything that is not a letter, a number or a
+ * space; the marks of a typed accent (e + ◌́) belong to their letter.
+ */
+export function passwordRules(typed: string): { label: string; ok: boolean }[] {
+  // Code points, so an emoji counts as one character, as Firebase counts it.
+  const chars = [...typed];
+  return [
+    { label: `At least ${PASSWORD_MIN} characters`, ok: chars.length >= PASSWORD_MIN },
+    { label: "An uppercase letter", ok: /\p{Lu}/u.test(typed) },
+    { label: "A lowercase letter", ok: /\p{Ll}/u.test(typed) },
+    { label: "A number", ok: /\p{N}/u.test(typed) },
+    { label: "A symbol", ok: chars.some(c => !/[\p{L}\p{M}\p{N}\p{Z}\s]/u.test(c)) },
+  ];
 }
 
 /** A new password (Create account, reset). Spaces count; nothing is trimmed. */
 export function checkNewPassword(typed: string): string | null {
   if (!typed) return AUTH_MSG.newPasswordRequired;
-  // Code points, so an emoji counts as one character, as Firebase counts it.
-  if ([...typed].length < PASSWORD_MIN) return AUTH_MSG.passwordShort;
-  return null;
+  return passwordRules(typed).every(rule => rule.ok) ? null : AUTH_MSG.passwordShort;
 }
 
 /** Checked before Firebase is called, so a typo never creates an account. */

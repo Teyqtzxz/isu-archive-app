@@ -3,7 +3,7 @@ import { createPasswordAccount, signInWithGoogle, signInWithPassword } from "../
 import {
   AUTH_MSG, authErrorCode, checkConfirm, checkEmail, checkFullName, checkNewPassword, checkPassword, messageFor,
 } from "../auth";
-import { ButtonSpinner, ISUSeal, Icon, IsuEmailInput, PasswordInput } from "./shared";
+import { ButtonSpinner, ISUSeal, Icon, IsuEmailInput, PasswordChecklist, PasswordInput, SlowNotice } from "./shared";
 import { ForgotPassword } from "./ForgotPassword";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -23,13 +23,25 @@ type FieldErrors = Partial<Record<Field, string>>;
  * role comes from the Firestore profile, and App.tsx routes once
  * onAuthStateChanged fires — also to "Check your ISU inbox" for an unverified
  * account. This screen only starts sign-in and shows errors.
+ *
+ * App.tsx also runs the one "taking longer than usual" timer: onSigningIn(true)
+ * starts a password sign-in or Create account wait, and `slow` comes back after
+ * SLOW_WAIT_MS. The Google popup never starts it: choosing an account is not a
+ * slow connection. After success App.tsx ends the wait itself, once routing
+ * ends, so the timer carries on through the profile load.
  */
-export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMode }) {
+export function LoginScreen({ initialMode = "sign-in", slow, onSigningIn }: {
+  initialMode?: LoginMode;
+  slow: boolean;
+  onSigningIn: (waiting: boolean) => void;
+}) {
   const [mode, setMode] = useState<LoginMode>(initialMode);
   const [busy, setBusy] = useState(false);
   // Set at once (state waits for a re-render), so a fast double click never
   // sends a request twice; the disabled buttons cover every later click.
   const inFlight = useRef(false);
+  // An earlier sign-in's profile can still be loading when the popup opens.
+  const [googleOpen, setGoogleOpen] = useState(false);
   // A Firebase error that belongs to no single field.
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -67,16 +79,19 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
     setFieldErrors(f => ({ ...f, [field]: msg ?? undefined }));
   }
 
-  /** Runs one auth call with the busy flag and error message handled. */
-  async function run(action: () => Promise<void>, onError: (e: unknown) => void) {
+  /** Runs one auth call with the busy flag and error message handled.
+   *  `timed` = the wait counts towards the "taking longer than usual" message. */
+  async function run(action: () => Promise<void>, onError: (e: unknown) => void, timed = false) {
     if (inFlight.current) return;
     inFlight.current = true;
     setError("");
     setBusy(true);
+    if (timed) onSigningIn(true);
     try {
       await action();
       // Success: App.tsx's auth listener takes over and leaves this screen.
     } catch (e) {
+      if (timed) onSigningIn(false);
       onError(e);
     } finally {
       inFlight.current = false;
@@ -90,7 +105,7 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
     const errs: FieldErrors = { email: em.error ?? undefined, password: checkPassword(password) ?? undefined };
     setFieldErrors(errs);
     if (errs.email || errs.password) return;
-    run(() => signInWithPassword(em.value, password), err => setError(messageFor(err, "sign-in") ?? ""));
+    run(() => signInWithPassword(em.value, password), err => setError(messageFor(err, "sign-in") ?? ""), true);
   }
 
   function handleCreate(e: FormEvent) {
@@ -115,11 +130,12 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
       if (code === "auth/email-already-in-use" || code === "auth/invalid-email") setFieldErrors({ email: msg });
       else if (code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements") setFieldErrors({ password: msg });
       else setError(msg);
-    });
+    }, true);
   }
 
-  function handleGoogle() {
-    run(async () => {
+  async function handleGoogle() {
+    setGoogleOpen(true);
+    await run(async () => {
       const result = await signInWithGoogle();
       if (!result.signedIn) {
         // The email already has a password account: sign in with it once to
@@ -129,6 +145,7 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
         setLinkEmail(result.linkEmail);
       }
     }, err => setError(messageFor(err, "google") ?? ""));
+    setGoogleOpen(false);
   }
 
   const heading = mode === "create" ? "Create account" : mode === "forgot" ? "Reset password" : "Research Study E-Library";
@@ -189,6 +206,8 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
             </span>
           </div>
         )}
+
+        {slow && !googleOpen && <SlowNotice />}
 
         {error && mode !== "forgot" && (
           <div role="alert" className="login-error">
@@ -277,6 +296,7 @@ export function LoginScreen({ initialMode = "sign-in" }: { initialMode?: LoginMo
                   onBlur={() => blurCheck("confirm")} autoComplete="new-password"
                   error={fieldErrors.confirm} disabled={busy} />
               </div>
+              <PasswordChecklist password={password} confirm={confirm} />
               <button type="submit" disabled={busy} className="btn btn-primary login-submit">
                 {busy ? <><ButtonSpinner /><span>Creating account...</span></> : "Create account"}
               </button>

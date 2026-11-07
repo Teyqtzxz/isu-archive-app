@@ -190,7 +190,9 @@ src/
                         (node src/validation.check.ts)            ✅ EXISTS
   auth.ts             ← pure: sign-in / Create account rules —
                         toIsuEmail, isIsuEmail, checkEmail,
-                        checkPassword, checkNewPassword (≥ 8),
+                        checkPassword, passwordRules (8+
+                        characters, uppercase, lowercase, number,
+                        symbol), checkNewPassword,
                         checkConfirm, checkFullName (author-name
                         rules), maskEmail, AUTH_MSG, and Firebase
                         error code → words (authErrorMessage,

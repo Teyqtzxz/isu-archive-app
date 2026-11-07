@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Thesis } from "../types";
 import { registeredAtISO } from "../types";
 import { highlightParts } from "../snippet";
+import { AUTH_MSG, checkConfirm, passwordRules } from "../auth";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -231,6 +232,45 @@ export function PasswordInput({ id, value, onChange, onBlur, error, hint, disabl
       </div>
       <FieldMessages id={id} error={error} hint={hint} />
     </>
+  );
+}
+
+/** One line of a new-password checklist: an empty circle, ticked green when met. */
+function CheckItem({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className={ok ? "is-ok" : undefined}>
+      <span className="pw-check-dot" aria-hidden="true">{ok && <Icon name="check" size={11} strokeWidth={3} />}</span>
+      {label}
+      <span className="sr-only">{ok ? " (done)" : " (not yet)"}</span>
+    </li>
+  );
+}
+
+/** The live checklist under the new-password boxes (Create account, Create a
+ *  new password). It only displays the checks the buttons run; the messages
+ *  under each box still appear on leaving a box or on submit. */
+export function PasswordChecklist({ password, confirm }: { password: string; confirm: string }) {
+  return (
+    <ul className="pw-checklist">
+      {passwordRules(password).map(rule => <CheckItem key={rule.label} {...rule} />)}
+      <CheckItem ok={confirm !== "" && checkConfirm(password, confirm) === null} label="Passwords match" />
+    </ul>
+  );
+}
+
+/** App.tsx shows this after SLOW_WAIT_MS of sign-in or profile loading. Only a
+ *  message: the request keeps running, and Try again just reloads. */
+export function SlowNotice() {
+  return (
+    <div role="status" className="login-notice">
+      <Icon name="info" size={16} />
+      <span>
+        {AUTH_MSG.slowWait}{" "}
+        <button type="button" className="login-link login-link--inline" onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </span>
+    </div>
   );
 }
 

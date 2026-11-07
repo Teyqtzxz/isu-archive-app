@@ -44,6 +44,18 @@ seconds and catch the regressions that are easiest to reintroduce.
 - [ ] Every Sign Out button first shows "Sign out?" with Cancel and Sign Out.
       Cancel, Escape and a click outside the box keep you signed in on the same
       screen; Sign Out goes to the login screen
+- [ ] **Slow connection message (errata #73).** Writes nothing. A normal sign-in
+      never shows it. Then in DevTools → Network add a custom throttling profile
+      with a latency of 60000 ms (not **Offline**: Firebase then fails within
+      5 s and shows "No connection"). Sign in, or refresh while signed in:
+      after 15 s "This is taking longer than usual. Check your internet
+      connection." appears, on the login card or under the seal. **Try again**
+      reloads the page. Back to **No throttling** and it goes away when the wait
+      ends; the sign-in itself is not cancelled
+- [ ] Press Continue with Google and leave the popup open for 20 s: no message.
+      Close it: no message
+- [ ] A wrong password shows only "Email or password is incorrect."; wait 20 s:
+      no message follows it
 
 ### 1b. Email + password login (`17`, errata #68)
 
@@ -64,17 +76,27 @@ account can be deleted in the console (Authentication → Users, and its
       "Use your ISU email address (@isu.edu.ph)." on leaving the box
 - [ ] Wrong password for the test account → "Email or password is
       incorrect." A made-up `nobody.x@isu.edu.ph` → **the same words**
-- [ ] **Create account** with the test account: a 7-character password →
-      "The password must be at least 8 characters." on leaving the box;
-      Confirm different → "The passwords don't match." under Confirm, and
-      **nothing is created** (Authentication → Users has no new row). The
-      hint "At least 8 characters. Not your Gmail password." is under the box
+- [ ] **Create account** with the test account: `abcd1234` → "The password
+      must have at least 8 characters, an uppercase letter, a lowercase
+      letter, a number and a symbol." on leaving the box; Confirm different →
+      "The passwords don't match." under Confirm, and **nothing is created**
+      (Authentication → Users has no new row). The hint "Not your Gmail
+      password." is under the box
+- [ ] Create account and Create a new password show the **same live checklist**:
+      At least 8 characters · An uppercase letter · A lowercase letter · A
+      number · A symbol · Passwords match. Each line ticks as you type. A space
+      ticks no symbol; an emoji ticks A symbol and counts as one character
+- [ ] An **older password** that breaks the new rules still signs in (the rules
+      are for new passwords only)
 - [ ] Full name `maria` → "Type your full name, e.g. Juan Dela Cruz"
 - [ ] Correct form → "Check your ISU inbox" with the address. **I've
       verified** before clicking the link → "Not verified yet. Open the link
       in your ISU inbox first." under the button. No dashboard, no data banner
 - [ ] Double-click Create account / Send reset link / Resend: one email
       arrives, not two (buttons go grey while a request runs)
+- [ ] "Didn't get it?" appears nowhere: not on Forgot password ② and not on
+      Check your ISU inbox. The round badge and the short notice after Resend
+      are still there
 - [ ] Open the email (check Spam), click the link, come back, **I've
       verified** → student dashboard **without signing in again**, greeted by
       the full name. Console: Authentication → Users shows the account;
