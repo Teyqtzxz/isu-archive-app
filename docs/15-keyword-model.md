@@ -2,7 +2,8 @@
 
 **Status:** ☑ DONE — branch `feat/keyword-model` (errata #65); automatic
 keywords, the reliability fix and the junk-phrase filter on `feat/auto-keywords`
-(errata #77).
+(errata #77); automatic keywords fill their room on `feat/auto-keywords-fill`
+(errata #79).
 **Code:** `src/keywordModel.ts` (pure, no React, no Firebase) · examples in
 `src/keywordModel.check.ts` (`node src/keywordModel.check.ts`) · UI in
 `RegisterForm.tsx` (automatic keywords and "Suggested keywords") and
@@ -191,7 +192,7 @@ and the originality check, are unchanged.
 | **Verbs of report writing, base and -s form** (`VERBS`: provide, involve, implement, handle, monitor, reduce…; nouns such as process, project, control, change, report, design are left out on purpose) are never in a phrase | "handle projects", "process involves", "project implements" | "process improvement", "applied mathematics" |
 | **Their -ing form** (providing, monitoring, managing…) may be part of a phrase, but **not right after a preposition** (in, for, of, with…) **or a plural noun**: there it is a verb | "in providing quality care" gives no "providing quality"; "in mitigating plastic pollution", "nurses providing care", "for monitoring water quality" | "monitoring system", "the water quality monitoring system", "real-time monitoring" |
 | **Adverbs** ending in -ly after -al, -ful, -ous, -ive, -ent, -ant, -ic, -ate, -ing, -less, -ish, -ed, -ular/-ilar, -ably/-ibly, -arily, plus a short list (only, highly, mainly…) | "documents internally" | "family planning", "supply chain", "elderly patients", "early detection", "monthly income" |
-| **Vague first words** (specific, various, different, several, certain, existing, relevant…) cannot start a phrase | "specific plastic", "various documents" | "plastic types" |
+| **Vague words** (specific, various, different, several, certain, existing, relevant, many, few, such, same, own…) cannot start a phrase, and since errata #79 cannot end one either | "specific plastic", "various documents", "producing various" | "plastic types" |
 | **A past form never ends a phrase** (-ed, or an irregular one: held, made, born, rose, taught…) | "participants reported", "proponent excluded", "nurses held", "pupils taught" | "perceived stress" |
 | **An -ed word cannot start a phrase right after a noun**: there it is the verb of the sentence. "Noun" here is a phrase word, or "study" / "research", which similarity drops. After another -ed word, "the", "of", "and", a comma or the start of a sentence it still can | "Drip irrigation saved water" gives no "saved water"; "This study assessed students" gives no "assessed students" | "Reduced tillage", "automated attendance system", "improved varieties", "practiced reduced tillage" → "reduced tillage" |
 | **Roman page numbers** (up to xcix, 3+ letters) are no word | "xiii Nurse-Patient" | "Nurse-Patient interaction" |
@@ -412,7 +413,7 @@ yet."** Students do not see it.
 
 ---
 
-## 6. Automatic keywords on the Register form (errata #77)
+## 6. Automatic keywords on the Register form (errata #77, #79)
 
 The professor asked for keywords chosen automatically, with staff reviewing
 them and removing any. `autoKeywords()` in `keywordModel.ts`; the form part
@@ -430,26 +431,43 @@ chips), never when a reloaded draft already had its add.
 **How many.** The PDF's own printed keywords stay first. Then the best
 suggestions (the same order as the chips: learned first, at most **2**
 learned), at most **5**, and never past **8** keywords in all, so 2 of the 10
-places stay free for staff. Fewer is fine, and none is fine:
+places stay free for staff. Since errata #79 the room is **filled**; fewer are
+added only when the study has no more suggestions:
 
 | Printed keywords | 0 | 1–3 | 4 | 5 | 6 | 7 | 8–10 |
 |---|---|---|---|---|---|---|---|
 | Added automatically | 5 | 5 | 4 | 3 | 2 | 1 | 0 |
 
-**Only phrases seen at least twice** (review round 3, `autoMinCount`). A
-phrase of the abstract is added only when it appears **at least twice in the
-title plus abstract**, counted by `phraseCount()` with the same folding as
-`keywordKey()`: "fish farmer" and "fish farmers" count together, a
-three-word term counts as itself, nothing is counted across a full stop,
-comma, bracket or dash. A phrase seen once stays a suggestion chip, exactly
-as before. Why: on the 14 made-up capstones and the 9 theses every junk
-pick of round 2 appeared once ("system sends", "system records",
-"registrar approves", "system waters", "set level", "posted daily",
-"percent rice", "lower compliance", "control registration", "sustainable
-waste", "major corporations", "care quality"), while the main terms repeat
-("monitoring system" 3 times, "reduced tillage" 5, "heart failure" 12 in the
-title plus abstract). Learned keywords (from 30 studies) are not counted;
-they follow their own rules (§4).
+**Phrases seen twice first, then the room is filled** (errata #79; review
+round 3 added only phrases seen twice). The professor asked that keywords
+are included automatically and staff only remove or keep them, so the save
+step now fills its room in two passes:
+
+1. the learned ones (from 30 studies, §4; not counted) and the phrases that
+   appear **at least twice in the title plus abstract** (`autoMinCount`),
+   best first;
+2. then, while there is room, the **other phrases in their usual order**
+   (best TF-IDF score first, the same order as the chips).
+
+`phraseCount()` counts with the same folding as `keywordKey()`: "fish
+farmer" and "fish farmers" count together, a three-word term counts as
+itself, nothing is counted across a full stop, comma, bracket or dash.
+Example: in "Goat raisers sold goat milk. Goats, milk, goats, milk, … A solar
+dryer was built; the solar dryer worked." the phrase "goat milk" scores
+higher than "solar dryer" (goat and milk are frequent words), but "solar
+dryer" is seen twice, so it is added first, then "goat milk", then "Goat
+raisers"; with room for only 1, only "solar dryer". Why the repeated ones go
+first: in review round 2 every junk automatic pick appeared once ("system
+sends", "system records", "registrar approves", "system waters", "set
+level", "posted daily", "percent rice", "lower compliance", "control
+registration", "sustainable waste", "major corporations", "care quality"),
+while the main terms repeat ("monitoring system" 3 times, "reduced tillage"
+5, "heart failure" 12). Such once-seen picks can now come back, but only in
+the places left after the repeated phrases; staff remove them (§7). Real
+example, 2025 CALAMLAM (no printed keywords, test run with no title typed and
+the other samples stored): before, only "DZLB Online" and "technical
+elements" were added; now also "Radyo DZLB", "storytelling elements" and
+"legacy format".
 
 **No overlapping keywords** (review rounds 2 and 3). A suggestion that
 contains a listed or already added keyword, is part of one, or has **the
@@ -467,7 +485,10 @@ with the printed "Climate change", "climate change adaptation" does.
 edge until the study is saved, and a note: "Keywords marked auto were chosen
 automatically. Remove any that do not fit." Screen readers hear "…, added
 automatically" and the × is "Remove keyword …, added automatically". The
-rest stay as suggestion chips, as before.
+rest stay as chips in the **Suggested keywords** box, whose hint starts
+**"Not added. Click one to add it."** (errata #79), so nobody takes them for
+keywords of the study. The box stays because it is the undo for a removed
+keyword.
 
 **Removed stays removed.** A keyword removed with its × (auto or not) is
 remembered by its key and is **never added again by itself**: not when the
@@ -492,7 +513,10 @@ second can land on a suggestion chip and add it — 8 of 48 such clicks or taps
 at 1.2 s and 2 s did, at 1366×800 and on a 390×844 phone; none removed a
 keyword or posted. After round 3, with fewer automatic keywords (so the chips
 sit elsewhere) and a new test abstract: 12 of 48, at the same two sizes,
-still none removed or posted. It can only add a keyword, which shows in the Keywords list,
+still none removed or posted. After errata #79 (the room is filled again, so
+the chips move back): 10 of 48, at 1366×800 with both study shapes and on
+the 390×844 phone, still none removed or posted, and 0 of 24 inside the
+first second. It can only add a keyword, which shows in the Keywords list,
 and one click on its × removes it. No other click rule is used: a rule about
 the mouse not having moved ignored deliberate clicks in errata #72.
 
@@ -519,22 +543,34 @@ the mouse not having moved ignored deliberate clicks in errata #72.
   noun, which looks like a plural noun ("system sends", "system records",
   "registrar approves", "system waters", "application helps", "saves
   water", "project addresses"), and a plain verb after a plural noun
-  ("sensors measure"). Since round 3 these are **not added automatically**
-  when they appear once, which in the 14 made-up capstones and the 9 theses
-  is every time; they can still be **suggestion chips**. No meaning — like
+  ("sensors measure"). Round 3 kept them out by adding only phrases seen
+  twice; since errata #79 they **can be added again as fillers**, but only
+  in the places left after the phrases seen twice. In the 14 made-up
+  capstones 7 come back ("system records", "registrar approves", "lower
+  compliance", "percent rice", "posted daily", "system waters", "set
+  level"); in the 29 sample PDFs read, 4 clear ones ("practice
+  adaptability", "proactive Park", "help PNOC", "developed protocol") and
+  some weak ones ("Technology Leaders", "Stage-Gate Standard", "situ
+  conservation", "major corporations", "efficient procedure", "applicable
+  protocol"). The AUTO tag and × are there for them. No meaning — like
   similarity, it compares words, not ideas (`docs/14` §5).
 - **A term seen only once is never a three-word keyword** (§3): "social media
   marketing", "milk tea shops", "soil organic matter" give their stronger pair
   ("social media", "tea shops", "organic matter"), and on a tie the
   right-hand pair can lose a good first word ("Fall armyworm" → "armyworm
   damage", "lowland rice" → "rice fields").
-- **Fewer automatic keywords** (round 3): only phrases seen twice are added,
-  so a short abstract often gets 1 to 3, sometimes none. On the 14 made-up
-  capstones 41 were added instead of 70; on the 9 theses 26 instead of 41
-  (FULLEROS none: its repeated phrases are all inside its printed keywords).
-- **Good terms seen once stay chips**, never added: "stock levels", "grain
-  yield", "elementary school", "feed conversion", "Real-time monitoring",
-  "tertiary hospital", "survival rate". Staff click them.
+- **The room is filled** (errata #79): round 3 gave a short abstract 1 to 3
+  automatic keywords, sometimes none; now each study gets its full room
+  unless it runs out of suggestions. 14 made-up capstones 41 → 70 (5 each);
+  29 sample PDFs read 69 → 108, 39 of them seen once. Only ALFONSO (9 printed)
+  and LACAP (8 printed) get none: they have no room.
+- **Good terms seen once are now added when there is room** ("stock levels",
+  "grain yield", "elementary school", "feed conversion", "Radyo DZLB"), but
+  they stay chips when the repeated phrases and better-scoring ones fill
+  the room first ("tertiary hospital", "Real-time monitoring"). **A junk
+  filler can take a good term's place:** in the greenhouse capstone "system
+  waters" and "set level" score above "Real-time monitoring", so they are
+  added and it stays a chip.
 - **A repeated fragment is still added:** "IoT-based water", "web-based
   inventory", "Fish fed", "Philippines University" each appear twice. The
   AUTO tag is there so staff can remove them.
