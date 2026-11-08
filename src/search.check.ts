@@ -8,6 +8,7 @@ import {
 } from "./search.ts";
 import { splitSentences, summarise } from "./summary.ts";
 import type { Thesis } from "./types.ts";
+import { DEGREES } from "./validation.ts";
 
 let failed = 0;
 function check(label: string, got: unknown, want: unknown) {
@@ -107,8 +108,11 @@ check("degrees are not indexed: “PhD” finds nothing", ids("PhD"), []);
 check("“Bautista” finds the adviser's study", ids("Bautista"), ["test"]);
 
 check("every title and degree the Register form accepts is left out (any case, with or without the dot)",
-  ["Dr.", "Engr.", "Prof.", "Asst.", "Assoc.", "Mr.", "Mrs.", "Ms.", "Atty.", "PhD", "EdD", "MSc", "MS", "MA", "MIT", "MBA", "RN", "PE", "CE"]
+  ["Dr.", "Engr.", "Prof.", "Asst.", "Assoc.", "Mr.", "Mrs.", "Ms.", "Atty.", "PhD", "EdD", "MSc", "MS", "MA", "MIT", "MBA", "RN", "PE", "CE",
+    "DIT", "MAN", "MAEd", "MAT", "MSIT", "MSCS", "MPA", "DPA", "LPT", "CPA"]
     .map(w => tokenize(w)[0]).filter(w => !isNameTitle(w)), []);
+check("errata #82: every degree in validation.ts DEGREES is left out", DEGREES.map(d => tokenize(d)[0]).filter(w => !isNameTitle(w)), []);
+check("errata #82: Jr., Sr., II and III stay searchable (part of a name)", ["Jr.", "Sr.", "II", "III"].map(w => tokenize(w)[0]).filter(isNameTitle), []);
 check("isNameTitle: a real name is not a title", ["Stone", "Pedro", "Maria"].some(isNameTitle), false);
 
 console.log("\n— Which field matched (termScores.field), read from the index —");

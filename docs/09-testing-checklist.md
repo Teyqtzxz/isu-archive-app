@@ -287,11 +287,49 @@ most.
       through the Drive API
 - [ ] **[auto]** `node src/validation.check.ts` ends with "All passed."
 - [ ] **[auto]** `node src/pdfText.check.ts` ends with "All passed." (how far the
-      PDF is read, contents lines, scanned PDFs — errata #78)
+      PDF is read, contents lines, scanned PDFs — errata #78; the progress line —
+      errata #82)
+- [ ] **[auto]** `node src/pdfDetails.check.ts` ends with "All passed." (the
+      details read from the PDF, never guessed, never overwriting — errata #82)
+- [ ] **PDF first (errata #82).** Register step 1 shows only "Choose PDF from
+      this computer" and the Google Drive link; there is **no** Title, Authors,
+      Department, Year completed or Adviser box on it. The steps read "Choose
+      PDF → Reading → Check & save"
+- [ ] While reading, the panel shows one line that changes: "Downloading 3.1 of
+      11.6 MB…" (Drive) and "Reading page 5 (up to 40)…"
+- [ ] **ISU thesis** (labelled block under ABSTRACT: Title, Program, Authors,
+      Academic Year, Adviser) → Check & save has the title and authors from the
+      block, the department from the Program line, **Year completed from the
+      title page date** ("December 2024" → 2024, never from "AY 2024-2025"),
+      the adviser exactly as printed with its degree (e.g. "…, DIT"; "Dr." is
+      never added). Each filled box has **FROM PDF** in its label; a screen
+      reader says it with the label ("Title, required, from PDF"); typing in a
+      box removes its tag. The abstract starts with its first sentence — no
+      "Title :", "Authors :" or adviser line in it
+- [ ] **UP Open University thesis** (title page: programme, author, title in
+      capitals, "Thesis Adviser:", adviser, date) → the same five details; a
+      title printed only in capitals stays in capitals with the grey note "The
+      title is printed in capital letters…"; when the page's running header
+      prints the same title in normal letters (identical letters), that one is
+      used; degrees after the student's name ("…, RN") are dropped
+- [ ] **Never guessed:** a programme that is not one of the ten departments
+      (e.g. "Master of Development Communication") leaves Department on
+      "Select dept."; only "AY 2024-2025" printed leaves Year completed empty
+      with the grey note naming the academic year; "Thesis Advisers:" with two
+      names leaves Adviser empty with a note listing both
+- [ ] A value read from the PDF that breaks a rule shows the normal message at
+      once (e.g. an adviser "…, DVM" → "After a comma, only Jr., Sr., II, III or
+      a degree can follow: …")
+- [ ] **Never overwritten:** read a PDF, change the title, "← Change PDF",
+      choose another PDF, "Read PDF & continue" → your title stays, with "The
+      PDF shows a different title: “…”. Yours is kept."; the details still
+      tagged FROM PDF take the new PDF's values (or go empty when it has none)
+- [ ] A scanned PDF → NEEDS MANUAL ENTRY with every detail empty and nothing
+      tagged; staff type everything, as before
 - [ ] **Abstract past page 15** (errata #78): choose a thesis whose abstract
       starts after page 15 (e.g. a UP Open University thesis with front matter
       to page xvii, abstract on page 17) → while reading, the panel says
-      "Scanning up to 40 pages" → DETAILS FILLED IN with that abstract, not
+      "Reading page 17 (up to 40)…" → DETAILS FILLED IN with that abstract, not
       "Could not find an abstract or keywords in that PDF." Same with its Drive
       link (no PDF chosen)
 - [ ] A thesis whose contents page lists "ABSTRACT x i" (xi printed with a
@@ -306,16 +344,19 @@ most.
       fast as a short one; a thesis with no abstract at all still shows
       "Could not find an abstract or keywords in that PDF. Please type or paste
       the abstract."
-- [ ] Clicking "Read PDF & continue" with an empty form shows a red message
-      under **each** missing field (Drive link, Title, Authors, Department,
-      Adviser) and puts the cursor in the first one. An adviser of only spaces
-      counts as missing
+- [ ] Clicking "Read PDF & continue" with no Drive link shows "Please paste the
+      Google Drive link of the study PDF." (with a PDF chosen: "Paste the
+      study's Google Drive link too. …") and the cursor goes there
+- [ ] On Check & save, "Confirm & Save" / "Save Manually" with a detail missing
+      shows a red message under **each** missing field (Title, Authors,
+      Department, Year completed, Adviser, Abstract) and puts the cursor in the
+      first one; nothing is saved. An adviser of only spaces counts as missing
 - [ ] With a screen reader (or dev tools), a field with a message has
       `aria-invalid="true"` and `aria-describedby` pointing at that message
 - [ ] No message appears while typing; a message appears on leaving a field
       with a bad value (e.g. Title `2024`), and clears as soon as it is fixed
-- [ ] "Authors" is required: with no author, "Read PDF & continue" shows
-      "Please add at least one author."
+- [ ] "Authors" is required: with no author, Save shows "Please add at least
+      one author."
 - [ ] Authors are added one at a time as chips, each chip can be removed, and
       adding the same name twice (any capitals) shows a grey "… is already in
       the list." and adds nothing
@@ -325,13 +366,16 @@ most.
       / `Juan Dela Cruz III`; `Juan dela Cruz` stays as typed
 - [ ] Adviser `Dr. Santos` → "Type the adviser's full name, e.g. Dr. Maria
       Santos"; `Asst. Prof. Maria Santos, PhD` is accepted; `Santos, Maria` →
-      "After a comma, only a degree can follow: …"
+      "After a comma, only Jr., Sr., II, III or a degree can follow: …";
+      `Rosa B. Alcantara, DIT`, `…, MAN, RN`, `…, Ph. D.` (saved as PhD) and
+      `Roberto Figueroa, Jr.` are accepted (errata #82)
 - [ ] A name typed in the Authors box but not yet added still counts when you
-      press "Read PDF & continue", after the same checks
+      press Save, after the same checks
 - [ ] Choosing a file that is not a PDF shows "That file is not a PDF." at once
       and the file is not taken
-- [ ] Academic Year is a text box (number keypad on a phone) that starts at
-      this year; letters are ignored, pasting "Year 2019" gives "2019", and it
+- [ ] **Year completed** (the label on Register and Edit since errata #82; the
+      stored field is still `year`) is a text box (number keypad on a phone)
+      that starts **empty** on a new study; letters are ignored, pasting "Year 2019" gives "2019", and it
       takes at most 4 digits. `201` → "Please type a 4-digit year, e.g. 2019.";
       next year → "The year can't be later than …"; `1998` is saved as 1998
 - [ ] Real text-based PDF → PROCESSING → DETAILS FILLED IN, on localhost **and**
@@ -366,7 +410,7 @@ most.
       "Confirm & Save" is not under the mouse. Click again without moving the
       mouse → nothing is posted
 - [ ] The save step also opens at the top after a failed read ("Save
-      Manually"), after Edit study → "Continue", after "Edit details" → "Read
+      Manually"), after Edit study → "Continue", after "Change PDF" → "Read
       PDF & continue" with the same PDF, and when a draft reopens on it after a
       reload
 - [ ] Zoom the browser out until the whole save step fits in the window. Click
@@ -406,9 +450,10 @@ most.
 - [ ] **Student:** Study Details shows only "Read full study" and the
       view-only line — **no Edit, no Delete** (check on the student dashboard's
       "View details" too)
-- [ ] **Edit** opens "Edit study" (heading and step 1) with every field filled
-      in: title, authors (chips), department, Academic Year, adviser, Drive
-      link; the PDF box says "(optional)" and the button says **"Continue"**
+- [ ] **Edit** opens "Edit study" (heading and step 1) with the Drive link
+      filled in; the PDF box says "(optional)" and the button says
+      **"Continue"**. Check & save then shows every field filled in: title,
+      authors (chips), department, Year completed, adviser
 - [ ] **Edit without a PDF:** change the title → "Continue" goes straight to
       the save step (no "Reading PDF…", no Drive download — check the Network
       tab: no `googleapis.com/drive` request) with "Ready to save: Current
@@ -421,22 +466,25 @@ most.
       unchanged, and the study keeps its place in the newest-first list
 - [ ] **Edit with a PDF:** choose a PDF → the button says "Read PDF & continue"
       → PROCESSING → "Details filled in:" with the abstract read from that
-      PDF; its printed keywords replace the saved ones **only if it prints
+      PDF; the study's title, department, year and adviser are **never
+      replaced** (a grey note shows what the PDF prints instead), only an
+      empty detail (e.g. no authors on an old record) is filled and tagged
+      FROM PDF (errata #82); its printed keywords replace the saved ones **only if it prints
       some** — a PDF with no keywords line keeps the saved keywords (errata
       #80); nothing is added automatically; Save changes keeps them
 - [ ] A PDF that cannot be read (scanned) in Edit → "Could not read the PDF."
       and the study's current abstract and keywords are **kept**, not blanked
-- [ ] **Validation on edit:** clear the title → "Continue" shows "Please fill
-      in the title." under it; Academic Year `201` → "Please type a 4-digit
+- [ ] **Validation on edit:** clear the title → Save changes shows "Please
+      fill in the title." under it; Year completed `201` → "Please type a 4-digit
       year, e.g. 2019."; adviser `Dr. Santos` → the adviser message; an
       abstract cut to under 50 words → "The abstract looks too short…" on Save
       changes; nothing is saved while a message shows
 - [ ] A study saved before the name checks with an author like `Dela Cruz`:
-      "Continue" shows "Fix “Dela Cruz”: remove it and add it again. …"; remove
+      Save changes shows "Fix “Dela Cruz”: remove it and add it again. …"; remove
       the chip, add `Juan Dela Cruz`, and it saves
 - [ ] Values are cleaned on loading: a title saved with double spaces or an
       author saved as `juan dela cruz` shows as `Juan Dela Cruz` in the form
-- [ ] **Cancel** (step 1) and **Edit details → Cancel** return to the search
+- [ ] **Cancel** (step 1) and **Change PDF → Cancel** return to the search
       screen at that study with **nothing** changed; clicking a staff tab while
       editing also leaves without saving
 - [ ] **Delete** → a dialog: "Delete this study?", the study's title in bold,
@@ -532,7 +580,7 @@ most.
 - [ ] Remove an auto keyword with its × (after the first second) → it is
       gone, **"Removed *keyword*. Undo"** shows under the list, and it is
       **never added again by itself**: not after editing the abstract, not
-      after "Edit details" → Read PDF & continue with the same PDF, not after
+      after "Change PDF" → Read PDF & continue with the same PDF, not after
       a reload (the draft keeps the tags and the removed list), not after
       reading another PDF
 - [ ] **Undo** → the keyword is back **in the same place**, with its AUTO tag
@@ -631,9 +679,10 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
       trip, bad JSON / wrong shape / old or future version / another uid /
       another study ignored, unknown department → blank, "changed or not",
       staff tab, storage blocked → no draft and no error)
-- [ ] **Register, reload:** type a title (and an author) → F5 → the Register
-      tab reopens with everything typed and **"We restored your unsaved
-      study. Discard draft"** above the steps
+- [ ] **Register, reload:** paste a Drive link (or, on Check & save, type a
+      title and an author) → F5 → the Register tab reopens with everything
+      typed and **"We restored your unsaved study. Discard draft"** above the
+      steps
 - [ ] **Discard draft** → a blank form, the notice gone, `isu-draft:new`
       removed
 - [ ] **PDF chosen but not read:** choose a PDF, do not continue → F5 → the
@@ -643,7 +692,14 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
 - [ ] **Save step, reload:** Read PDF & continue → edit the abstract → F5 →
       the save step reopens with the abstract, keywords and (manual entry)
       the read error; no PDF is needed to save. After a good read,
-      Edit details → Continue with no PDF keeps the abstract (no Drive read)
+      Change PDF → Continue with no PDF keeps the abstract (no Drive read).
+      The **FROM PDF** tags come back on the details not changed since the
+      read (errata #82)
+- [ ] **A draft from before errata #82** (details typed on the old step 1)
+      still restores: it opens on step 1 with "Choose the PDF again"; after
+      the read the typed title, year … are kept (no tag) and only the empty
+      details are filled from the PDF. One saved on the old save step opens on
+      Check & save as before, nothing tagged
 - [ ] **A draft from before errata #80** (text typed in the old "Add a
       keyword" box) still restores: its keywords stay, the typed text is gone
       (it was never added); a draft whose only change was that text is

@@ -66,6 +66,9 @@ export function isYearTerm(term: string): boolean {
 const NAME_TITLES = new Set([
   "dr", "dra", "drs", "engr", "prof", "asst", "assoc", "mr", "mrs", "ms", "atty",
   "phd", "edd", "msc", "ma", "mit", "mba", "rn", "pe", "ce",
+  // errata #82: the degrees added to validation.ts DEGREES. Jr., Sr., II and
+  // III are part of a name, so they stay searchable.
+  "dit", "man", "maed", "mat", "msit", "mscs", "mpa", "dpa", "lpt", "cpa",
 ]);
 
 /** True for a title or degree word ("Dr", "engr", "PhD"), any case: not

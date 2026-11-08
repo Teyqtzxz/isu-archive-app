@@ -41,6 +41,7 @@ const draft: RegisterDraft = {
   step: "save", readState: "success", keptCurrent: false, readError: "",
   lastRead: { source: "file:study.pdf:1234:99", ok: true }, pdfName: "", baseUpdatedAt: "",
   autoAdded: ["rice"], removedKeys: ["soil moisture"], autoFor: "file:study.pdf:1234:99",
+  fromPdf: ["title", "year"], pdfNotes: { adviser: "The PDF lists 2 advisers: A; B. Type the one to record." },
 };
 const raw = JSON.stringify(draft);
 const want = { uid: "uid-A", studyId: null };
@@ -59,6 +60,20 @@ check("details step with no read state", parseDraft(edit({ step: "details", read
 check("lastRead may be null", parseDraft(edit({ lastRead: null }), want)?.lastRead, null);
 check("round trip: automatic keywords (auto tags, removed, done for this PDF)",
   JSON.stringify([back?.autoAdded, back?.removedKeys, back?.autoFor]), JSON.stringify([["rice"], ["soil moisture"], "file:study.pdf:1234:99"]));
+check("round trip: the from-PDF tags and notes (errata #82)",
+  JSON.stringify([back?.fromPdf, back?.pdfNotes]), JSON.stringify([["title", "year"], { adviser: "The PDF lists 2 advisers: A; B. Type the one to record." }]));
+const beforeFromPdf = (o: Record<string, unknown>) => { const d: Record<string, unknown> = { ...draft, ...o }; delete d.fromPdf; delete d.pdfNotes; return JSON.stringify(d); };
+check("a draft saved before errata #82 (save step) still loads, nothing tagged",
+  JSON.stringify([parseDraft(beforeFromPdf({}), want)?.step, parseDraft(beforeFromPdf({}), want)?.fromPdf, parseDraft(beforeFromPdf({}), want)?.pdfNotes]), JSON.stringify(["save", [], {}]));
+check("a draft saved before errata #82 (details step, typed title and year) still loads with them",
+  JSON.stringify([parseDraft(beforeFromPdf({ step: "details", readState: null }), want)?.form.title, parseDraft(beforeFromPdf({ step: "details", readState: null }), want)?.form.year]),
+  JSON.stringify(["Rice yield", "2025"]));
+check("fromPdf with an unknown field → ignored draft", parseDraft(edit({ fromPdf: ["title", "abstract"] }), want), null);
+check("fromPdf not a list → ignored draft", parseDraft(edit({ fromPdf: "title" }), want), null);
+check("fromPdf repeats are dropped", JSON.stringify(parseDraft(edit({ fromPdf: ["year", "year"] }), want)?.fromPdf), JSON.stringify(["year"]));
+check("pdfNotes with an unknown field → ignored draft", parseDraft(edit({ pdfNotes: { abstract: "x" } }), want), null);
+check("pdfNotes with a non-text note → ignored draft", parseDraft(edit({ pdfNotes: { year: 5 } }), want), null);
+check("pdfNotes a list → ignored draft", parseDraft(edit({ pdfNotes: ["x"] }), want), null);
 check("autoFor may be null (not added yet)", parseDraft(edit({ autoFor: null }), want)?.autoFor, null);
 const older = (o: Record<string, unknown>) => { const d: Record<string, unknown> = { ...draft, ...o }; delete d.autoAdded; delete d.removedKeys; delete d.autoFor; return JSON.stringify(d); };
 check("a draft saved before automatic keywords: kept, nothing tagged or removed",

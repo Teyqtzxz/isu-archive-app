@@ -28,7 +28,9 @@ identifiers, and do not put "thesis" or "archive" back into on-screen text.
 Students read the whole study **view-only** in Google's viewer ("Read full study"; staff see "Open in Drive"). Each PDF is shared as **Isabela State University → Viewer** with download/print/copy limited to **Editors** — that Drive setting is the real protection, and it also blocks the Drive API download, so staff register from a PDF on their computer.
 
 Staff register research studies by pasting a Google Drive link; the app reads
-the PDF in the browser and auto-fills the abstract and keywords, and saving
+the PDF in the browser and auto-fills the title, authors, department, year
+completed, adviser, abstract and keywords on one "Check & save" screen (PDF first,
+errata #82: never guessed, never overwriting what staff typed), and saving
 **posts** the study at once (there is no review queue). Staff and students then
 search the e-library with BM25F ranking (title, keywords, authors, adviser,
 abstract and Academic Year, title weighted most), read a combined extractive summary of
@@ -166,7 +168,11 @@ src/
                         one sentence per ticked study (step 07);
                         scores sentences via textOnly() only      ✅ EXISTS
   extractPdf.ts       ← pure: Drive API download or a local file +
-                        pdf.js text extraction (step 06)          ✅ EXISTS
+                        pdf.js text extraction (step 06); pdf.js
+                        loaded with import() only when Register /
+                        Edit opens (preloadPdfReader), one shared
+                        PDFWorker, progress callbacks — never a
+                        static pdfjs-dist import (errata #82)    ✅ EXISTS
   pdfText.ts          ← pure, no pdf.js: extractAbstractAndKeywords
                         and extractFromPages (page by page, stop
                         one page after the abstract, at most 40;
@@ -174,7 +180,24 @@ src/
                         running header at the abstract's end
                         dropped; wrapped keyword lines joined);
                         examples in pdfText.check.ts
-                        (node src/pdfText.check.ts); errata #78   ✅ EXISTS
+                        (node src/pdfText.check.ts); errata #78;
+                        readPages (keeps every page's text,
+                        reports page n) and progressText
+                        ("Reading page 5 (up to 40)…"), #82      ✅ EXISTS
+  pdfDetails.ts       ← pure, no pdf.js: the study details from
+                        the PDF (errata #82) — readDetails (the
+                        labelled block under ABSTRACT, then the
+                        ISU / UP Open University title page, then
+                        the approval sheet; Year completed only
+                        from a date, never "AY 2024-2025";
+                        department only when the programme names
+                        exactly one of DEPARTMENTS; two advisers →
+                        empty + note), adviserAsPrinted,
+                        abstractWithoutTitle/Block, readStudy,
+                        fillFromPdf (fills only empty or still
+                        "from PDF" fields); made-up examples in
+                        pdfDetails.check.ts — never a real
+                        study's text                              ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords,
                         countAdded (this month/year in LOCAL
                         time, never UTC), and for the library
@@ -336,7 +359,7 @@ exists — the work is to *add* to it, not to create it.
 with the file-ownership split in `10-group-work-split.md`, and the name is
 accurate.
 
-`search.ts`, `summary.ts`, `extractPdf.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts`, `smartSearch.ts`, `auth.ts` and `draft.ts` (its parsing; storage access only in try/catch wrappers) are **pure functions with no Firebase
+`search.ts`, `summary.ts`, `extractPdf.ts`, `pdfText.ts`, `pdfDetails.ts`, `stats.ts`, `citation.ts`, `snippet.ts`, `similarity.ts`, `keywordModel.ts`, `levenshtein.ts`, `trie.ts`, `smartSearch.ts`, `auth.ts` and `draft.ts` (its parsing; storage access only in try/catch wrappers) are **pure functions with no Firebase
 import.** Keep them that way — it is what makes them testable and reviewable.
 
 ## What is real vs fake in the current code
@@ -371,12 +394,22 @@ Real, working — **do not rewrite**:
 - Staff **Edit** and **Delete** in Study Details (students never see them).
   Edit is `RegisterForm` in edit mode (`study` prop): pre-filled and cleaned
   as when typed, same `validation.ts` checks, reading a PDF optional (none
-  chosen → no Drive download, the current abstract/keywords are kept), "Save
+  chosen → no Drive download, the current abstract/keywords are kept; one
+  chosen never replaces a detail the study has — only an empty one is filled,
+  errata #82), "Save
   changes" → `updateThesis()`, toast "Study updated", back to Search at that
   study. Delete asks "Delete this study?" (`ConfirmDialog`) → `deleteThesis()`,
   toast "Study deleted"; the live subscription removes it everywhere
 - PDF reading from Drive or from this computer, with manual entry when it fails
   (step 06); the extractive summary (step 07)
+- Register is **PDF first** (errata #82): step 1 = the PDF and the Drive link
+  only; "Read PDF & continue"; one **Check & save** screen with every detail,
+  the abstract, the keywords and Save ("← Change PDF" goes back, all kept).
+  Details read from the PDF carry the text **FROM PDF** in their label until
+  changed; a detail the PDF does not clearly give stays empty; nothing staff
+  typed is overwritten (a grey note shows what the PDF says instead). Every
+  rule is checked on Save. A progress line shows the download and the page
+  being read
 - Department statistics: studies per department and top keywords (staff
   Statistics tab, student dashboard)
 - Library charts (`LibraryCharts.tsx`, errata #76), staff Statistics tab
@@ -571,10 +604,16 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
 - Names: an author needs a first name and a surname (`J. Dela Cruz` counts;
   `Dela Cruz` alone does not; `Dela Cruz, Juan` is accepted). The adviser may
   start with a title and end with degrees after a comma (`Dr. Maria Santos,
-  PhD`); the `Surname, Given` form is for authors only. A name typed all in
+  PhD`; also DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT, CPA and "Ph. D.",
+  errata #82); Jr., Sr., II, III after a comma are part of the adviser's name
+  (`Roberto Figueroa, Jr.`), not degrees, and stay searchable; the `Surname,
+  Given` form is for authors only. A name typed all in
   lowercase or ALL CAPS is saved with capitals; mixed case is kept as typed.
-- Academic Year is a text box, not a dropdown or date picker: digits only, 4
-  digits, any past year up to this year, saved as a number.
+- **Year completed** (the label on Register and Edit since errata #82; the
+  field is still `year`, and search, citations and charts still call it the
+  study's year) is a text box, not a dropdown or date picker: digits only, 4
+  digits, any past year up to this year, saved as a number; it starts empty
+  on a new study.
 - **Edit study uses the same checks** (it is the same form). A saved record is
   cleaned on loading as if typed; an author name saved before the checks
   existed is kept, but saving asks for it to be fixed (`cleanAuthorList()`).

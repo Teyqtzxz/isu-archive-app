@@ -429,7 +429,7 @@ that. `autoKeywords()` in `keywordModel.ts`; the form part is in
 step opens after a **successful** read whose abstract passes the abstract
 check (`checkAbstract`: 50 words or more), and the e-library has loaded. If
 the e-library fails to load, the abstract phrases alone are added (no learned
-keyword can come from an empty model anyway). Going back with "Edit details"
+keyword can come from an empty model anyway). Going back with "Change PDF" (called "Edit details" before errata #82)
 and continuing with the same PDF does not add again; reading another PDF
 replaces the keywords with that PDF's own (as before) and adds once for it.
 Never when a reloaded draft already had its add.

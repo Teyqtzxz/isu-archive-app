@@ -264,24 +264,58 @@ export function takeKeywordsLine(typed: string): { abstract: string; keywords: s
   return null;
 }
 
+/** How far a PDF read has got (errata #82), for the line under the spinner. */
+export type ReadProgress =
+  | { kind: "loading" }
+  | { kind: "download"; loaded: number; total: number | null }
+  | { kind: "page"; page: number };
+
+const mb = (bytes: number) => (bytes / 1048576).toFixed(1);
+
+/** "Downloading 3.1 of 11.6 MB…", "Reading page 5 (up to 40)…". */
+export function progressText(p: ReadProgress): string {
+  if (p.kind === "loading") return "Starting the PDF reader…";
+  if (p.kind === "download") {
+    return p.total && p.total >= p.loaded ? `Downloading ${mb(p.loaded)} of ${mb(p.total)} MB…` : `Downloading ${mb(p.loaded)} MB…`;
+  }
+  return `Reading page ${p.page} (up to ${MAX_PAGES})…`;
+}
+
+/** What reading the pages gave. `pages` holds the text of every page read
+ *  (index 0 = page 1), so the study details (pdfDetails.ts) can be read from
+ *  the title page and the abstract page without reading them twice.
+ *  `problem` is MSG_SCANNED or MSG_NOT_FOUND, or null. */
+export interface PagesRead {
+  abstract: string;
+  keywords: string[];
+  pagesRead: number;
+  pages: string[];
+  problem: string | null;
+}
+
 /** Read pages one at a time (page 1 first) and stop early. extractAbstractAndKeywords
  *  only returns an abstract once the heading that ENDS it has been read, so
  *  "abstract found" also means "its end is known". One more page is then read,
  *  because the Keywords line is sometimes printed at the top of the next page.
  *  With no abstract, reading goes on to MAX_PAGES (or the last page).
  *  `pageText(n)` gives the text of page n (1-based), lines ending in "\n".
- *  Throws MSG_SCANNED or MSG_NOT_FOUND, as before. */
-export async function extractFromPages(
+ *  `onPage(n)` is told before page n is read (the "Reading page n" line). */
+export async function readPages(
   numPages: number,
   pageText: (n: number) => Promise<string>,
-): Promise<{ abstract: string; keywords: string[]; pagesRead: number }> {
+  onPage?: (n: number) => void,
+): Promise<PagesRead> {
   const last = Math.min(numPages, MAX_PAGES);
   let text = "";
   let scanText = "";
   let stopAfter = last;
   let pagesRead = 0;
+  const pages: string[] = [];
   for (let n = 1; n <= stopAfter; n++) {
-    const page = (await pageText(n)) + "\n";          // page break
+    onPage?.(n);
+    const raw = await pageText(n);
+    pages.push(raw);
+    const page = raw + "\n";                          // page break
     text += page;
     if (n <= SCAN_CHECK_PAGES) scanText += page;
     pagesRead = n;
@@ -290,7 +324,19 @@ export async function extractFromPages(
     }
   }
   const { abstract, keywords } = extractAbstractAndKeywords(text);
-  if (!abstract && scanText.replace(/\s/g, "").length < MIN_TEXT_CHARS) throw new Error(MSG_SCANNED);
-  if (!abstract && keywords.length === 0) throw new Error(MSG_NOT_FOUND);
+  const problem = !abstract && scanText.replace(/\s/g, "").length < MIN_TEXT_CHARS ? MSG_SCANNED
+    : !abstract && keywords.length === 0 ? MSG_NOT_FOUND
+    : null;
+  return { abstract, keywords, pagesRead, pages, problem };
+}
+
+/** readPages for the abstract and keywords only. Throws MSG_SCANNED or
+ *  MSG_NOT_FOUND, as before. */
+export async function extractFromPages(
+  numPages: number,
+  pageText: (n: number) => Promise<string>,
+): Promise<{ abstract: string; keywords: string[]; pagesRead: number }> {
+  const { abstract, keywords, pagesRead, problem } = await readPages(numPages, pageText);
+  if (problem) throw new Error(problem);
   return { abstract, keywords, pagesRead };
 }

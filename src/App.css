@@ -532,6 +532,23 @@ select.input {
   text-transform: uppercase;
 }
 
+/* A study detail read from the PDF (errata #82): the words "from PDF" in the
+   field's label, until staff change the value. Text, not colour alone. */
+.pdf-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .chip-add {
   padding: 8px 14px;
   border-radius: var(--radius-md);
@@ -1531,7 +1548,9 @@ button.drive-btn { cursor: pointer; font-family: inherit; line-height: inherit; 
   justify-content: center;
 }
 .extract-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-.extract-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+.extract-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+/* "Downloading 3.1 of 11.6 MB…" / "Reading page 5 (up to 40)…" (errata #82). */
+.extract-progress { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; font-variant-numeric: tabular-nums; }
 .progress-track { height: 6px; border-radius: 3px; background: var(--fill-muted); overflow: hidden; max-width: 360px; margin: 0 auto; }
 .progress-fill { height: 100%; border-radius: 3px; background: var(--bar-fill); width: 72%; transition: width 2.5s ease; }
 

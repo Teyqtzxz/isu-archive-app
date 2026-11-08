@@ -2,7 +2,7 @@
 // (Node 22.18+ runs TypeScript directly; nothing to install.)
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 import {
-  ABSTRACT_MAX, MSG, addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle,
+  ABSTRACT_MAX, DEGREES, MSG, addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle,
   checkYear, cleanAbstract, cleanAuthorList, cleanKeywordList, cleanQuery, countWords, fixCapitals, pdfFileProblem, validateDriveLink, yearInput,
   type Added, type Checked,
 } from "./validation.ts";
@@ -81,9 +81,20 @@ check("name starting like a title (Drake)", checkAdviser("Drake Santos"), saved(
 check("degree after comma", checkAdviser("Maria Santos, PhD"), saved("Maria Santos, PhD"));
 check("two degrees", checkAdviser("Dr. Maria Santos, EdD, RN"), saved("Dr. Maria Santos, EdD, RN"));
 check("degree spelled Ph.D. → PhD", checkAdviser("Maria Santos, Ph.D."), saved("Maria Santos, PhD"));
-for (const d of ["PhD", "EdD", "MSc", "MS", "MA", "MIT", "MBA", "RN", "PE", "CE"]) {
-  check(`degree ${d}`, checkAdviser(`Maria Santos, ${d}`).error, null);
+for (const d of DEGREES) {
+  check(`degree ${d}`, checkAdviser(`Maria Santos, ${d}`), saved(`Maria Santos, ${d}`));
 }
+// errata #82: the degrees, spellings and suffixes printed on real title pages.
+check("DIT after the name (ISU title page)", checkAdviser("Rosa B. Alcantara, DIT"), saved("Rosa B. Alcantara, DIT"));
+check("two degrees, MAN and RN", checkAdviser("Asst. Prof. Rita C. Ramos, MAN, RN"), saved("Asst. Prof. Rita C. Ramos, MAN, RN"));
+check("“Ph. D.” with a space → PhD", checkAdviser("Melinda dP. Bandalaria, Ph. D."), saved("Melinda dP. Bandalaria, PhD"));
+check("“maed” → MAEd", checkAdviser("Maria Santos, maed"), saved("Maria Santos, MAEd"));
+check(", Jr. is part of the name", checkAdviser("Dr. Roberto B. Figueroa, Jr."), saved("Dr. Roberto B. Figueroa, Jr."));
+check(", JR (no dot) → Jr.", checkAdviser("ROBERTO FIGUEROA, JR"), saved("Roberto Figueroa, Jr."));
+check(", Sr. then a degree", checkAdviser("Pedro Reyes, Sr., PhD"), saved("Pedro Reyes, Sr., PhD"));
+check(", III stays in capitals", checkAdviser("Jose Rizal, iii"), saved("Jose Rizal, III"));
+check("a suffix after a degree is not accepted", checkAdviser("Maria Santos, PhD, Jr."), err("Maria Santos, PhD, Jr.", MSG.adviserDegree));
+check("the message lists every degree", DEGREES.every(d => MSG.adviserDegree.includes(d)), true);
 check("not a listed degree", checkAdviser("Maria Santos, DVM"), err("Maria Santos, DVM", MSG.adviserDegree));
 check("no Surname, Given form for the adviser", checkAdviser("Santos, Maria"), err("Santos, Maria", MSG.adviserDegree));
 check("digit rejected", checkAdviser("Dr. Maria Santos 3"), err("Dr. Maria Santos 3", MSG.nameChars));

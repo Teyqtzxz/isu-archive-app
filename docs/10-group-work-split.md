@@ -40,7 +40,7 @@ than repeating it. Each person only edits files they own.
 |---|---|
 | **A** | `src/types.ts` `src/firebase.ts` `src/data.ts` `src/seed.ts` `src/App.tsx` `firestore.rules` `components/LoginScreen.tsx` `components/StaffDashboard.tsx` `components/StudentDashboard.tsx` |
 | **B** | `src/search.ts` `src/summary.ts` `components/SearchScreen.tsx` `components/CombinedSummaryPanel.tsx` |
-| **C** | `src/extractPdf.ts` `components/RegisterForm.tsx` `src/index.css` `src/App.css` `firebase.json` `.firebaserc` |
+| **C** | `src/extractPdf.ts` `src/pdfText.ts` `src/pdfDetails.ts` `components/RegisterForm.tsx` `src/index.css` `src/App.css` `firebase.json` `.firebaserc` |
 | shared | `components/shared.tsx` — additive changes only (C's safe-area work) |
 
 When a step needs a one-line change in someone else's file (e.g. adding an

@@ -3,7 +3,7 @@
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 // All page texts below are made up.
 import {
-  MAX_PAGES, MSG_NOT_FOUND, MSG_SCANNED, extractAbstractAndKeywords, extractFromPages, takeKeywordsLine,
+  MAX_PAGES, MSG_NOT_FOUND, MSG_SCANNED, extractAbstractAndKeywords, extractFromPages, progressText, readPages, takeKeywordsLine,
 } from "./pdfText.ts";
 
 let failed = 0;
@@ -316,6 +316,29 @@ check("the label with nothing after it: removed, no keywords",
 check("the same list read from a PDF gives the same keywords",
   takeKeywordsLine(`${ABS}\nKeywords: rice yield; drip irrigation, and Isabela farms.`)?.keywords,
   extractAbstractAndKeywords(`ABSTRACT\n${ABS} More words here to pass forty letters.\nKeywords: rice yield; drip irrigation, and Isabela farms.\n`).keywords);
+
+console.log("\n— readPages and the progress line (errata #82) —");
+{
+  const pages30 = () => fake(30, { 3: abstractPage(), 4: "CHAPTER 1\nINTRODUCTION\n" });
+  const f = pages30();
+  const told: number[] = [];
+  const r = await readPages(30, async n => f.pages[n - 1], n => told.push(n));
+  const before = await run(pages30());
+  check("same abstract and keywords as extractFromPages",
+    [r.abstract, r.keywords], typeof before === "string" ? before : [before.abstract, before.keywords]);
+  check("the page texts read are kept, page 1 first", [r.pages.length, r.pages[2]], [4, abstractPage()]);
+  check("told before each page, in order", told, [1, 2, 3, 4]);
+  check("no problem", r.problem, null);
+  const scanned = await readPages(20, async () => "  4  ");
+  check("scanned → the problem instead of a throw", [scanned.problem, scanned.abstract], [MSG_SCANNED, ""]);
+  const none = await readPages(5, async n => `Plain text of page ${n} with enough letters to not look scanned at all.`);
+  check("no abstract → MSG_NOT_FOUND, pages still kept", [none.problem, none.pages.length], [MSG_NOT_FOUND, 5]);
+}
+check("progress: starting", progressText({ kind: "loading" }), "Starting the PDF reader…");
+check("progress: download with a size", progressText({ kind: "download", loaded: 3250000, total: 12152854 }), "Downloading 3.1 of 11.6 MB…");
+check("progress: download, size unknown", progressText({ kind: "download", loaded: 524288, total: null }), "Downloading 0.5 MB…");
+check("progress: a wrong size is not shown", progressText({ kind: "download", loaded: 2097152, total: 1048576 }), "Downloading 2.0 MB…");
+check("progress: a page", progressText({ kind: "page", page: 5 }), `Reading page 5 (up to ${MAX_PAGES})…`);
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);

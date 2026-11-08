@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { ExtractionState, NewThesis, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
-import { MAX_PAGES, extractFromDrive, extractFromFile } from "../extractPdf";
+import { preloadPdfReader, readFromDrive, readFromFile, type ReadProgress, type StudyRead } from "../extractPdf";
+import { progressText } from "../pdfText";
+import { fillFromPdf, type DetailField, type StudyDetails } from "../pdfDetails";
 import {
   ABSTRACT_COUNTER_FROM, ABSTRACT_MAX, ABSTRACT_MIN_WORDS, MAX_AUTHORS, MAX_KEYWORDS, MSG, TITLE_COUNTER_FROM, TITLE_MAX,
   addAuthor, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
@@ -13,9 +15,10 @@ import { takeKeywordsLine } from "../pdfText";
 import {
   MAX_REMOVED_KEYWORDS, clearDraft, readDraft, sameAsStart, writeDraft, type DraftFields, type RegisterDraft,
 } from "../draft";
-import { DeptBadge, Icon, SharedTerms, withAccount } from "./shared";
+import { Icon, SharedTerms, withAccount } from "./shared";
 
-/** The Academic Year box starts at this year; any past year can be typed. */
+/** Any past year up to this one can be typed. The box starts empty
+ *  (errata #82): a year is never guessed, it comes from the PDF or staff. */
 const THIS_YEAR = new Date().getFullYear();
 
 /** Every input that can show a message under it, in screen order: on submit
@@ -135,7 +138,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       abstract: cleanAbstract(study.abstract), keywords: cleanKeywordList(study.keywords),
     }
     : {
-      form: { driveLink: "", title: "", department: "", year: String(THIS_YEAR), adviser: "" },
+      form: { driveLink: "", title: "", department: "", year: "", adviser: "" },
       authors: [], newAuthor: "", abstract: "", keywords: [],
     });
   // A restored draft (draft.ts) fills everything it saved; the PDF file
@@ -178,6 +181,21 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   const [addedAnnouncement, setAddedAnnouncement] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  /** The details still holding what the PDF read put there: tagged "from
+   *  PDF" so staff check them; changing one removes its tag (errata #82). */
+  const [fromPdf, setFromPdf] = useState<DetailField[]>(draft?.fromPdf ?? []);
+  /** Grey notes under the details after a read (pdfDetails.ts NOTE). */
+  const [pdfNotes, setPdfNotes] = useState<Partial<Record<DetailField, string>>>(draft?.pdfNotes ?? {});
+  /** "Downloading 3.1 of 11.6 MB…" / "Reading page 5 (up to 40)…" while reading. */
+  const [progress, setProgress] = useState("");
+  const untag = (f: DetailField) => setFromPdf(p => p.includes(f) ? p.filter(x => x !== f) : p);
+  /** The "from PDF" tag in a field's label: text, so screen readers read it
+   *  with the label ("Title, required, from PDF"), not a colour alone. */
+  const tag = (f: DetailField) => fromPdf.includes(f) && <>{" "}<span className="pdf-tag">from PDF</span></>;
+
+  // pdf.js is not in the main bundle (errata #82): start loading it, and its
+  // worker, while staff choose the file, so the first read does not wait.
+  useEffect(() => { preloadPdfReader(); }, []);
   /** Backup source (docs/06 §7): a PDF picked from this computer, read without Drive. */
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -215,9 +233,10 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       step: readState ? "save" : "details", readState,
       keptCurrent, readError: readState === "needs_review" ? error : "",
       lastRead: lastRead.current, pdfName: unreadPdf, baseUpdatedAt, autoAdded, removedKeys, autoFor,
+      fromPdf, pdfNotes,
     });
   }, [changed, uid, studyId, form, authors, newAuthor, abstract, keywords, readState,
-    keptCurrent, error, unreadPdf, baseUpdatedAt, autoAdded, removedKeys, autoFor]);
+    keptCurrent, error, unreadPdf, baseUpdatedAt, autoAdded, removedKeys, autoFor, fromPdf, pdfNotes]);
 
   // "Leave site?" (the browser's own prompt) on close / refresh while there
   // is unsaved input. Not while nothing was typed, and not after saving.
@@ -245,8 +264,14 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   // title is still a duplicate). The stored studies' vectors are built once
   // per data change.
   const onSaveStep = extractState === "success" || extractState === "needs_review";
-  const originalityIndex = useMemo(() => buildOriginalityIndex(theses), [theses]);
-  const byId = useMemo(() => new Map(theses.map(t => [t.id, t])), [theses]);
+  /** The library as it was when Save was clicked, kept until the form leaves
+   *  or the save fails. Firestore's local snapshot adds the new study to
+   *  `theses` before the save resolves; without this the originality check
+   *  ran again and called the study a "Possible duplicate" of itself. */
+  const [savedFrom, setSavedFrom] = useState<Thesis[] | null>(null);
+  const library = savedFrom ?? theses;
+  const originalityIndex = useMemo(() => buildOriginalityIndex(library), [library]);
+  const byId = useMemo(() => new Map(library.map(t => [t.id, t])), [library]);
   const draftTitle = checkTitle(form.title).value;
   const matches = useMemo(() => onSaveStep
     ? originalityCheck(originalityIndex, { title: draftTitle, abstract, keywords }, { excludeId: study?.id })
@@ -288,8 +313,8 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   // Keyword model (keywordModel.ts, docs/15): trained once per data change on
   // every stored study except this one (Edit study must not learn its own
   // keywords), near-copies counted once (found with the originality index above).
-  const nearCopies = useMemo(() => findNearCopies(theses, originalityIndex), [theses, originalityIndex]);
-  const keywordModel = useMemo(() => trainKeywordModel(theses, { excludeId: study?.id, nearCopies }), [theses, study?.id, nearCopies]);
+  const nearCopies = useMemo(() => findNearCopies(library, originalityIndex), [library, originalityIndex]);
+  const keywordModel = useMemo(() => trainKeywordModel(library, { excludeId: study?.id, nearCopies }), [library, study?.id, nearCopies]);
   /** The e-library has loaded, or failed to (then the abstract phrases alone). */
   const studiesLoaded = studiesReady || !!studiesError;
 
@@ -385,9 +410,9 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   const autoShown = keywords.some(kw => autoAdded.includes(keywordKey(kw)));
 
   const steps = [
-    { label: editing ? "Edit study" : "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
-    { label: "Processing", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
-    { label: "Save", active: extractState === "success" || extractState === "needs_review", done: false },
+    { label: editing ? "Edit study" : "Choose PDF", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
+    { label: "Reading", active: extractState === "extracting", done: extractState === "success" || extractState === "needs_review" },
+    { label: "Check & save", active: extractState === "success" || extractState === "needs_review", done: false },
   ];
 
   /**
@@ -442,6 +467,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     const r = addAuthor(authors, newAuthor);
     setFieldError("author", r.error ?? null);
     if (r.error) return;
+    if (r.list !== authors) untag("authors");
     setAuthors(r.list);
     setNotes(p => ({ ...p, author: r.note }));
     setNewAuthor("");
@@ -522,11 +548,11 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     setPdfFile(file);
   }
 
-  async function handleSubmit() {
-    // A name typed but not yet added with Enter still counts, after the same checks.
-    const typed = newAuthor.trim() ? addAuthor(authors, newAuthor) : { list: authors, error: undefined, note: undefined };
-    const valid = showErrors({
-      drive: problem("drive", form.driveLink, true) ?? undefined,
+  /** Every detail and the abstract, as on Save (the details are on the save
+   *  step since errata #82). A name typed but not yet added with Enter still
+   *  counts, after the same checks. */
+  function detailErrors(typed: { list: string[]; error?: string }): FieldErrors {
+    return {
       title: problem("title", form.title, true) ?? undefined,
       // cleanAuthorList: a name saved before the checks existed (Edit study)
       // must be fixed too. Names added in this form always pass it.
@@ -534,13 +560,36 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       department: problem("department", form.department, true) ?? undefined,
       year: problem("year", form.year, true) ?? undefined,
       adviser: problem("adviser", form.adviser, true) ?? undefined,
-    });
-    if (!valid) return;
-    if (newAuthor.trim()) {
-      setAuthors(typed.list);
-      setNotes(p => ({ ...p, author: typed.note }));
-      setNewAuthor("");
-    }
+    };
+  }
+
+  /** What a PDF read found goes into the details (pdfDetails.ts
+   *  fillFromPdf): only empty fields and ones still holding an earlier PDF's
+   *  value; never what staff typed, never a saved study's (Edit). A filled
+   *  value that does not pass validation.ts shows its normal message at once. */
+  function applyDetails(found: StudyDetails) {
+    const r = fillFromPdf(
+      { title: form.title, authors, department: form.department, year: form.year, adviser: form.adviser },
+      fromPdf, found,
+    );
+    setForm(p => ({ ...p, title: r.details.title, department: r.details.department, year: r.details.year, adviser: r.details.adviser }));
+    setAuthors(r.details.authors);
+    setFromPdf(r.fromPdf);
+    setPdfNotes(r.notes);
+    const filled = new Set(r.fromPdf);
+    setFieldErrors(p => ({
+      ...p,
+      title: filled.has("title") ? problem("title", r.details.title, false) ?? undefined : p.title,
+      author: filled.has("authors") ? cleanAuthorList(r.details.authors).error : p.author,
+      year: filled.has("year") ? problem("year", r.details.year, false) ?? undefined : p.year,
+      adviser: filled.has("adviser") ? problem("adviser", r.details.adviser, false) ?? undefined : p.adviser,
+    }));
+  }
+
+  /** Step 1 → read the PDF (or, Edit with no PDF, go straight on). Only the
+   *  PDF and the Drive link are on step 1 (errata #82). */
+  async function handleSubmit() {
+    if (!showErrors({ drive: problem("drive", form.driveLink, true) ?? undefined })) return;
 
     const driveLink = form.driveLink.trim();
     // Edit study with no PDF chosen: no Drive download (protected files cannot
@@ -566,9 +615,30 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     }
 
     setError("");
+    setProgress("");
     setExtractState("extracting");
+    const onProgress = (p: ReadProgress) => setProgress(progressText(p));
+    let read: StudyRead;
     try {
-      const { abstract, keywords } = await (pdfFile ? extractFromFile(pdfFile) : extractFromDrive(driveLink));
+      read = await (pdfFile ? readFromFile(pdfFile, onProgress) : readFromDrive(driveLink, onProgress));
+    } catch (err) {
+      // Nothing was read from this PDF: details an earlier PDF put there (still
+      // tagged) go, as its abstract does; what staff typed stays.
+      if (!sameSource && !editing && !restoredWork) {
+        applyDetails({ title: "", authors: [], department: "", year: "", adviser: "", source: {}, notes: {} });
+      }
+      readFailed(err instanceof Error ? err.message : "Could not read that PDF.", source, sameSource);
+      return;
+    }
+    // The details are filled whatever happened to the abstract: a title page
+    // can be read when the abstract cannot (scanned PDFs give nothing).
+    applyDetails(read.details);
+    if (read.problem) {
+      readFailed(read.problem, source, sameSource);
+      return;
+    }
+    {
+      const { abstract, keywords } = read;
       setAbstract(abstract);
       // Keywords read from the PDF get the same cleaning as saved ones. They
       // replace the list, so no keyword is tagged "auto" any more; this read
@@ -583,25 +653,27 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       }
       setExtractState("success");
       lastRead.current = { source, ok: true };
-    } catch (err) {
-      // Not a crash: manual entry is the designed fallback (docs/06 §7).
-      // Keep the reason so staff know why the fields are empty.
-      setError(err instanceof Error ? err.message : "Could not read that PDF.");
-      // Same PDF failed again (e.g. Drive still busy): keep what staff typed.
-      // Editing: keep the study's current abstract and keywords, never blank them.
-      // A restored draft: keep the abstract it brought back (staff's work).
-      if (!sameSource && !editing && !restoredWork) {
-        setAbstract("");
-        setKeywords([]);
-        setAutoAdded([]);
-        setUndo(null);
-      }
-      setExtractState("needs_review");
-      lastRead.current = { source, ok: false };
     }
   }
 
-  /** Review → back to the details form, keeping everything entered so far. */
+  /** Not a crash: manual entry is the designed fallback (docs/06 §7). Keep
+   *  the reason so staff know why the fields are empty. */
+  function readFailed(message: string, source: string, sameSource: boolean) {
+    setError(message);
+    // Same PDF failed again (e.g. Drive still busy): keep what staff typed.
+    // Editing: keep the study's current abstract and keywords, never blank them.
+    // A restored draft: keep the abstract it brought back (staff's work).
+    if (!sameSource && !editing && !restoredWork) {
+      setAbstract("");
+      setKeywords([]);
+      setAutoAdded([]);
+      setUndo(null);
+    }
+    setExtractState("needs_review");
+    lastRead.current = { source, ok: false };
+  }
+
+  /** Check & save → back to step 1 ("Change PDF"), keeping everything entered so far. */
   function editDetails() {
     setError("");
     setSaveError("");
@@ -636,14 +708,23 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     // already checked the details here, so there is no later review step.
     // That makes this the last check: search ranks studies on the abstract,
     // so a study posted without one would almost never be found.
+    // Every detail is checked here too: they are on this step (errata #82).
+    const typed = newAuthor.trim() ? addAuthor(authors, newAuthor) : { list: authors, error: undefined, note: undefined };
     const checkedAbstract = checkAbstract(abstract);
-    const valid = showErrors({ abstract: checkedAbstract.error ?? undefined });
+    const valid = showErrors({ ...detailErrors(typed), abstract: checkedAbstract.error ?? undefined });
     if (!valid) return;
+    if (newAuthor.trim()) {
+      if (typed.list !== authors) untag("authors");
+      setAuthors(typed.list);
+      setNotes(p => ({ ...p, author: typed.note }));
+      setNewAuthor("");
+    }
     setSaveError("");
     setSaving(true);
+    setSavedFrom(theses);                             // the library at this click (see savedFrom)
     try {
       await onSave({
-        title: checkTitle(form.title).value, authors, department: form.department,
+        title: checkTitle(form.title).value, authors: typed.list, department: form.department,
         year: Number(checkYear(form.year).value), adviser: checkAdviser(form.adviser).value,
         abstract: checkedAbstract.value, keywords,
         driveLink: form.driveLink.trim(),
@@ -654,6 +735,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not save the study. Try again.");
       setSaving(false);
+      setSavedFrom(null);                             // not saved: the live library again
     }
   }
 
@@ -678,12 +760,12 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   return (
     <div className="animate-fade-in">
       {/* Back: leave the form (Edit study: Cancel, nothing saved), or return
-          from review to fix the details */}
+          from Check & save to step 1 to choose another PDF (all kept) */}
       {extractState !== "extracting" && !saving && (
         <button onClick={extractState === "idle" ? leave : editDetails}
           className="btn btn-outline-green btn-sm" style={{ marginBottom: 14 }}>
           <Icon name="arrowLeft" size={14} />
-          {extractState !== "idle" ? "Edit details" : editing ? "Cancel" : "Back to dashboard"}
+          {extractState !== "idle" ? "Change PDF" : editing ? "Cancel" : "Back to dashboard"}
         </button>
       )}
 
@@ -725,8 +807,8 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
           <h2 className="form-title">{editing ? "Edit study" : "Register a study"}</h2>
           <p className="form-sub">
             {editing
-              ? "Change the details and continue. Choosing the PDF is optional: only do it to read the abstract and keywords again."
-              : "Choose the study's PDF, paste its Drive link and fill in the details. The abstract and keywords are read from the PDF."}
+              ? "Continue to change the details. Choosing the PDF is optional: only do it to read the abstract and keywords again (details you have are never replaced)."
+              : "Choose the study's PDF and paste its Drive link. The title, authors, year, adviser, abstract and keywords are read from the PDF; you check them on the next step."}
           </p>
 
           {/* Main source: the PDF from this computer. Protected (view-only) Drive
@@ -755,10 +837,12 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             {notes.pdf && <p className="field-note">{notes.pdf}</p>}
             <p className="hint">
               {pdfFile
-                ? "The abstract and keywords will be read from this PDF."
+                ? editing
+                  ? "The abstract and keywords will be read from this PDF. Details the study already has are kept."
+                  : "The details, abstract and keywords will be read from this PDF."
                 : editing
-                  ? "No PDF chosen: the current abstract and keywords are kept (you can still edit them on the next step)."
-                  : "Choose the study's PDF from this computer to fill in the abstract and keywords."}
+                  ? "No PDF chosen: the current details, abstract and keywords are kept (you can still edit them on the next step)."
+                  : "Choose the study's PDF from this computer to fill in the details, abstract and keywords."}
             </p>
           </div>
 
@@ -795,84 +879,6 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
                 : "Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google's viewer; they cannot download it. With no PDF chosen, the app tries to read the file from Drive (not possible for protected files)."}
             </p>
           </div>
-
-          {/* Title */}
-          <div className="field-mb">
-            <label className="field-label" htmlFor={fieldId("title")}>Title <span className="field-req">*</span></label>
-            <input value={form.title} {...a11y("title")}
-              onChange={e => { setForm(p => ({ ...p, title: e.target.value })); recheck("title", e.target.value); }}
-              onBlur={e => setFieldError("title", problem("title", e.target.value, false))}
-              placeholder="Enter full study title" disabled={extractState === "extracting"} className="input" />
-            {fieldError("title")}
-            {titleLength >= TITLE_COUNTER_FROM && <p className="hint">{titleLength} / {TITLE_MAX}</p>}
-          </div>
-
-          {/* Authors */}
-          <div className="field-mb">
-            <label className="field-label" htmlFor={fieldId("author")}>Authors <span className="field-req">*</span></label>
-            {authors.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                {authors.map(a => (
-                  <span key={a} className="kw-chip">
-                    {a}
-                    <button onClick={() => { setAuthors(p => p.filter(x => x !== a)); setFieldError("author", null); }} disabled={extractState === "extracting"}
-                      className="kw-chip-x" aria-label={`Remove author ${a}`}>
-                      <Icon name="x" size={12} strokeWidth={2.5} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={newAuthor} {...a11y("author")}
-                onChange={e => { setNewAuthor(e.target.value); setNotes(p => ({ ...p, author: undefined })); recheck("author", e.target.value); }}
-                onKeyDown={e => { if (e.key === "Enter") addTypedAuthor(); }}
-                placeholder="e.g. Juan Dela Cruz" disabled={extractState === "extracting"} className="input" />
-              <button onClick={addTypedAuthor} disabled={extractState === "extracting" || authors.length >= MAX_AUTHORS} className="chip-add">
-                + Add
-              </button>
-            </div>
-            {fieldError("author")}
-            {notes.author && <p className="field-note">{notes.author}</p>}
-            <p className="hint">
-              {authors.length >= MAX_AUTHORS ? MSG.authorsMax : "Add one author at a time, in the order listed on the study."}
-            </p>
-          </div>
-
-          {/* Dept + Year */}
-          <div className="form-grid-2">
-            <div>
-              <label className="field-label" htmlFor={fieldId("department")}>Department <span className="field-req">*</span></label>
-              <select value={form.department} {...a11y("department")}
-                onChange={e => { setForm(p => ({ ...p, department: e.target.value })); setFieldError("department", null); }}
-                disabled={extractState === "extracting"}
-                className="input" style={{ color: form.department ? undefined : "var(--text-subtle)", appearance: "none" }}>
-                <option value="">Select dept.</option>
-                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              {fieldError("department")}
-            </div>
-            <div>
-              <label className="field-label" htmlFor={fieldId("year")}>Academic Year</label>
-              {/* Only the year is stored, so a text box, not a date picker.
-                  Letters, spaces and symbols typed or pasted are dropped. */}
-              <input value={form.year} {...a11y("year")} type="text" inputMode="numeric" autoComplete="off"
-                onChange={e => { const year = yearInput(e.target.value); setForm(p => ({ ...p, year })); recheck("year", year); }}
-                onBlur={e => setFieldError("year", problem("year", e.target.value, false))}
-                placeholder={String(THIS_YEAR)} disabled={extractState === "extracting"} className="input" />
-              {fieldError("year")}
-            </div>
-          </div>
-
-          {/* Adviser */}
-          <div>
-            <label className="field-label" htmlFor={fieldId("adviser")}>Adviser <span className="field-req">*</span></label>
-            <input value={form.adviser} {...a11y("adviser")}
-              onChange={e => { setForm(p => ({ ...p, adviser: e.target.value })); recheck("adviser", e.target.value); }}
-              onBlur={e => setFieldError("adviser", problem("adviser", e.target.value, false))}
-              placeholder="e.g. Dr. Maria Santos" disabled={extractState === "extracting"} className="input" />
-            {fieldError("adviser")}
-          </div>
         </div>
       )}
 
@@ -884,7 +890,10 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             <div className="spin-core"><Icon name="file" size={18} /></div>
           </div>
           <div className="extract-title">Reading PDF and filling in details...</div>
-          <div className="extract-sub">pdf.js · {pdfFile ? "From this computer" : "From Google Drive"} · Scanning up to {MAX_PAGES} pages</div>
+          <div className="extract-sub">{pdfFile ? "From this computer" : "From Google Drive"}</div>
+          {/* How far it has got (errata #82). Not a live region: it changes
+              many times a second while downloading. */}
+          <div className="extract-progress">{progress || "Starting the PDF reader…"}</div>
           <div className="progress-track">
             <div className="progress-fill" />
           </div>
@@ -910,8 +919,8 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
               </div>
               <div className="status-sub">
                 {extractState === "success"
-                  ? (keptCurrent ? "Current abstract and keywords kept — edit if needed" : "Abstract and keywords extracted — edit if needed")
-                  : editing ? "The current abstract and keywords are kept — edit if needed" : "Type or paste the abstract. Keywords are added from it automatically."}
+                  ? (keptCurrent ? "Current details, abstract and keywords kept — edit if needed" : "Details, abstract and keywords read from the PDF — check them and fill in what is empty")
+                  : editing ? "The current details, abstract and keywords are kept — edit if needed" : "Fill in what is empty and type or paste the abstract. Keywords are added from it automatically."}
               </div>
             </div>
           </div>
@@ -923,13 +932,96 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             </div>
           )}
 
-          {/* Thesis summary: shown as it will be saved */}
+          {/* The study details (errata #82): read from the PDF where it gives
+              them, tagged "from PDF" (text, so screen readers say it too);
+              empty where it does not, for staff to type. Checked on Save. */}
           <div className="review-card">
-            <p className="review-title">{checkTitle(form.title).value}</p>
-            <p className="result-meta" style={{ marginBottom: 8 }}>{authors.join("; ")}</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <DeptBadge dept={form.department} small />
-              <span className="result-meta">{form.year} · {checkAdviser(form.adviser).value}</span>
+            <p className="hint" style={{ marginTop: 0, marginBottom: 14 }}>
+              {fromPdf.length > 0
+                ? <>Details marked <span className="pdf-tag">from PDF</span> were read from the PDF. Check them against the study's title page. Type anything left empty.</>
+                : "Fill in the study's details as printed on its title page."}
+            </p>
+
+            {/* Title */}
+            <div className="field-mb">
+              <label className="field-label" htmlFor={fieldId("title")}>Title <span className="field-req">*</span>{tag("title")}</label>
+              <input value={form.title} {...a11y("title")}
+                onChange={e => { setForm(p => ({ ...p, title: e.target.value })); untag("title"); recheck("title", e.target.value); }}
+                onBlur={e => setFieldError("title", problem("title", e.target.value, false))}
+                placeholder="Enter full study title" className="input" />
+              {fieldError("title")}
+              {pdfNotes.title && <p className="field-note">{pdfNotes.title}</p>}
+              {titleLength >= TITLE_COUNTER_FROM && <p className="hint">{titleLength} / {TITLE_MAX}</p>}
+            </div>
+
+            {/* Authors */}
+            <div className="field-mb">
+              <label className="field-label" htmlFor={fieldId("author")}>Authors <span className="field-req">*</span>{tag("authors")}</label>
+              {authors.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                  {authors.map(a => (
+                    <span key={a} className="kw-chip">
+                      {a}
+                      <button onClick={() => { setAuthors(p => p.filter(x => x !== a)); untag("authors"); setFieldError("author", null); }}
+                        className="kw-chip-x" aria-label={`Remove author ${a}`}>
+                        <Icon name="x" size={12} strokeWidth={2.5} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={newAuthor} {...a11y("author")}
+                  onChange={e => { setNewAuthor(e.target.value); setNotes(p => ({ ...p, author: undefined })); recheck("author", e.target.value); }}
+                  onKeyDown={e => { if (e.key === "Enter") addTypedAuthor(); }}
+                  placeholder="e.g. Juan Dela Cruz" className="input" />
+                <button onClick={addTypedAuthor} disabled={authors.length >= MAX_AUTHORS} className="chip-add">
+                  + Add
+                </button>
+              </div>
+              {fieldError("author")}
+              {notes.author && <p className="field-note">{notes.author}</p>}
+              {pdfNotes.authors && <p className="field-note">{pdfNotes.authors}</p>}
+              <p className="hint">
+                {authors.length >= MAX_AUTHORS ? MSG.authorsMax : "Add one author at a time, in the order listed on the study."}
+              </p>
+            </div>
+
+            {/* Dept + Year */}
+            <div className="form-grid-2">
+              <div>
+                <label className="field-label" htmlFor={fieldId("department")}>Department <span className="field-req">*</span>{tag("department")}</label>
+                <select value={form.department} {...a11y("department")}
+                  onChange={e => { setForm(p => ({ ...p, department: e.target.value })); untag("department"); setFieldError("department", null); }}
+                  className="input" style={{ color: form.department ? undefined : "var(--text-subtle)", appearance: "none" }}>
+                  <option value="">Select dept.</option>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {fieldError("department")}
+                {pdfNotes.department && <p className="field-note">{pdfNotes.department}</p>}
+              </div>
+              <div>
+                <label className="field-label" htmlFor={fieldId("year")}>Year completed <span className="field-req">*</span>{tag("year")}</label>
+                {/* Only the year is stored, so a text box, not a date picker.
+                    Letters, spaces and symbols typed or pasted are dropped. */}
+                <input value={form.year} {...a11y("year")} type="text" inputMode="numeric" autoComplete="off"
+                  onChange={e => { const year = yearInput(e.target.value); setForm(p => ({ ...p, year })); untag("year"); recheck("year", year); }}
+                  onBlur={e => setFieldError("year", problem("year", e.target.value, false))}
+                  placeholder={`e.g. ${THIS_YEAR - 1}`} className="input" />
+                {fieldError("year")}
+                {pdfNotes.year && <p className="field-note">{pdfNotes.year}</p>}
+              </div>
+            </div>
+
+            {/* Adviser */}
+            <div>
+              <label className="field-label" htmlFor={fieldId("adviser")}>Adviser <span className="field-req">*</span>{tag("adviser")}</label>
+              <input value={form.adviser} {...a11y("adviser")}
+                onChange={e => { setForm(p => ({ ...p, adviser: e.target.value })); untag("adviser"); recheck("adviser", e.target.value); }}
+                onBlur={e => setFieldError("adviser", problem("adviser", e.target.value, false))}
+                placeholder="e.g. Dr. Maria Santos" className="input" />
+              {fieldError("adviser")}
+              {pdfNotes.adviser && <p className="field-note">{pdfNotes.adviser}</p>}
             </div>
           </div>
 
