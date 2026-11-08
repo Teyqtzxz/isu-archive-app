@@ -8,8 +8,10 @@ import {
   cleanAuthorList, cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
 } from "../validation";
 import { buildOriginalityIndex, originalityCheck, originalityReason, type SimilarityLevel } from "../similarity";
-import { suggestKeywords, suggestionSource, trainKeywordModel } from "../keywordModel";
-import { clearDraft, readDraft, sameAsStart, writeDraft, type DraftFields, type RegisterDraft } from "../draft";
+import { autoKeywords, findNearCopies, keywordKey, suggestKeywords, suggestionSource, trainKeywordModel } from "../keywordModel";
+import {
+  MAX_REMOVED_KEYWORDS, clearDraft, readDraft, sameAsStart, writeDraft, type DraftFields, type RegisterDraft,
+} from "../draft";
 import { DeptBadge, Icon, SharedTerms, withAccount } from "./shared";
 
 /** The Academic Year box starts at this year; any past year can be typed. */
@@ -36,7 +38,8 @@ const SIMILARITY_BOXES: { level: SimilarityLevel; className: string; heading: (c
 /** Shown when an Edit draft is dropped because someone saved the study since. */
 const STALE_DRAFT = "This study was changed since your unsaved edits, so they were discarded. Please edit it again.";
 
-/** For this long after the save step opens, Save ignores clicks (errata #72). */
+/** For this long after the save step opens, Save and the keyword add and
+ *  remove buttons ignore clicks (errata #72, #77). */
 const SAVE_GUARD_MS = 1000;
 
 /** The study's updatedAt as an ISO string ("" if never edited), to tell
@@ -135,6 +138,13 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   const [newAuthor, setNewAuthor] = useState(init.newAuthor);
   const [abstract, setAbstract] = useState(init.abstract);
   const [keywords, setKeywords] = useState<string[]>(init.keywords);
+  /** Automatic keywords (keywordModel.ts autoKeywords, docs/15 §6), as
+   *  keyword keys: the ones added by themselves and still listed (tagged
+   *  "auto" until saved), the ones staff removed (never added by themselves
+   *  again), and the PDF read they were already added for. */
+  const [autoAdded, setAutoAdded] = useState<string[]>(draft?.autoAdded ?? []);
+  const [removedKeys, setRemovedKeys] = useState<string[]>(draft?.removedKeys ?? []);
+  const [autoFor, setAutoFor] = useState<string | null>(draft?.autoFor ?? null);
   /** Edit mode, no PDF chosen: the save step shows the abstract and keywords
    *  already in the form instead of ones just read from a PDF. */
   const [keptCurrent, setKeptCurrent] = useState(draft?.keptCurrent ?? false);
@@ -183,10 +193,10 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       v: 1, uid, studyId, form, authors, newAuthor, abstract, keywords, newKw,
       step: readState ? "save" : "details", readState,
       keptCurrent, readError: readState === "needs_review" ? error : "",
-      lastRead: lastRead.current, pdfName: unreadPdf, baseUpdatedAt,
+      lastRead: lastRead.current, pdfName: unreadPdf, baseUpdatedAt, autoAdded, removedKeys, autoFor,
     });
   }, [changed, uid, studyId, form, authors, newAuthor, abstract, keywords, newKw, readState,
-    keptCurrent, error, unreadPdf, baseUpdatedAt]);
+    keptCurrent, error, unreadPdf, baseUpdatedAt, autoAdded, removedKeys, autoFor]);
 
   // "Leave site?" (the browser's own prompt) on close / refresh while there
   // is unsaved input. Not while nothing was typed, and not after saving.
@@ -242,11 +252,37 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
 
   // Keyword model (keywordModel.ts, docs/15): trained once per data change on
   // every stored study except this one (Edit study must not learn its own
-  // keywords); suggestions only on the save step, never added automatically.
-  const keywordModel = useMemo(() => trainKeywordModel(theses, { excludeId: study?.id }), [theses, study?.id]);
+  // keywords), near-copies counted once (found with the originality index
+  // above); suggestions only on the save step.
+  const nearCopies = useMemo(() => findNearCopies(theses, originalityIndex), [theses, originalityIndex]);
+  const keywordModel = useMemo(() => trainKeywordModel(theses, { excludeId: study?.id, nearCopies }), [theses, study?.id, nearCopies]);
   const suggestions = useMemo(() => onSaveStep
     ? suggestKeywords(keywordModel, { title: draftTitle, abstract, keywords })
     : [], [onSaveStep, keywordModel, draftTitle, abstract, keywords]);
+
+  // Automatic keywords (docs/15 §6): a NEW study, once per PDF read, when the
+  // save step opens after a successful read and the e-library has loaded (or
+  // failed to: then the abstract phrases alone). Never in Edit study, never
+  // after a failed read, never one staff removed. The PDF's own keywords stay
+  // first; the added ones come after them, tagged "auto".
+  const readSource = extractState === "success" && lastRead.current?.ok ? lastRead.current.source : null;
+  const autoReady = !editing && readSource !== null && readSource !== autoFor && (studiesReady || !!studiesError);
+  useEffect(() => {
+    if (!autoReady) return;
+    const picked = autoKeywords(keywordModel, { title: draftTitle, abstract, keywords }, removedKeys);
+    setAutoFor(readSource);
+    if (picked.length === 0) return;
+    setKeywords(k => [...k, ...picked.map(p => p.keyword)]);
+    setAutoAdded(a => [...a, ...picked.map(p => p.key)]);
+    // Runs only when it becomes ready, on purpose: editing the abstract or the
+    // keywords afterwards adds nothing (it reads them as they are at that moment).
+  }, [autoReady]);
+
+  /** A click on Save or a keyword button this soon after the save step opened
+   *  was aimed at something else (errata #72, #77). */
+  const tooSoon = () => performance.now() - saveStepOpenedAt.current < SAVE_GUARD_MS;
+  /** Some listed keyword carries the "auto" tag. */
+  const autoShown = keywords.some(kw => autoAdded.includes(keywordKey(kw)));
 
   const steps = [
     { label: editing ? "Edit study" : "Fill Details", active: extractState === "idle" || extractState === "extracting", done: extractState !== "idle" },
@@ -324,11 +360,22 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
 
   /** A suggested keyword chip: added exactly as if typed and + Add pressed. */
   function addSuggestedKeyword(keyword: string) {
+    if (tooSoon()) return;
     const r = addKeywords(keywords, keyword);
     setFieldError("keyword", r.error ?? null);
     if (r.error) return;
     setKeywords(r.list);
     setNotes(p => ({ ...p, keyword: r.note }));
+  }
+
+  /** The × on a keyword chip. A removed keyword is remembered, so it is never
+   *  added by itself again (it can still be clicked back as a suggestion). */
+  function removeKeyword(kw: string) {
+    if (tooSoon()) return;
+    const key = keywordKey(kw);
+    setKeywords(p => p.filter(k => k !== kw));
+    setAutoAdded(a => a.filter(k => k !== key));
+    if (key) setRemovedKeys(r => [...r.filter(k => k !== key), key].slice(-MAX_REMOVED_KEYWORDS));
   }
 
   /** A chosen PDF is checked at once: not a PDF or empty → not taken; too
@@ -393,8 +440,11 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     try {
       const { abstract, keywords } = await (pdfFile ? extractFromFile(pdfFile) : extractFromDrive(driveLink));
       setAbstract(abstract);
-      // Keywords read from the PDF get the same cleaning as typed ones.
+      // Keywords read from the PDF get the same cleaning as typed ones. They
+      // replace the list, so no keyword is tagged "auto" any more; this read
+      // gets its own automatic keywords (autoFor differs).
       setKeywords(cleanKeywordList(keywords));
+      setAutoAdded([]);
       setExtractState("success");
       lastRead.current = { source, ok: true };
     } catch (err) {
@@ -407,6 +457,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       if (!sameSource && !editing && !restoredWork) {
         setAbstract("");
         setKeywords([]);
+        setAutoAdded([]);
       }
       setExtractState("needs_review");
       lastRead.current = { source, ok: false };
@@ -423,7 +474,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
   async function handleSave() {
     // The step has only just opened, so this click was not aimed at Save. For a
     // page that fits the window, where going to the top moves nothing (errata #72).
-    if (performance.now() - saveStepOpenedAt.current < SAVE_GUARD_MS) return;
+    if (tooSoon()) return;
     // The button is disabled too; this keeps a double tap from slipping through.
     // Not before the studies have loaded: the duplicate check needs them.
     if (mustConfirm || !studiesReady) return;
@@ -737,7 +788,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             </div>
           </div>
 
-          {/* Suggested keywords (keyword model): click to add, never automatic. */}
+          {/* Suggested keywords (keyword model): the ones not added, click to add. */}
           {suggestions.length > 0 && (
             <div className="review-card">
               <span className="field-label" id="register-suggested-label" style={{ marginBottom: 4 }}>Suggested keywords</span>
@@ -759,23 +810,34 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
 
           {/* Keywords chips */}
           <div className="review-card">
-            <label className="field-label" htmlFor={fieldId("keyword")} style={{ marginBottom: 10 }}>Keywords</label>
+            <label className="field-label" htmlFor={fieldId("keyword")} style={{ marginBottom: autoShown ? 4 : 10 }}>Keywords</label>
+            {autoShown && (
+              <p className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
+                Keywords marked <span className="kw-chip-auto">auto</span> were chosen automatically. Remove any that do not fit.
+              </p>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-              {keywords.map(kw => (
-                <span key={kw} className="kw-chip">
-                  {kw}
-                  <button onClick={() => setKeywords(p => p.filter(k => k !== kw))} className="kw-chip-x" aria-label={`Remove keyword ${kw}`}>
-                    <Icon name="x" size={12} strokeWidth={2.5} />
-                  </button>
-                </span>
-              ))}
+              {keywords.map(kw => {
+                const auto = autoAdded.includes(keywordKey(kw));
+                return (
+                  <span key={kw} className={`kw-chip${auto ? " kw-chip--auto" : ""}`}>
+                    {kw}
+                    {auto && <span className="kw-chip-auto" aria-hidden="true">auto</span>}
+                    {auto && <span className="sr-only">, added automatically</span>}
+                    <button type="button" onClick={() => removeKeyword(kw)} className="kw-chip-x"
+                      aria-label={`Remove keyword ${kw}${auto ? ", added automatically" : ""}`}>
+                      <Icon name="x" size={12} strokeWidth={2.5} />
+                    </button>
+                  </span>
+                );
+              })}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <input value={newKw} {...a11y("keyword")}
                 onChange={e => { setNewKw(e.target.value); setNotes(p => ({ ...p, keyword: undefined })); recheck("keyword", e.target.value); }}
                 onKeyDown={e => { if (e.key === "Enter") addTypedKeywords(); }}
                 placeholder="Add a keyword and press Enter" className="input" style={{ padding: "8px 12px", fontSize: 13 }} />
-              <button onClick={addTypedKeywords} disabled={keywords.length >= MAX_KEYWORDS} className="chip-add">
+              <button onClick={() => { if (!tooSoon()) addTypedKeywords(); }} disabled={keywords.length >= MAX_KEYWORDS} className="chip-add">
                 + Add
               </button>
             </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Thesis } from "../types";
-import { KEYWORD_MODEL, evaluateKeywordModel, trainKeywordModel, type KeywordEvaluation } from "../keywordModel";
+import { KEYWORD_MODEL, evaluateKeywordModel, findNearCopies, trainKeywordModel, type KeywordEvaluation } from "../keywordModel";
 import { Icon } from "./shared";
 
 const percent = (x: number) => `${Math.round(x * 100)}%`;
@@ -10,15 +10,19 @@ const percent = (x: number) => `${Math.round(x * 100)}%`;
  * (keywordModel.ts, docs/15) has learned and how it scores in leave-one-out
  * cross-validation with near-copies hidden, next to the most-common-keywords
  * baseline. The test retrains the model once per study (about 2 s at 300
- * studies), so it runs after the tab has drawn, once per data change.
+ * studies), so it runs after the tab has drawn, once per data change. It
+ * tests the learned model even below KEYWORD_MODEL.reliableFrom studies (the
+ * Register form then shows no learned keyword). Near-copies count once, in
+ * the numbers and in training; the search for them is shared by both.
  */
 export function KeywordModelCard({ theses }: { theses: Thesis[] }) {
-  const model = useMemo(() => trainKeywordModel(theses), [theses]);
+  const nearCopies = useMemo(() => findNearCopies(theses), [theses]);
+  const model = useMemo(() => trainKeywordModel(theses, { nearCopies }), [theses, nearCopies]);
   const [result, setResult] = useState<{ source: Thesis[]; evaluation: KeywordEvaluation } | null>(null);
   useEffect(() => {
-    const timer = setTimeout(() => setResult({ source: theses, evaluation: evaluateKeywordModel(theses) }), 50);
+    const timer = setTimeout(() => setResult({ source: theses, evaluation: evaluateKeywordModel(theses, { nearCopies }) }), 50);
     return () => clearTimeout(timer);
-  }, [theses]);
+  }, [theses, nearCopies]);
   const evaluation = result?.source === theses ? result.evaluation : null;
 
   const rows: { label: string; key: keyof KeywordEvaluation["model"] }[] = [
@@ -37,7 +41,10 @@ export function KeywordModelCard({ theses }: { theses: Thesis[] }) {
         <div className="km-stats">
           <div className="km-stat">
             <span className="km-stat-value">{model.n}</span>
-            <span className="km-stat-label">training {model.n === 1 ? "study" : "studies"} (with keywords)</span>
+            <span className="km-stat-label">
+              training {model.n === 1 ? "study" : "studies"} (with keywords
+              {model.copiesMerged > 0 && `; ${model.copiesMerged} near-${model.copiesMerged === 1 ? "copy" : "copies"} counted with ${model.copiesMerged === 1 ? "its original" : "their originals"}`})
+            </span>
           </div>
           <div className="km-stat">
             <span className="km-stat-value">{model.labels.length}</span>

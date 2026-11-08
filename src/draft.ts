@@ -12,6 +12,8 @@ const DRAFT_PREFIX = "isu-draft:";
 export const STAFF_VIEW_KEY = "isu-staff-view";
 /** A stored string longer than this is not something the form produced. */
 const MAX_TEXT = 20000;
+/** Most keyword keys remembered as removed (the form keeps the latest ones). */
+export const MAX_REMOVED_KEYWORDS = 100;
 
 /** Everything staff typed, exactly as held in the form's state. */
 export interface DraftFields {
@@ -42,6 +44,14 @@ export interface RegisterDraft extends DraftFields {
   pdfName: string;
   /** Edit: the study's updatedAt (ISO, "" if never edited) when the draft began. */
   baseUpdatedAt: string;
+  /** Keyword keys (keywordModel.ts keywordKey) the save step added by itself
+   *  and still in `keywords`: they show the "auto" tag. */
+  autoAdded: string[];
+  /** Keyword keys staff removed: never added by themselves again. */
+  removedKeys: string[];
+  /** The PDF read (lastRead.source) the keywords were already added for, or
+   *  null: after a reload they are not added a second time. */
+  autoFor: string | null;
 }
 
 /** The staff screen to return to after a reload. */
@@ -82,6 +92,13 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
   if (o.step === "save" ? o.readState !== "success" && o.readState !== "needs_review" : o.readState !== null) return null;
   if (typeof o.keptCurrent !== "boolean") return null;
   if (lr !== null && (typeof lr !== "object" || !isText(lr.source) || typeof lr.ok !== "boolean")) return null;
+  // The automatic-keyword fields came later under the same version. A draft
+  // without them was saved before: whatever PDF it had read is taken as done,
+  // so a reload never adds keywords to it.
+  const hasAuto = o.autoAdded !== undefined || o.removedKeys !== undefined || o.autoFor !== undefined;
+  if (hasAuto && (!isList(o.autoAdded, MAX_KEYWORDS) || !isList(o.removedKeys, MAX_REMOVED_KEYWORDS)
+    || (o.autoFor !== null && !isText(o.autoFor)))) return null;
+  const lastRead = lr ? { source: lr.source as string, ok: lr.ok as boolean } : null;
   const department = f.department as string;
   return {
     v: DRAFT_VERSION, uid: want.uid, studyId: want.studyId,
@@ -93,8 +110,11 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
     abstract: o.abstract as string, keywords: o.keywords, newKw: o.newKw as string,
     step: o.step, readState: o.readState as RegisterDraft["readState"], keptCurrent: o.keptCurrent,
     readError: o.readError as string,
-    lastRead: lr ? { source: lr.source as string, ok: lr.ok as boolean } : null,
+    lastRead,
     pdfName: o.pdfName as string, baseUpdatedAt: o.baseUpdatedAt as string,
+    autoAdded: hasAuto ? o.autoAdded as string[] : [],
+    removedKeys: hasAuto ? o.removedKeys as string[] : [],
+    autoFor: hasAuto ? o.autoFor as string | null : lastRead?.ok ? lastRead.source : null,
   };
 }
 
