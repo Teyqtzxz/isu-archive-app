@@ -1864,10 +1864,34 @@ p.apa-ref:last-child { margin-bottom: 0; }
   align-items: center;
   gap: 10px;
   box-shadow: var(--shadow-overlay);
-  max-width: calc(100vw - 32px);
+  /* Sized to its words, up to the screen: left: 50% alone would let a long
+     error use only half a phone screen (195 of 390 px, errata #81). */
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
 }
-.isu-toast svg { color: var(--on-fill); }
-.isu-toast svg circle { fill: var(--accent-fill); }
+/* The kind (toast.ts) picks the mark's colours: tokens in index.css. */
+.isu-toast--success { --toast-mark: var(--toast-success); --toast-mark-ink: var(--toast-success-ink); }
+.isu-toast--notice { --toast-mark: var(--toast-notice); --toast-mark-ink: var(--toast-notice-ink); }
+.isu-toast--error { --toast-mark: var(--toast-error); --toast-mark-ink: var(--toast-error-ink); padding-right: 8px; }
+.isu-toast-icon { flex-shrink: 0; color: var(--toast-mark-ink); }
+.isu-toast-icon circle { fill: var(--toast-mark); }
+.isu-toast-text { min-width: 0; }
+/* Errors only: × "Close message", 32 px, keyboard reachable. */
+.isu-toast-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--toast-text);
+  cursor: pointer;
+}
+.isu-toast-close:hover { background: rgba(var(--on-fill-rgb), 0.14); }
+.isu-toast-close:focus-visible { outline: 2px solid var(--toast-text); outline-offset: 1px; }
 
 /* ─── Theme controls (ThemeToggle.tsx) ─────────────────────── */
 /* Moon/sun button in every header; the login screen's version sits in the corner. */

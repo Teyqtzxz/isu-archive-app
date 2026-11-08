@@ -35,8 +35,9 @@ seconds and catch the regressions that are easiest to reintroduce.
 - [ ] **Profile cannot be loaded → student view, said out loud (errata #67).**
       Writes nothing. Sign in as staff, open DevTools → Network → **Offline**,
       then refresh. The student dashboard opens (never the staff one) with the
-      toast "Couldn't load your profile, so you're seeing the student view.
-      Check your connection and sign in again.", the header shows your name
+      **error** toast (red "!", × "Close message", stays 8 s) "Couldn't load
+      your profile, so you're seeing the student view. Check your connection
+      and sign in again.", the header shows your name
       (not blank) and the console has `[auth] could not read the user profile`.
       Switch back to **No throttling**: the studies load; on Search, "Read full
       study" opens a URL ending in `authuser=<your ISU email>`. Refresh → staff
@@ -353,8 +354,8 @@ most.
       keywords" box, on Register or on Edit study (details in §4d)
 - [ ] An abstract under 50 words → "The abstract looks too short (N words). …"
       on leaving the box and on save; nothing is saved
-- [ ] "Confirm & Save" → "Study posted!" toast → document with `status: "POSTED"`
-      → top of the list
+- [ ] "Confirm & Save" → "Study posted!" toast (green tick, gone after 3 s)
+      → document with `status: "POSTED"` → top of the list
 - [ ] Scanned/image-only PDF → NEEDS MANUAL ENTRY → "Save Manually" with an
       **empty** abstract shows "Please fill in: Abstract" and saves nothing
 - [ ] After typing the abstract, "Save Manually" writes `status: "POSTED"`
@@ -412,7 +413,7 @@ most.
       the save step (no "Reading PDF…", no Drive download — check the Network
       tab: no `googleapis.com/drive` request) with "Ready to save: Current
       abstract and keywords kept"; the abstract and keywords are the study's
-- [ ] **Save changes** → toast **"Study updated"** → the search screen opens at
+- [ ] **Save changes** → toast **"Study updated"** (green tick, 3 s) → the search screen opens at
       that study with its Study Details expanded and the new title; the
       dashboards and Statistics show the change without a reload
 - [ ] In the Firestore console the document has `updatedAt` (a timestamp) and
@@ -444,7 +445,7 @@ most.
       **Delete** (red)
 - [ ] **Cancel**, **Escape** and a click on the dark backdrop each close the
       dialog and the study is still there
-- [ ] **Delete** → toast **"Study deleted"**; the study disappears from the
+- [ ] **Delete** → toast **"Study deleted"** (green tick, 3 s); the study disappears from the
       search results, the staff "Recent studies", the student "Recently added"
       (open a student window side by side: it goes there too without a
       reload), the dashboard counts and the Statistics bars/keywords
@@ -452,12 +453,20 @@ most.
 - [ ] Sign out still asks "Sign out?" exactly as before (same dialog component)
 - [ ] A refused write shows a clear message, never a blank page: open a study
       as staff, then in the Firebase console change your `users/{uid}` role to
-      `STUDENT` (do not reload). **Delete** → toast "You do not have permission
-      to delete the study. Only Research Department staff can edit or delete
-      studies." and the study stays; **Edit → Save changes** → the same kind of
+      `STUDENT` (do not reload). **Delete** → **error** toast (red "!", ×,
+      8 s) "You do not have permission to delete the study. Only Research
+      Department staff can edit or delete studies." and the study stays;
+      **Edit → Save changes** → the same kind of
       message in the red box, the form stays open. Set the role back to `STAFF`
       afterwards. (Offline is not a failure: Firestore queues the write and
       sends it when the connection returns.)
+- [ ] **Toast kinds (errata #81).** Success (green tick) goes after 3 s;
+      notice (amber "!", something was dropped) after 6 s; error (red "!",
+      with × "Close message") after 8 s. Keep the mouse on a toast, or Tab to
+      the × of an error: it stays; move away and it waits its full time again.
+      A tap on a phone does not hold it. × closes an error at once. A screen
+      reader reads errors at once (`role="alert"`), the others politely
+      (`role="status"`). "Sign-out failed. Try again." is an error too
 
 ## 4c. Similarity — originality check and similar studies (`14`)
 
@@ -654,10 +663,11 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
 - [ ] **Edit study, reload:** Study Details → Edit → change the title → F5 →
       the edit form for that study reopens with the change and the notice
 - [ ] Edit draft for a study **someone else saved since** → the draft is
-      dropped with the toast "This study was changed since your unsaved
-      edits, so they were discarded. Please edit it again."; a study
-      **deleted since** → dashboard + "That study is no longer in the
-      e-library, so your unsaved changes were discarded."
+      dropped with the **notice** toast (amber "!", stays 6 s) "This study
+      was changed since your unsaved edits, so they were discarded. Please
+      edit it again."; a study **deleted since** → dashboard + the notice
+      "That study is no longer in the e-library, so your unsaved changes were
+      discarded."
 - [ ] **Sign out** → every `isu-draft:*` key and `isu-staff-view` removed;
       a draft stored under **another account's uid** is never shown (and is
       removed)
@@ -906,7 +916,9 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
       Settings, student dashboard (hero, chips, cards, at a glance), Search
       (filters, active chips, result cards, highlights, ticked card, Study
       Details, Edit/Delete), the summary panel (highlights, citations,
-      References, key terms), the Delete and Sign out dialogs, toasts
+      References, key terms), the Delete and Sign out dialogs, toasts (all
+      three kinds: the green tick, amber "!" and red "!" marks are clear on
+      the toast, and an error's × is visible, with a ring when Tab reaches it)
 - [ ] Native controls match: select lists, checkboxes, scrollbars, the
       browser's autofill and spell-check menus are dark too
 

@@ -18,6 +18,7 @@ import { SignOutDialog } from "./components/SignOutDialog";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { RankedThesis } from "./summary";
 import { buildSmartSearch } from "./smartSearch";
+import type { ToastKind, ToastState } from "./toast";
 import { clearAllDrafts, clearDraft, editViewId, readDraft, readStaffView, saveStaffView } from "./draft";
 import { ISUSeal, Icon, SlowNotice, Toast } from "./components/shared";
 
@@ -48,7 +49,18 @@ export default function App() {
   // The smart search box's word list and Trie (smartSearch.ts, docs/16): built
   // once per data change and shared by both search boxes, never per keystroke.
   const smartIndex = useMemo(() => buildSmartSearch(theses), [theses]);
-  const [toast, setToast] = useState<string | null>(null);
+  // The pop-up message (toast.ts): a new one replaces the old; each has its own
+  // id, so the same words twice start a new toast, and closing goes by id, so
+  // an old toast's timer can never close a newer one.
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastSeq = useRef(0);
+  const showToast = useCallback((message: string, kind: ToastKind) => {
+    toastSeq.current += 1;
+    setToast({ id: toastSeq.current, message, kind });
+  }, []);
+  const closeToast = useCallback((id: number) => setToast(t => (t?.id === id ? null : t)), []);
+  // RegisterForm drops a stale Edit draft: something was dropped, so a notice.
+  const draftDiscarded = useCallback((message: string) => showToast(message, "notice"), [showToast]);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
   // undefined = use the default (staff: own department, students: all).
@@ -148,7 +160,7 @@ export default function App() {
         // links keep authuser; only the department is unknown.
         console.error("[auth] could not read the user profile; showing the student view", err);
         setAccount({ uid: user.uid, displayName: user.displayName ?? "", email: user.email ?? "", department: "" });
-        setToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.");
+        showToast("Couldn't load your profile, so you're seeing the student view. Check your connection and sign in again.", "error");
         setRole("student");
         setScreen("student-dashboard");
       }
@@ -204,10 +216,10 @@ export default function App() {
     }
     const hadDraft = !!readDraft(account.uid, pendingEditId);
     clearDraft(pendingEditId);
-    setToast(hadDraft
+    showToast(hadDraft
       ? "That study is no longer in the e-library, so your unsaved changes were discarded."
-      : "That study is no longer in the e-library.");
-  }, [pendingEditId, thesesLoaded, theses, account.uid]);
+      : "That study is no longer in the e-library.", "notice");
+  }, [pendingEditId, thesesLoaded, theses, account.uid, showToast]);
 
   // Remember the staff screen for a reload (sessionStorage, draft.ts).
   // Not while an edit is waiting to reopen, or it would overwrite "edit:<id>".
@@ -234,7 +246,7 @@ export default function App() {
   // Rejects on failure so RegisterForm can show the error and stay open.
   async function handleSave(thesis: NewThesis) {
     await saveThesis(thesis);
-    setToast("Study posted!");
+    showToast("Study posted!", "success");
   }
 
   // Study Details → Edit: the edit form, on the staff dashboard.
@@ -256,7 +268,7 @@ export default function App() {
     if (!editing) return;
     const id = editing.id;
     await updateThesis(id, fields);
-    setToast("Study updated");
+    showToast("Study updated", "success");
     setEditing(null);
     openStudy(id);
   }
@@ -268,8 +280,8 @@ export default function App() {
     setConfirmDelete(null);
     if (!thesis) return;
     deleteThesis(thesis.id)
-      .then(() => setToast("Study deleted"))
-      .catch((err: unknown) => setToast(err instanceof Error ? err.message : "Could not delete the study. Try again."));
+      .then(() => showToast("Study deleted", "success"))
+      .catch((err: unknown) => showToast(err instanceof Error ? err.message : "Could not delete the study. Try again.", "error"));
   }
 
   // Every Sign Out button only asks; the dialog's "Sign Out" really signs out.
@@ -280,7 +292,7 @@ export default function App() {
   // onAuthStateChanged(null) does the screen reset; nothing else to tear down.
   function confirmedSignOut() {
     setConfirmSignOut(false);
-    signOutUser().catch(() => setToast("Sign-out failed. Try again."));
+    signOutUser().catch(() => showToast("Sign-out failed. Try again.", "error"));
   }
 
   // Leaving AuthActionScreen: drop the one-time code from the address bar. If
@@ -369,7 +381,7 @@ export default function App() {
           onSearch={(q, dept) => { setEditing(null); goSearch(q, dept); }}
           onOpenStudy={openStudy}
           onSignOut={handleSignOut}
-          onDraftDiscarded={setToast}
+          onDraftDiscarded={draftDiscarded}
         />
       )}
 
@@ -421,7 +433,7 @@ export default function App() {
         />
       )}
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {toast && <Toast key={toast.id} id={toast.id} message={toast.message} kind={toast.kind} onClose={closeToast} />}
     </div>
   );
 }

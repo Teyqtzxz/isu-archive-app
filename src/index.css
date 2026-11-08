@@ -97,6 +97,15 @@
 
   --toast-bg: var(--gray-900);
   --toast-text: #FFFFFF;
+  /* The toast's mark (toast.ts): a circle in the kind's colour, the tick or
+     "!" in its ink. success = green tick; notice = amber "!" (something was
+     dropped); error = red "!" (something failed). */
+  --toast-success: var(--accent-fill);
+  --toast-success-ink: var(--on-fill);
+  --toast-notice: var(--isu-yellow);
+  --toast-notice-ink: var(--isu-yellow-ink);
+  --toast-error: var(--danger-fill);
+  --toast-error-ink: var(--on-fill);
   --backdrop: rgba(15, 23, 20, 0.5);
   --scroll-thumb: var(--gray-300);
   --scroll-thumb-hover: var(--gray-400);
@@ -199,6 +208,13 @@
 
   --toast-bg: #2B3632;
   --toast-text: #E7EDEA;
+  /* The bright red, so the error mark stands out on the dark toast, with dark ink. */
+  --toast-success: var(--accent-fill);
+  --toast-success-ink: var(--on-fill);
+  --toast-notice: var(--isu-yellow);
+  --toast-notice-ink: var(--isu-yellow-ink);
+  --toast-error: var(--danger);
+  --toast-error-ink: var(--gray-900);
   --backdrop: rgba(0, 0, 0, 0.6);
   --scroll-thumb: #3A4742;
   --scroll-thumb-hover: #4C5A55;
@@ -268,6 +284,13 @@
 
     --toast-bg: #2B3632;
     --toast-text: #E7EDEA;
+    /* The bright red, so the error mark stands out on the dark toast, with dark ink. */
+    --toast-success: var(--accent-fill);
+    --toast-success-ink: var(--on-fill);
+    --toast-notice: var(--isu-yellow);
+    --toast-notice-ink: var(--isu-yellow-ink);
+    --toast-error: var(--danger);
+    --toast-error-ink: var(--gray-900);
     --backdrop: rgba(0, 0, 0, 0.6);
     --scroll-thumb: #3A4742;
     --scroll-thumb-hover: #4C5A55;

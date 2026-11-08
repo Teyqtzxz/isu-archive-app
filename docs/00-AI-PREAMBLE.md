@@ -267,13 +267,22 @@ src/
                         timing in smartSearch.check.ts
                         (node src/smartSearch.check.ts); method
                         in docs/16-smart-search.md               ✅ EXISTS
+  toast.ts            ← pure: the pop-up message kinds —
+                        TOAST_RULES (success 3 s, notice 6 s,
+                        error 8 s with ×; status or alert role),
+                        toastAria, ToastState { id, message,
+                        kind }; examples in toast.check.ts
+                        (node src/toast.check.ts); errata #81     ✅ EXISTS
   App.tsx             ← auth listener, live-data subscription, screen
                         routing (routeSignedInUser: unverified →
                         verify-email, never a dashboard), email-link
                         screen (?mode=&oobCode=) (~340 lines; no
                         screen UI inside)                         ✅ EXISTS
   components/
-    shared.tsx        ← ISUSeal, DeptBadge, Toast, Icon, initialsOf,
+    shared.tsx        ← ISUSeal, DeptBadge, Toast (success /
+                        notice / error, toast.ts; timer held by
+                        mouse or focus; × on errors), Icon,
+                        initialsOf,
                         formatPosted (the one "Posted" date
                         format), authorsPreview (+ Parts),
                         highlightKw (query words in <mark>: the
@@ -657,6 +666,7 @@ grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx
 | `--danger` · `--error-text` | red text, icons · messages | `--isu-red` · `--isu-red-ink` | `#FF6B6B` |
 | `--danger-fill` (+ `-hover`) | red buttons, white text | `--isu-red` | `#D13438` |
 | `--toast-bg` · `--backdrop` · `--shadow-*` | toast · dialog backdrop · depth | as before | `#2B3632` · darker · much softer |
+| `--toast-success` · `--toast-notice` · `--toast-error` (each + `-ink` for the mark) | toast circle: green tick · amber "!" · red "!" | `--accent-fill` · `--isu-yellow` · `--danger-fill`; ink `--on-fill` · `--isu-yellow-ink` · `--on-fill` | `--accent-fill` · `--isu-yellow` · `--danger` (`#FF6B6B`); ink `--on-fill` · `--isu-yellow-ink` · `--gray-900` |
 
 `--accent-rgb`, `--danger-rgb`, `--blue-rgb`, `--on-fill-rgb` hold the same
 colours as numbers for see-through tints: `rgba(var(--accent-rgb), 0.2)`.

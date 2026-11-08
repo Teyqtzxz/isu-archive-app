@@ -1,6 +1,7 @@
 // Small presentational pieces used by more than one screen.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Thesis } from "../types";
+import { TOAST_RULES, toastAria, type ToastKind } from "../toast";
 import { registeredAtISO } from "../types";
 import { highlightParts } from "../snippet";
 import { AUTH_MSG, checkConfirm, passwordRules } from "../auth";
@@ -188,15 +189,64 @@ export function RecentStudyCard({ study, onOpen }: {
   );
 }
 
-export function Toast({ message, onClose }: { message: string; onClose: () => void }) {
-  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
+/** The pop-up message: success, notice or error (toast.ts has the times and
+ *  roles). App renders it with key={id}, so each toast is a new one. The timer
+ *  runs only while nothing holds it: a mouse over it (a touch tap never holds)
+ *  or keyboard focus on its ×; when that ends the full time starts again. It
+ *  closes with its own id, so an old timer can never close a newer toast. It
+ *  never takes focus by itself; when it goes while its × has focus, focus goes
+ *  back to where it was before the ×. */
+export function Toast({ id, message, kind, onClose }: {
+  id: number;
+  message: string;
+  kind: ToastKind;
+  onClose: (id: number) => void;
+}) {
+  const rule = TOAST_RULES[kind];
+  const [mouseOn, setMouseOn] = useState(false);
+  const [focusOn, setFocusOn] = useState(false);
+  const held = mouseOn || focusOn;
+  const box = useRef<HTMLDivElement>(null);
+  /** Where keyboard focus was before it came to the ×. */
+  const cameFrom = useRef<HTMLElement | null>(null);
+  // The latest onClose, so a new function from App's render never restarts the timer.
+  const close = useRef(onClose);
+  useLayoutEffect(() => { close.current = onClose; });
+
+  useEffect(() => {
+    if (held) return;
+    const t = setTimeout(() => close.current(id), rule.ms);
+    return () => clearTimeout(t);
+  }, [id, held, rule.ms]);
+
+  // Leaving the page (× or a newer toast) while the × has focus: put focus
+  // back, rather than lose it to the page body. Runs before the node goes.
+  useLayoutEffect(() => () => {
+    const from = cameFrom.current;
+    if (box.current?.contains(document.activeElement) && from?.isConnected) from.focus({ preventScroll: true });
+  }, []);
+
   return (
-    <div className="animate-toast isu-toast" role="status" aria-live="polite">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+    <div ref={box} className={`animate-toast isu-toast isu-toast--${kind}`} {...toastAria(kind)}
+      onPointerEnter={e => { if (e.pointerType === "mouse") setMouseOn(true); }}
+      onPointerLeave={e => { if (e.pointerType === "mouse") setMouseOn(false); }}
+      onFocus={e => {
+        if (!focusOn && e.relatedTarget instanceof HTMLElement && !e.currentTarget.contains(e.relatedTarget)) cameFrom.current = e.relatedTarget;
+        setFocusOn(true);
+      }}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusOn(false); }}>
+      <svg className="isu-toast-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <circle cx="12" cy="12" r="10" />
-        <path d="M7 12.5l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {rule.icon === "tick"
+          ? <path d="M7 12.5l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          : <path d="M12 6.5v7M12 17.3v.01" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />}
       </svg>
-      {message}
+      <span className="isu-toast-text">{message}</span>
+      {rule.closable && (
+        <button type="button" className="isu-toast-close" aria-label="Close message" onClick={() => close.current(id)}>
+          <Icon name="x" size={16} />
+        </button>
+      )}
     </div>
   );
 }

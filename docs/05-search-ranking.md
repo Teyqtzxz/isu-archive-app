@@ -449,8 +449,11 @@ actually have something to match against.
 
 ## 8. Verification
 
-- [ ] Typing `Bio` surfaces the Biodiversity thesis, ~300ms after you stop typing
-- [ ] Typing `diver` also surfaces it
+- [ ] Typing a word from one of your own studies' titles finds it, about
+      300 ms after you stop typing
+- [ ] 4 or more letters from inside a word also find it (e.g. `rigat` finds
+      irrigation; `irrig` finds it too, as the start of the word, and 3
+      letters like `rig` do not; `findMatchScore` in `search.ts`)
 - [ ] A single-character query does not search
 - [ ] An empty query returns all theses, newest first
 - [ ] The top result shows the **highest** relevance percentage. It reads ~97%,
@@ -474,7 +477,6 @@ actually have something to match against.
       *meant* to change when the weights do
 - [ ] An archive with zero theses shows the empty state and does not print `NaN`
 - [ ] `search.ts` imports nothing from `firebase/*`
-- [x] Seed has ≥ 20 theses (21, step 02)
 - [ ] The department dropdown lists all ten `DEPARTMENTS`, even ones with no theses
 - [ ] `bm25Score` still takes `(query, thesis, docIndex, index, df)` and reads
       only the index; `bestFieldFor` reads `index.fieldTokens` and tokenises
