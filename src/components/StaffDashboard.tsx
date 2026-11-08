@@ -5,6 +5,7 @@ import { ISUSeal, Icon, RecentStudyCard, initialsOf, type IconName } from "./sha
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
 import { KeywordModelCard } from "./KeywordModelCard";
+import { LibraryCharts } from "./LibraryCharts";
 import { ThemePicker, ThemeToggle } from "./ThemeToggle";
 
 /** Who is signed in, for the header, welcome card and settings. */
@@ -259,7 +260,8 @@ export function StaffDashboard({
               onSelectDepartment={d => onSearch("", d)}
               onSelectKeyword={(k, d) => onSearch(k, d)}
             />
-            {/* Staff only: the student dashboard shows DepartmentStats without it. */}
+            {/* Staff only: the student dashboard shows DepartmentStats without these. */}
+            <LibraryCharts theses={theses} />
             <KeywordModelCard theses={theses} />
           </div>
         )}

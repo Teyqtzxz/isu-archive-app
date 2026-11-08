@@ -214,6 +214,40 @@ most.
       up to the total, and the staff member's own department says "(mine)"
 - [ ] Clicking a bar opens Search filtered to that department; clicking a
       keyword searches it (in the department picked in the keyword box)
+- [ ] **[auto]** `node src/stats.check.ts` also covers the library charts
+      (errata #76): year gaps kept as 0, the newest 12 years plus one
+      "Before <year>" row that still add up to the total, the last 12 months
+      in **local** time (00:30 on the 1st in Manila is the new month; January
+      reaches back into last year; a 31st never skips a month), no or bad
+      dates skipped, advisers merged and ties A–Z
+- [ ] **Library charts (staff Statistics only)**, between the department
+      cards and the Keyword model card: **Studies by year**, **Added per
+      month** and **Top advisers**. Each counts the **whole** e-library, also
+      for staff with a department (compare with the department bars' "N total")
+- [ ] **Studies by year:** one column per Academic Year from the oldest to the
+      newest, a year with no study shows **0**; with a study older than 12
+      years (e.g. 1975) the first column is **"Before <year>"** and the columns
+      still add up to the total
+- [ ] **Added per month:** the last 12 months, oldest first, this month last,
+      zeros shown, the year under the first month and under January; the note
+      says it is when the study was posted, not its Academic Year. A study
+      posted at 00:30 on the 1st (Philippine time) counts in the new month
+- [ ] **Top advisers:** at most 8, most studies first, ties A–Z. "Dr. Maria
+      Santos", "maria santos" and "Maria Santos, PhD" are one bar (the
+      spelling used most is shown; on a tie the neatly typed one, so "Dr.
+      Stone" beats "dr stone" and "DR. STONE"); "Jose Santos" is a separate bar; a long
+      name wraps, never cut off
+- [ ] Every column and bar shows its number without hovering. Nothing in the
+      charts is a button: no pointer, no hover colour, nothing happens on
+      click, and Tab skips them. A screen reader reads each chart as a table
+- [ ] Empty e-library: each chart says "No studies yet." (no empty axes).
+      Studies but none posted in the last 12 months: "No study was added in
+      the last 12 months."
+- [ ] Save or delete a study: the three charts change without a reload
+- [ ] 320 px: 12 (or 13) columns fit with short labels ("’26", "<’15") and
+      nothing overlaps; 640–1023 px the two column charts sit side by side;
+      1024 px and wider they are stacked on the left, Top advisers on the
+      right. Light and dark. The student dashboard has none of them
 - [ ] Student dashboard: department chips show counts, and "E-Library at a
       glance" shows the same two cards
 - [ ] Student dashboard "Recently added" uses the same card as the staff
@@ -444,7 +478,7 @@ most.
 - [ ] An abstract about a topic no stored study has → phrases only, no
       "learned" chip
 - [ ] **Statistics tab (staff):** a **"Keyword model"** card under the
-      department charts: training studies, known keywords, "Testing the
+      library charts: training studies, known keywords, "Testing the
       model…" then "*N* studies tested, *M* copies hidden", Model vs
       Baseline for the three measures, and **"Fewer than 30 studies with
       keywords — not reliable yet."** while under 30. Students never see it

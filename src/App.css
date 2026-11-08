@@ -1737,6 +1737,63 @@ p.apa-ref:last-child { margin-bottom: 0; }
 .km-table td { color: var(--text-secondary); }
 .km-table td.km-model { color: var(--text); font-weight: 700; }
 
+/* ─── Library charts (LibraryCharts.tsx, staff Statistics tab only) ─────── */
+/* Studies by year, added per month and top advisers: read-only, so no hover,
+   no pointer and nothing to focus. Every value is printed on its bar. Phone:
+   one column; 640–1023: the two column charts side by side; 1024+: the same
+   3 : 2 split as DepartmentStats above, the column charts stacked on the left. */
+.lc-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+.lc-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 640px) and (max-width: 1023px) {
+  .lc-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .lc-layout { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.lc-title-row { padding: 12px 16px; flex-wrap: wrap; gap: 2px 12px; }
+.lc-empty { margin: 0; padding: 14px 16px; font-size: 13px; color: var(--text-muted); }
+.lc-note { margin: 8px 4px 0; font-size: 12px; line-height: 1.4; color: var(--text-muted); }
+/* Columns: the plot's width decides the label style (container query), so a
+   narrow card shows "’26" and "1k" whatever the screen width. */
+.lc-body { padding: 12px; container-type: inline-size; }
+.lc-plot { display: grid; grid-template-rows: 104px auto; }
+.lc-col { position: relative; border-bottom: 1px solid var(--border); }
+/* 18px above the track keep room for the tallest column's value. */
+.lc-track { position: absolute; inset: 18px 0 0 0; }
+.lc-column {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: min(24px, 56%); height: max(var(--h), 2px);
+  border-radius: 4px 4px 0 0; background: var(--bar-fill); opacity: 0.55;
+}
+.lc-value {
+  position: absolute; left: 0; right: 0; bottom: calc(var(--h) + 2px);
+  text-align: center; font-size: 11px; line-height: 14px; font-weight: 700;
+  color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.lc-value--zero { font-weight: 500; color: var(--text-muted); }
+.lc-xlabel {
+  display: flex; flex-direction: column; align-items: center; padding-top: 4px;
+  font-size: 11px; line-height: 14px; color: var(--text-muted); white-space: nowrap;
+}
+.lc-narrow { display: none; }
+@container (max-width: 479px) {
+  .lc-wide { display: none; }
+  .lc-narrow { display: inline; }
+  .lc-value, .lc-xlabel { font-size: 10px; }
+}
+/* Advisers: the department bars' look (bar-track, bar-fill, bar-count), as
+   plain rows. A long name wraps instead of being cut off. */
+.lc-bars { padding: 8px 12px 12px; }
+.lc-bar-row {
+  display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) minmax(2.5rem, auto);
+  align-items: center; gap: 12px; padding: 8px;
+}
+.lc-bar-label { font-size: 13px; font-weight: 500; line-height: 1.35; color: var(--text-body); overflow-wrap: anywhere; }
+@media (max-width: 479px) {
+  .lc-bar-row { grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) minmax(2rem, auto); gap: 8px; }
+  .lc-bar-label { font-size: 12px; }
+}
+
 /* ─── Similarity (similarity.ts) ───────────────────────────── */
 /* "Shared key terms" of a match: the key-term chips of the summary. */
 .sim-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

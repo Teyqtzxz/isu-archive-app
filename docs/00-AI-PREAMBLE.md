@@ -169,7 +169,12 @@ src/
                         pdf.js text extraction (step 06)          ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords,
                         countAdded (this month/year in LOCAL
-                        time, never UTC); examples in
+                        time, never UTC), and for the library
+                        charts countByYear (newest 12 years +
+                        "Before <year>"), countAddedByMonth (last
+                        12 months, LOCAL time), topAdvisers +
+                        adviserKey (titles/degrees via
+                        isNameTitle); examples in
                         stats.check.ts (node src/stats.check.ts) ✅ EXISTS
   snippet.ts          ← pure: abstractSnippet — the one abstract
                         sentence on a search result card, from
@@ -275,6 +280,9 @@ src/
     StaffDashboard.tsx   RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx CombinedSummaryPanel.tsx
     DepartmentStats.tsx (staff Statistics tab + student dashboard)
+    LibraryCharts.tsx (staff Statistics tab only, read-only:
+                      studies by year, added per month, top
+                      advisers — whole e-library, errata #76)
     KeywordModelCard.tsx (staff Statistics tab only: the keyword
                       model's leave-one-out accuracy vs baseline)
     SmartSearchInput.tsx (both search boxes: the input + the
@@ -352,6 +360,10 @@ Real, working — **do not rewrite**:
   (step 06); the extractive summary (step 07)
 - Department statistics: studies per department and top keywords (staff
   Statistics tab, student dashboard)
+- Library charts (`LibraryCharts.tsx`, errata #76), staff Statistics tab
+  only: studies by Academic Year, studies added per month (last 12, local
+  time) and the top 8 advisers, over the whole e-library; read-only (no
+  clicks), every value printed on its bar, a hidden table for screen readers
 - APA 7 citations (`citation.ts`): a full reference in Study Details, and
   in-text citations plus an APA reference list in the combined summary
 - The theme, responsive header and icon set (step 04 Parts 3–4)
