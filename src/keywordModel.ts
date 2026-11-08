@@ -48,8 +48,9 @@ export const KEYWORD_MODEL = {
   autoTotal: 8,
   /** At most this many of the added ones learned. */
   autoMaxLearned: 2,
-  /** A phrase of the abstract is added only when it appears at least this
-   *  many times in the title plus abstract (learned ones are not counted). */
+  /** Phrases of the abstract that appear at least this many times in the title
+   *  plus abstract are added first; the room left is then filled with the
+   *  other suggestions (errata #79; learned ones are not counted). */
   autoMinCount: 2,
 } as const;
 
@@ -302,8 +303,9 @@ export function isAdverb(word: string): boolean {
   return ADVERBS.has(word) || (word.length >= 6 && /(?:al|ful|ous|ive|ent|ant|ic|ate|ing|less|ish|ed|[ui]lar|[ai]b|ari)ly$/.test(word));
 }
 
-/** Vague words that cannot start a phrase: "specific plastic", "various
- *  documents", "existing waste". They may still end one. */
+/** Vague words that cannot start a phrase ("specific plastic", "various
+ *  documents", "existing waste") nor end one ("producing various", "plastic
+ *  types several"), errata #79. */
 const NOT_FIRST: ReadonlySet<string> = new Set([
   "specific", "various", "different", "several", "certain", "particular", "existing", "numerous", "many", "few",
   "overall", "same", "own", "such", "respective", "corresponding", "pertinent", "relevant",
@@ -380,7 +382,8 @@ export interface ExtractedPhrase {
  * so a phrase never crosses a full stop, comma, bracket or dash; only when
  * they are not the same word ("rice rice", "Niño niños"); and only when the
  * first may start a phrase (not NOT_FIRST, and not an -ed word right after a
- * phrase word) and the second may end one (not a past form). Scored by TF-IDF:
+ * phrase word) and the second may end one (not a past form, not NOT_FIRST).
+ * Scored by TF-IDF:
  *   w(word)        = (1 + ln tf) × (1 + ln((1 + N) / (1 + df)))     (tf in this abstract,
  *                                                                    df over the training studies)
  *   score(phrase)  = (1 + ln tf(phrase)) × (w(first) + w(second))
@@ -427,7 +430,7 @@ export function extractPhrases(model: Pick<KeywordModel, "n" | "df">, abstract: 
     if (i < 0 || i + 1 >= tokens.length) return false;
     const a = tokens[i], b = tokens[i + 1];
     if (!a.parts || !b.parts || a.key === b.key || !/^\s+$/.test(text.slice(a.end, b.start))) return false;
-    if (NOT_FIRST.has(single(i)) || isPastForm(single(i + 1))) return false;
+    if (NOT_FIRST.has(single(i)) || NOT_FIRST.has(single(i + 1)) || isPastForm(single(i + 1))) return false;
     const prev = i > 0 && /^\s+$/.test(text.slice(tokens[i - 1].end, a.start)) ? tokens[i - 1] : null;
     // "Drip irrigation saved water", "this study assessed students": after a noun, the -ed word is the verb.
     if (isEdForm(single(i)) && prev && (prev.parts ? !isEdForm(prev.key) : DROPPED_NOUNS.has(prev.folded))) return false;
@@ -623,13 +626,15 @@ export function autoKeywordRoom(has: number): number {
 /**
  * The keywords the Register form adds by itself when the save step opens for
  * a new study after a PDF was read (docs/15 §6): the best suggestions after
- * the study's own keywords, at most autoKeywordRoom() of them (fewer, or
- * none, is fine), at most autoMaxLearned learned (none below reliableFrom),
+ * the study's own keywords, autoKeywordRoom() of them (fewer only when
+ * the suggestions run out), at most autoMaxLearned learned (none below reliableFrom),
  * never one in `removed` (keys staff took off; one removed never comes back
  * by itself), never one that contains, is part of, or has the same words as
- * a listed or added keyword, and a phrase of the abstract only when it
- * appears at least KEYWORD_MODEL.autoMinCount times in the title plus
- * abstract (phraseCount). A phrase seen once stays a suggestion chip.
+ * a listed or added keyword. Order (errata #79): first the learned ones and
+ * the phrases seen at least KEYWORD_MODEL.autoMinCount times in the title
+ * plus abstract (phraseCount), best first; then, while there is room, the
+ * other phrases in their usual order (best score first). The suggestions
+ * left over stay as chips, not added.
  */
 export function autoKeywords(model: KeywordModel, doc: KeywordText, removed: Iterable<string> = []): KeywordSuggestion[] {
   const room = autoKeywordRoom(doc.keywords.length);
@@ -641,11 +646,13 @@ export function autoKeywords(model: KeywordModel, doc: KeywordText, removed: Ite
   const listed = doc.keywords.map(keywordKey).filter(Boolean);
   const sameWords = (a: string, b: string) => a.split(" ").sort().join(" ") === b.split(" ").sort().join(" ");
   const overlaps = (a: string, b: string) => ` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `) || sameWords(a, b);
+  const all = suggestKeywords(model, doc, { limit: Infinity, maxLearned: KEYWORD_MODEL.autoMaxLearned, exclude: removed });
+  // A phrase seen once is more often a sentence fragment ("system sends", "set level"),
+  // so the ones seen twice (and the learned ones) go first; the once-seen ones only fill the room left.
+  const repeated = (s: KeywordSuggestion) => s.source === "learned" || phraseCount(doc, s.key) >= KEYWORD_MODEL.autoMinCount;
   const out: KeywordSuggestion[] = [];
-  for (const s of suggestKeywords(model, doc, { limit: Infinity, maxLearned: KEYWORD_MODEL.autoMaxLearned, exclude: removed })) {
+  for (const s of [...all.filter(repeated), ...all.filter(s => !repeated(s))]) {
     if (out.length >= room) break;
-    // A phrase seen once is most often a sentence fragment ("system sends", "set level").
-    if (s.source === "abstract" && phraseCount(doc, s.key) < KEYWORD_MODEL.autoMinCount) continue;
     if ([...listed, ...out.map(o => o.key)].some(k => overlaps(k, s.key))) continue;
     out.push(s);
   }

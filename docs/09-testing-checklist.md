@@ -499,8 +499,9 @@ most.
 - [ ] **[auto]** `node src/keywordModel.check.ts` ends with "All passed."
       (label normalisation, learned vs extracted, the P ≥ 0.9 + 5-evidence
       guard, each word once per study, near-copies counted once, the
-      30-study rule, at most 3 learned of 6, the automatic count, removed
-      keywords, junk phrases, three-word terms, no duplicates, validation
+      30-study rule, at most 3 learned of 6, the automatic count and fill-up
+      order (errata #79), removed keywords, junk phrases (also a vague word at
+      the end), three-word terms, no duplicates, validation
       rules, Edit exclusion, no leakage in leave-one-out, empty library)
 - [ ] **[auto]** `node src/similarity.check.ts`: `possibleDuplicates` gives the
       same lists as comparing every pair (errata #77)
@@ -546,15 +547,19 @@ most.
       added, "patient interaction" is only a chip; nothing inside a printed
       keyword is added (printed "Marine Plastic Pollution" → "plastic
       pollution" stays a chip); never both "quality care" and "care quality"
-- [ ] **Review round 3:** a phrase of the abstract is added automatically only
-      when it appears at least twice in the title plus abstract ("fish farmer"
-      and "fish farmers" count together); a phrase seen once is only a chip.
-      An abstract with no repeated phrase gets **no** automatic keyword (the
-      note "Keywords marked auto…" does not show). Learned keywords (30+
+- [ ] **Errata #79 (fill the room):** the phrases that appear at least twice
+      in the title plus abstract ("fish farmer" and "fish farmers" count
+      together) are added first, then the room is filled with the next
+      suggestions in their usual order, so a study with no printed keywords
+      gets **5** unless its abstract has fewer phrases. An abstract with no
+      repeated phrase still gets its once-seen phrases. Learned keywords (30+
       studies) are not counted
+- [ ] The **Suggested keywords** box shows only what was **not** added; its
+      hint starts "Not added. Click one to add it." No phrase ends in a vague
+      word ("producing various", "… several", "… specific")
 - [ ] **[auto]** the 14 made-up capstone abstracts in `keywordModel.check.ts`
-      give all their must-have terms and none of their junk; at most 5
-      automatic keywords each, every one seen at least twice, no overlap
+      give all their must-have terms and none of their junk; 5 automatic
+      keywords each, those seen twice before any seen once, no overlap
 - [ ] An abstract about a topic no stored study has → phrases only, no
       "learned" chip
 - [ ] Keyboard: Tab reaches each ×; a screen reader reads "Remove keyword …,

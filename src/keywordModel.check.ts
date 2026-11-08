@@ -171,8 +171,8 @@ const richSuggestions = suggestKeywords(richModel, NEW_FISH);
 check("suggestions: at most 3 learned of 6, the rest from the abstract",
   [richSuggestions.filter(s => s.source === "learned").length, richSuggestions.length], [3, 6]);
 const richAuto = autoKeywords(richModel, NEW_FISH);
-check("added automatically: at most 2 learned; the abstract's own phrases only when seen twice (none here)",
-  [richAuto.filter(s => s.source === "learned").length, richAuto.filter(s => s.source === "abstract").length], [2, 0]);
+check("added automatically: at most 2 learned, first; the abstract's phrases fill the other 3 places (errata #79)",
+  richAuto.map(s => s.source), ["learned", "learned", "abstract", "abstract", "abstract"]);
 
 console.log("\n── How many are added automatically ──");
 check("printed 0, 1, 3, 4, 5, 7, 8, 9, 10 → added 5, 5, 5, 4, 3, 1, 0, 0, 0",
@@ -185,7 +185,7 @@ const RICH = "Farmers in Isabela tested drip irrigation on hybrid corn. Drip irr
   "stable, and market prices for fertilizer fell.";
 const printed = (k: number) => ["alpha keyword", "beta keyword", "gamma keyword", "delta keyword", "epsilon keyword",
   "zeta keyword", "eta keyword", "theta keyword", "iota keyword", "kappa keyword"].slice(0, k);
-for (const k of [0, 3, 4, 7, 8, 10]) {
+for (const k of [0, 3, 4, 5, 6, 7, 8, 10]) {
   const got = autoKeywords(empty, { title: "", abstract: RICH, keywords: printed(k) });
   check(`${k} printed keywords → ${autoKeywordRoom(k)} added, none of them already there, all from the abstract`,
     [got.length, got.some(s => printed(k).map(keywordKey).includes(s.key)), got.every(s => s.source === "abstract")], [autoKeywordRoom(k), false, true]);
@@ -197,8 +197,9 @@ check("the best phrases are added, in the order shown as suggestions (skipping a
   [["hybrid corn", "soil moisture", "farm credit", "drip irrigation", "crop insurance"], true]);
 const removedTwo = [first[0].key, first[2].key];
 const again = autoKeywords(empty, { title: "", abstract: RICH, keywords: [] }, removedTwo);
-check("removed ones are never added again; the next ones seen twice fill their places (4 are left: fewer is fine)",
-  [again.map(s => s.key), again.some(s => removedTwo.includes(s.key))], [["soil moisture", "drip irrigation", "crop insurance", "market price"], false]);
+check("removed ones are never added again; the next ones fill their places: market price (seen twice), then sensor cost (seen once)",
+  [again.map(s => s.key), again.map(s => phraseCount({ title: "", abstract: RICH }, s.key)), again.some(s => removedTwo.includes(s.key))],
+  [["soil moisture", "drip irrigation", "crop insurance", "market price", "sensor cost"], [3, 2, 2, 2, 1], false]);
 check("…but stay available as suggestions to click (the undo)",
   removedTwo.every(k => suggestKeywords(empty, { title: "", abstract: RICH, keywords: [] }).some(s => s.key === k)), true);
 check("each added keyword passes the Keywords box rules as shown",
@@ -387,24 +388,28 @@ for (const c of CAPSTONES) {
   const added = autoKeywords(empty, { title: c.title, abstract: c.abstract, keywords: [] }).map(s => s.key);
   check(`${c.id}: gives ${c.must.join(", ")}`, c.must.filter(m => !offered.includes(m.toLowerCase())), []);
   check(`${c.id}: no ${c.not.join(", ")}`, c.not.filter(n => offered.some(p => ` ${p} `.includes(` ${n.toLowerCase()} `))), []);
-  check(`${c.id}: at most 5 added, each seen at least twice, none inside another`,
-    [added.length <= 5, added.every(k => phraseCount(c, k) >= 2), added.some((a, i) => added.some((b, j) => i !== j && ` ${b} `.includes(` ${a} `)))],
-    [true, true, false]);
+  const twice = added.map(k => phraseCount(c, k) >= 2);
+  check(`${c.id}: 5 added (the room is full), those seen twice before any seen once, none inside another`,
+    [added.length, twice.every((t, i) => i === 0 || !t || twice[i - 1]), added.some((a, i) => added.some((b, j) => i !== j && ` ${b} `.includes(` ${a} `)))],
+    [5, true, false]);
 }
 // Round 3: the junk the review found among the automatic keywords, each seen once.
 const AUTO_JUNK: [string, string][] = [["iot-water", "system sends"], ["rfid", "system records"], ["enrollment", "registrar approves"],
   ["greenhouse", "system waters"], ["greenhouse", "set level"], ["milk-tea", "posted daily"], ["hollow-blocks", "percent rice"],
   ["nursing", "lower compliance"]];
-check("round 3: none of the once-seen junk of round 2 is added any more (it may stay a chip)",
+// Errata #79: they may come back as fillers (staff remove them), but only after every phrase seen twice.
+check("round 3 junk, seen once, is added only in the room left after the phrases seen twice: with room for just those, none of it",
   AUTO_JUNK.filter(([id, k]) => { const c = CAPSTONES.find(x => x.id === id)!;
-    return autoKeywords(empty, { title: c.title, abstract: c.abstract, keywords: [] }).some(s => s.key === keywordKey(k)); }), []);
+    const repeated = autoKeywords(empty, { title: c.title, abstract: c.abstract, keywords: [] }).filter(s => phraseCount(c, s.key) >= 2).length;
+    const kw = printed(KEYWORD_MODEL.autoTotal - repeated);
+    return autoKeywords(empty, { title: c.title, abstract: c.abstract, keywords: kw }).some(s => s.key === keywordKey(k)); }), []);
 const MAIN_TERMS: [string, string][] = [["iot-water", "monitoring system"], ["tillage", "reduced tillage"], ["rfid", "automated attendance system"],
   ["corn", "improved varieties"], ["nursing", "hand hygiene"], ["reading", "reading comprehension"], ["hollow-blocks", "rice husk ash"]];
 check("…while the main terms, which repeat, still are",
   MAIN_TERMS.filter(([id, k]) => { const c = CAPSTONES.find(x => x.id === id)!;
     return !autoKeywords(empty, { title: c.title, abstract: c.abstract, keywords: [] }).some(s => s.key === keywordKey(k)); }), []);
 
-console.log("\n── Round 3: automatic only when seen twice ──");
+console.log("\n── Round 3 and errata #79: seen twice first, then the room is filled ──");
 check("phraseCount folds like keywordKey: fish farmer and fish farmers count together",
   phraseCount({ title: "", abstract: "Fish farmers met. A fish farmer spoke." }, keywordKey("fish farmers")), 2);
 check("…title and abstract are counted together", phraseCount({ title: "Hybrid Corn in Isabela", abstract: "Hybrid corn grew." }, "hybrid corn"), 2);
@@ -412,15 +417,15 @@ check("…a hyphenated keyword matches its parts", phraseCount({ title: "", abst
 check("…never across a full stop or a comma", phraseCount({ title: "", abstract: "We used hybrid. Corn grew, hybrid, corn." }, "hybrid corn"), 0);
 check("…a three-word term counts as itself", phraseCount({ title: "", abstract: TPB }, keywordKey("perceived behavioral control")), 3);
 const ONCE = { title: "", abstract: "Drip irrigation saved water.", keywords: [] as string[] };
-check("seen once: a chip only, not added", [autoKeywords(empty, ONCE).length, suggestKeywords(empty, ONCE).some(s => s.key === "drip irrigation")], [0, true]);
+check("seen once: added too when there is room (errata #79; was a chip only)", autoKeywords(empty, ONCE).map(s => s.key), ["drip irrigation"]);
 const TWICE = { title: "", abstract: "Drip irrigation saved water. Farmers liked drip irrigation.", keywords: [] as string[] };
 check("seen twice: added", autoKeywords(empty, TWICE).map(s => s.key), ["drip irrigation"]);
 check("once in the title and once in the abstract: added",
   autoKeywords(empty, { title: "Drip Irrigation for Hybrid Corn", abstract: "Drip irrigation saved water.", keywords: [] }).map(s => s.key), ["drip irrigation"]);
 check("plural folding: fish farmer + fish farmers = twice → added",
   autoKeywords(empty, { title: "", abstract: "Fish farmers met. A fish farmer spoke.", keywords: [] }).map(s => s.key), ["fish farmer"]);
-check("fewer than 5, or none, is fine: an abstract with no repeated phrase gets none",
-  autoKeywords(empty, { title: "", abstract: "Solar dryers cut drying time of cacao beans.", keywords: [] }), []);
+check("no repeated phrase: the ones seen once fill the room, in their usual order (fewer than 5 only when they run out)",
+  autoKeywords(empty, { title: "", abstract: "Solar dryers cut drying time of cacao beans.", keywords: [] }).map(s => s.key), ["solar dryer", "drying time", "cacao bean"]);
 check("learned keywords are not held to the twice rule (learned from 30 studies, each seen once here)",
   autoKeywords(trainKeywordModel(libraryOf(30)), NEW_FISH).filter(s => s.source === "learned").map(s => [s.key, phraseCount(NEW_FISH, s.key)]), [["aquaculture", 0]]);
 const REORDER = { title: "", abstract: "Quality care matters. Quality care and care quality were rated. Care quality rose.", keywords: [] as string[] };
@@ -429,6 +434,43 @@ check('the same words in another order overlap: never both "quality care" and "c
   [reorder.includes("quality care") !== reorder.includes("care quality"), suggestKeywords(empty, { ...REORDER, keywords: reorder }).some(s => ["quality care", "care quality"].includes(s.key))],
   [true, true]);
 check("…nor one with a listed keyword in another order", autoKeywords(empty, { ...REORDER, keywords: ["Care quality"] }).some(s => s.key === "quality care"), false);
+
+console.log("\n── Errata #79: fill-up order ──");
+// "goat milk" (seen once) scores above "solar dryer" (seen twice), because goat and milk are frequent words.
+const GOAT = { title: "", keywords: [] as string[], abstract: "Goat raisers sold goat milk. Goats, milk, goats, milk, goats, milk, goats, milk, goats, milk, " +
+  "goats, milk, goats, milk and goats, milk were counted. A solar dryer was built; the solar dryer worked." };
+check("suggestions list the best score first: goat milk (seen once) before solar dryer (seen twice)",
+  suggestKeywords(empty, GOAT).map(s => [s.key, phraseCount(GOAT, s.key)]), [["goat milk", 1], ["solar dryer", 2], ["goat raiser", 1]]);
+check("…but the one seen twice is added first, then the others in that order", autoKeywords(empty, GOAT).map(s => s.key), ["solar dryer", "goat milk", "goat raiser"]);
+check("…with room for 1 only the one seen twice", autoKeywords(empty, { ...GOAT, keywords: printed(7) }).map(s => s.key), ["solar dryer"]);
+const CARE = { title: "", keywords: [] as string[], abstract: "Quality care matters to patients. Nurses gave quality care at night. Care quality rose in the ward." };
+check("a filler seen once never overlaps an added one: care quality (once) is not added after quality care (twice), it stays a chip",
+  [autoKeywords(empty, CARE).map(s => s.key), suggestKeywords(empty, { ...CARE, keywords: ["Quality care"] }).map(s => s.key)], [["quality care"], ["care quality"]]);
+check("…nor one inside a printed keyword: patient interaction is not added next to Nurse-patient interaction",
+  autoKeywords(empty, { title: "", abstract: "Patient interaction improved after training.", keywords: ["Nurse-patient interaction"] }).map(s => s.key), []);
+check("…and nothing is left as a chip once all three are added",
+  suggestKeywords(empty, { ...GOAT, keywords: autoKeywords(empty, GOAT).map(s => s.keyword) }), []);
+const MILK_TEA = CAPSTONES.find(c => c.id === "milk-tea")!;
+const teaDoc = { title: MILK_TEA.title, abstract: MILK_TEA.abstract, keywords: [] as string[] };
+const teaOrder = suggestKeywords(empty, teaDoc, { limit: 50 }).map(s => s.key);
+const teaRepeated = teaOrder.filter(k => phraseCount(teaDoc, k) >= 2);
+check("milk-tea: three phrases seen twice (social media, tea shops, Tuguegarao City)", teaRepeated, ["social media", "tea shop", "tuguegarao city"]);
+for (const room of [0, 1, 2, 3, 4, 5]) {
+  const kw = printed(KEYWORD_MODEL.autoTotal - room);
+  const got = autoKeywords(empty, { ...teaDoc, keywords: kw }).map(s => s.key);
+  const want = [...teaRepeated, ...teaOrder.filter(k => !teaRepeated.includes(k))].slice(0, room);
+  check(`room ${room} (${kw.length} printed): exactly ${room} added, the seen-twice ones first, then the next in the usual order`, got, want);
+}
+
+console.log("\n── Errata #79: vague words cannot end a phrase either ──");
+check('"producing various programs": neither "producing various" nor "various programs"',
+  extractPhrases(empty, "The station kept producing various programs online.").map(p => p.key).filter(k => k.includes("various")), []);
+const VAGUE = ["specific", "various", "different", "several", "certain", "particular", "existing", "numerous", "many", "few",
+  "overall", "same", "own", "such", "respective", "corresponding", "pertinent", "relevant"];
+check("no vague word starts or ends a phrase (each written twice after and before a noun)",
+  VAGUE.filter(w => extractPhrases(empty, `Farmers grew rice ${w}. Farmers grew rice ${w}. The ${w} harvest came. The ${w} harvest came.`)
+    .some(p => p.key.split(" ").includes(w))), []);
+check("…while the noun phrase around them is still found", extractPhrases(empty, "Rice farmers met. Rice farmers grew various crops.").map(p => p.key), ["rice farmer"]);
 
 
 console.log("\n── Edit study: never learns from itself ──");

@@ -467,21 +467,23 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   of the abstract, two words or a three-word term, never across punctuation,
   shown as written ("low-cost sensors"), with the **junk-phrase filter** of
   `docs/15` §3 (grammar words, report verbs in base and -s form, their -ing
-  form after a preposition or plural noun, adverbs, vague first words, past
+  form after a preposition or plural noun, adverbs, vague words first or last, past
   forms, roman page numbers, the fixed terms "use case" and "test case").
-  A three-word term only when seen at least twice; an automatic keyword
-  from the abstract only when seen at least twice in the title plus
-  abstract; no automatic keyword overlaps a listed one, also not in another
+  A three-word term only when seen at least twice. Automatic keywords:
+  first the phrases seen at least twice in the title plus abstract, then
+  the room is filled with the next suggestions in their usual order (errata
+  #79); no automatic keyword overlaps a listed one, also not in another
   word order.
 - **Learned keywords on the Register form only from 30 training studies**
   (`KEYWORD_MODEL.reliableFrom`, near-copies counted once).
-- **Automatic keywords (Register, new study, errata #77):** once per
+- **Automatic keywords (Register, new study, errata #77, #79):** once per
   successful PDF read, when the e-library has loaded (or failed to): the
   PDF's own keywords first, then up to **5**, never past **8** in all, at
   most 2 learned; tagged **AUTO** with a remove ×; a removed keyword is never
   added by itself again (it stays a chip). Never in Edit study or after a
   failed read. The draft keeps the tags and the removed list.
-- **Save step (Register and Edit study):** "Suggested keywords", at most **6**,
+- **Save step (Register and Edit study):** "Suggested keywords" (hint "Not
+  added. Click one to add it."), at most **6**,
   learned first — only at **P ≥ 0.9 and ≥ 5 evidence words**, at most 3 —
   then phrases; each chip says "learned from N studies" or "from this
   abstract". Never a keyword the study already has; clicking adds it through

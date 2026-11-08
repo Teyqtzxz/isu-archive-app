@@ -793,7 +793,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             <div className="review-card">
               <span className="field-label" id="register-suggested-label" style={{ marginBottom: 4 }}>Suggested keywords</span>
               <p className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-                Click one to add it. Learned from the keywords of earlier studies, or taken from this abstract.
+                Not added. Click one to add it. Learned from the keywords of earlier studies, or taken from this abstract.
               </p>
               <div className="suggest-list" role="group" aria-labelledby="register-suggested-label">
                 {suggestions.map(s => (
