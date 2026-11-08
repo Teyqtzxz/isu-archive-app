@@ -30,9 +30,10 @@ Do not reintroduce `pnpm-lock.yaml` or a `yarn.lock`. The regression check for
 this is in `09-testing-checklist.md` — `ls package-lock.json pnpm-lock.yaml`
 must report exactly one file.
 
-Also confirm `.gitignore` covers `dist/` (it does) and that `firebase.json` and
-`.firebaserc` have a single owner, so two people do not generate conflicting
-config.
+Also confirm `.gitignore` covers `dist/` (it does). `firebase.json` and
+`.firebaserc` are committed (errata #83) and have a single owner (C), so two
+people do not generate conflicting config; never regenerate them with
+`firebase init`.
 
 ### A build that actually typechecks
 
@@ -103,62 +104,162 @@ fine — Firebase Hosting just serves the static files in `dist/`.)
 Preview it locally before deploying:
 
 ```bash
-npm run preview
+npx vite preview --port 4173 --strictPort
 ```
+
+(The port matters: `vite.config.ts` falls back to 8443, the dev server's port.
+`vite preview` does not read `firebase.json`, so headers and the rewrite are
+only seen on the live site.)
 
 This serves the production bundle over HTTP rather than Vite's dev server, which
 is the only way to catch base-path and asset problems.
 
 ---
 
-## 4. Deploy to Firebase Hosting
+## 4. Deploy to Firebase Hosting (errata #83)
 
-**Prereq:** steps 03 and 04 are done, and the authorized domains from §4b exist.
+**Live address: https://isu-elibrary.web.app** — the Hosting site
+`isu-elibrary` in the project `isu-archive-9253b`. The owner created the site in
+the Firebase console (Hosting → Add another site). The project's default site,
+`isu-archive-9253b.web.app`, is not used for the e-library.
 
-```bash
-npm install -g firebase-tools    # once
-firebase login                   # opens a browser, approve it
-firebase init hosting
+**Prereq:** the authorized domain and the Drive API key website from §4b are
+added **before** the first deploy.
+
+### The config is committed — no `firebase init`
+
+Do **not** run `firebase init`: it would ask questions and could rewrite the two
+files below. Both are in git:
+
+- `.firebaserc` — the default project, `isu-archive-9253b`.
+- `firebase.json` — **Hosting only**:
+
+| Part | Value | Why |
+|------|-------|-----|
+| `site` | `isu-elibrary` | Deploys to isu-elibrary.web.app, not the project's default site |
+| `public` | `dist` | What `npm run build` makes |
+| `ignore` | `firebase.json`, `**/.*`, `**/node_modules/**` | Never upload these |
+| `rewrites` | `**` → `/index.html` | Every path opens the app. The email links open `/?mode=resetPassword&oobCode=…`; a mistyped path shows the app instead of a 404 |
+| header, `regex` `^/(index\.html)?$` | `Cache-Control: no-cache` | The browser asks again for `index.html` every time (a quick "not changed" when nothing changed) |
+| header, `source` `/assets/**` | `Cache-Control: public, max-age=31536000, immutable` | Every file in `/assets/` has a hash in its name (main bundle, CSS, the lazy pdf.js chunk **and** the pdf.js worker), so a new build always has new names and these can be kept for a year |
+
+**There is no `firestore`, `storage` or `functions` section, on purpose.** So
+`firebase deploy` can never change the security rules. A pastes
+`firestore.rules` into the console (`03` §7) — that stays the method. When A
+changes `firestore.rules` in git, A pastes it again. The file in git and the
+console must always match; if they differ, the console is what is live.
+
+**Why `index.html` must not be cached.** After a redeploy the old hashed files
+are gone. A browser that kept an old `index.html` would ask for the old main
+bundle, or — later, when staff open Register — for the old lazy pdf.js chunk.
+The `**` rewrite answers that missing `.js` file with `index.html`, the browser
+refuses it as a script, and the page goes blank or PDF reading fails. With
+`no-cache`, every visit checks for the new `index.html` first.
+
+**How the header rules match (Hosting docs, checked 2026-11-09).** Header
+patterns are matched against the **request path before any rewrite**, so the
+rule must name `/`, not only `/index.html`. The query string is not part of the
+path, so `/?mode=resetPassword&oobCode=…` gets the `/` rule (confirm with the
+`curl -I` checks below). The docs say only that "matching rules are applied in
+the order they are defined" and **do not say what happens when two rules set
+the same header**, so the two rules here never match the same path. Other paths
+(a mistyped `/xyz`) still open the app through the rewrite with Hosting's
+default cache; nothing in the app or the emails links to such a path.
+
+**No `Referrer-Policy` header.** The Drive API key is restricted to websites
+(`06` §0), so the browser must keep sending the site's origin with each Drive
+request. The browser's default does that; a policy like `no-referrer` would
+make every Drive read fail with 403.
+
+### Deploy — the owner runs these (Windows cmd, one per line)
+
+Once per computer:
+
+```
+npm install -g firebase-tools
+firebase login
 ```
 
-Answer the prompts:
+Each deploy, from the repo folder, on an up-to-date `main`:
 
-| Prompt | Answer |
-|--------|--------|
-| Which project | `isu-archive-9253b` |
-| Public directory | `dist` |
-| Single-page app | **Yes** |
-| Automatic builds (GitHub Actions) | No (optional later) |
-
-"Single-page app: Yes" is required — it adds the rewrite that sends every route
-to `index.html`. Without it a refresh on any route 404s.
-
-Then:
-
-```bash
-npm run build && firebase deploy --only hosting
+```
+cd C:\Users\reyster\isu-archive-app
+git checkout main
+git pull origin main
+npm run build
+firebase deploy --only hosting --project isu-archive-9253b
 ```
 
-**Security rules.** A pastes `firestore.rules` into the console (`03` §7) — that
-stays the method, so C's deploy never touches rules. When A changes
-`firestore.rules` in git, A pastes it again. The file in git and the console must
-always match; if they differ, the console is what is live.
+`npm run build` must end with no errors (it type-checks first). The deploy
+prints `Hosting URL: https://isu-elibrary.web.app` at the end.
 
-Redeploy any time you finish a feature.
+### Check the cache headers (after each deploy)
+
+`curl` comes with Windows 10 and 11. Take a real file name from `dir dist\assets`
+(for example `index-D5MQskc7.js`; the name changes with every build):
+
+```
+curl -I https://isu-elibrary.web.app/
+curl -I "https://isu-elibrary.web.app/?mode=resetPassword"
+curl -I https://isu-elibrary.web.app/assets/index-D5MQskc7.js
+```
+
+| Address | Expected `cache-control` |
+|---------|--------------------------|
+| `/` | `no-cache` |
+| `/?mode=resetPassword` | `no-cache` |
+| `/assets/<file>` | `public, max-age=31536000, immutable` |
+
+All three should say `HTTP/1.1 200` (or `HTTP/2 200`). If `/?mode=…` shows
+anything other than `no-cache` (for example `max-age=3600`), Hosting did not
+match it to the `/` rule: tell the builder before the next deploy.
+
+### If something fails
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Sign-in says `auth/unauthorized-domain` | `isu-elibrary.web.app` not in Authorized domains | §4b step 1. Applies at once, no redeploy |
+| Register: Drive link read fails, console shows 403 with "referer" / "API_KEY_HTTP_REFERRER_BLOCKED" | The Drive key's website list lacks the new site | §4b step 2. Can take up to 5 minutes |
+| Blank page | Build not run or wrong folder deployed, or an old `index.html` cached | `npm run build`, deploy again; hard refresh (Ctrl+F5); check the `curl -I` table |
+| 404 on refresh or on an email link | The rewrite is missing (someone ran `firebase init` and overwrote `firebase.json`) | `git checkout firebase.json`, deploy again |
+| The reset email opens Firebase's plain page | Action URL not set yet | `17` §6 step 7 |
+
+### Going back to the previous version
+
+Do **not** run `firebase hosting:disable`: it takes the whole site offline, it
+does not go back to an earlier version. The safe ways:
+
+1. **Fix and redeploy** (normal): fix on a branch, merge, then the deploy
+   commands above.
+2. **Roll back a release**: Firebase console → Hosting → the `isu-elibrary`
+   site → Release history → the previous release → ⋮ → **Roll back**. The
+   previous build is live again in seconds; nothing in Firestore changes. The
+   very first deploy has nothing to go back to, so there only 1 applies.
+3. Or redeploy an older commit: `git checkout <older commit>`, `npm run build`,
+   `firebase deploy --only hosting --project isu-archive-9253b`, then
+   `git checkout main`.
+
+Hosting never touches Firestore data, Authentication accounts or the security
+rules, so going back changes only the page files.
 
 ### 4b. Authorize the deployed domain
 
 **This is the most likely reason a deployed demo fails.** Firebase only accepts
 sign-in from allowlisted origins. A freshly deployed `.web.app` URL is not on the
-list, so Google sign-in fails immediately with `auth/unauthorized-domain` — the
-live app looks completely broken while `localhost` still works.
+list, so sign-in fails immediately with `auth/unauthorized-domain` — the live
+app looks completely broken while `localhost` still works. The Drive API key has
+its own list of websites, and a site missing there makes every Drive read fail.
 
-1. Firebase console → **Authentication → Settings → Authorized domains**
-2. **Add domain**, then add:
-   - `isu-archive-9253b.web.app`
-   - `isu-archive-9253b.firebaseapp.com`
-3. Save — it applies immediately, no redeploy needed
-4. Verify by signing in **on the deployed URL**
+1. Firebase console → **Authentication → Settings → Authorized domains → Add
+   domain** → `isu-elibrary.web.app`. Keep the ones already there:
+   `localhost`, `isu-archive-9253b.web.app`,
+   `isu-archive-9253b.firebaseapp.com` (the Google popup still runs on
+   `firebaseapp.com`, `src/firebase.ts` `authDomain`).
+2. Google Cloud console → **APIs & Services → Credentials** → the Drive API key
+   → **Application restrictions → Websites** → add
+   `https://isu-elibrary.web.app/*`, keep the others (`06` §0) → Save.
+3. Both apply without a redeploy. Verify by signing in and reading a Drive link
+   **on the deployed URL**.
 
 Do this as part of the first deploy, not the last.
 
@@ -287,16 +388,17 @@ screen — no web app can.
 
 - [ ] Only one lockfile is committed
 - [ ] `npm run build` passes with zero errors
-- [ ] `npm run preview` renders the app correctly from the production bundle
-- [ ] `firebase deploy` succeeds
-- [ ] The deployed URL loads the app
+- [ ] `npx vite preview --port 4173 --strictPort` renders the app from the production bundle
+- [ ] `firebase deploy --only hosting --project isu-archive-9253b` succeeds
+- [ ] https://isu-elibrary.web.app loads the app
+- [ ] The three `curl -I` checks in §4 show the expected `cache-control`
 - [ ] **Sign-in works on the deployed URL** — not just localhost
 - [ ] Search, register and summary all work on the deployed URL
 - [ ] HTTPS padlock shows, with no mixed-content warnings in the console
 - [ ] Refreshing the page while signed in returns you to your dashboard (the app
       has no URL routes, so this is session restore, not a 404 check)
-- [ ] PDF auto-fill works on the deployed URL (the Drive API key allows the
-      `.web.app` domain — `06` §0)
+- [ ] PDF auto-fill works on the deployed URL (the Drive API key allows
+      `https://isu-elibrary.web.app/*` — `06` §0)
 - [ ] A fresh `git clone` → install → build succeeds
 - [ ] If PWA: the browser offers "Install app", and airplane mode still shows a
       usable search

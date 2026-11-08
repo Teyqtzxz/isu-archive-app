@@ -222,7 +222,7 @@ export function LoginScreen({ initialMode = "sign-in", slow, onSigningIn }: {
           <>
             <form onSubmit={handleSignIn} className="login-form" noValidate>
               <div>
-                <label className="field-label" htmlFor="login-email">Email or ISU username</label>
+                <label className="field-label" htmlFor="login-email">ISU username</label>
                 <IsuEmailInput id="login-email" value={email} onChange={edit("email", setEmail)}
                   onBlur={() => blurCheck("email")} error={fieldErrors.email} disabled={busy} />
               </div>
@@ -280,7 +280,7 @@ export function LoginScreen({ initialMode = "sign-in", slow, onSigningIn }: {
                 </div>
               )}
               <div>
-                <label className="field-label" htmlFor="create-email">ISU email</label>
+                <label className="field-label" htmlFor="create-email">ISU username</label>
                 <IsuEmailInput id="create-email" value={email} onChange={edit("email", setEmail)}
                   onBlur={() => blurCheck("email")} error={fieldErrors.email} disabled={busy} />
               </div>

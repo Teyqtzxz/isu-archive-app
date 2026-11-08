@@ -56,8 +56,9 @@ The AI cannot do any of §1. Do these in the Firebase console, in order.
 5. **Firestore Database → Create** — Production mode, nearest region
    (`asia-southeast1`)
 6. **Authentication → Settings → Authorized domains → Add domain**, and add:
+   - `isu-elibrary.web.app` — the live e-library (`08` §4, errata #83)
    - `isu-archive-9253b.web.app`
-   - `isu-archive-9253b.firebaseapp.com`
+   - `isu-archive-9253b.firebaseapp.com` (the Google popup runs here)
    - `localhost` is already there by default
 
 ### Why step 6 is not optional

@@ -65,7 +65,7 @@ account, and `firestore.rules` gives an unverified account nothing (§4).
 ### Login card
 
 ```
- Email or ISU username   [ juan.delacruz        @isu.edu.ph ]
+ ISU username            [ juan.delacruz        @isu.edu.ph ]
  Password                [ ••••••••                    (eye) ]
                          [            Sign in               ]
  Forgot password?                              Create account
@@ -73,8 +73,11 @@ account, and `firestore.rules` gives an unverified account nothing (§4).
                          [ G   Continue with Google         ]
 ```
 
-- Typing only the username (`juan.delacruz`) adds `@isu.edu.ph`
-  (`toIsuEmail()`); a full ISU address works too.
+- The box is labelled **ISU username** on Sign in, Create account and Forgot
+  password (errata #83; was "Email or ISU username" / "ISU email"). Typing
+  only the username (`juan.delacruz`) adds `@isu.edu.ph` (`toIsuEmail()`); a
+  full ISU address (`juan.delacruz@isu.edu.ph`) still works and gives the same
+  email. The grey `@isu.edu.ph` ending shows until an `@` is typed.
 - **Every password box has its own show/hide (eye) button** — Sign in,
   both boxes of Create account, and both boxes of the new-password screen.
 - While a request runs, Sign in / Create account / Send reset link / Resend
@@ -92,7 +95,7 @@ role comes from `users/{uid}`, as for Google).
 
 ```
  Full name          [ Juan Dela Cruz ]           ← optional field (owner's call)
- ISU email          [ juan.delacruz  @isu.edu.ph ]
+ ISU username       [ juan.delacruz  @isu.edu.ph ]
  Password           [ ••••••••            (eye) ]
                     Not your Gmail password.
  Confirm password   [ ••••••••            (eye) ]
@@ -131,7 +134,7 @@ routes it to "Check your ISU inbox" before reading the profile.
 
 ### Forgot password
 
-① ISU email → ② *"If an account exists for j•••@isu.edu.ph, we sent a link…"*
+① ISU username → ② *"If an account exists for j•••@isu.edu.ph, we sent a link…"*
 (the **same words** for an email with no account) → ③ the link opens our
 "Create a new password" screen → "Password changed" → Sign in.
 
@@ -265,7 +268,7 @@ and in case Firebase's behaviour changes; it costs nothing when B3 happens.
 Firebase sends the emails and checks the one-time code in each link — all
 free and from the browser. The console's **action URL** decides where a link
 opens. Set to the deployed app (§6 step 7), a link opens
-`https://isu-archive-9253b.web.app/?mode=…&oobCode=…`, and App.tsx shows
+`https://isu-elibrary.web.app/?mode=…&oobCode=…`, and App.tsx shows
 `AuthActionScreen` over everything else:
 
 - `resetPassword` → "Create a new password" (new + confirm, each with an eye)
@@ -337,13 +340,15 @@ the same steps on the free plan, and the "no backend server" design stays.
    *Password reset*, set the sender name to **ISU Research Study E-Library**
    (✏ → Sender name). Optionally edit the subject lines.
 6. **Authorized domains** (Authentication → Settings): `localhost` is there by
-   default; `isu-archive-9253b.web.app` and `isu-archive-9253b.firebaseapp.com`
-   must be added when deploying (`08` §4b). The Continue link in every email
-   only works for an authorized domain.
+   default; add **`isu-elibrary.web.app`** (the live site, errata #83) before
+   the first deploy, and keep `isu-archive-9253b.web.app` and
+   `isu-archive-9253b.firebaseapp.com` (`08` §4b). The Continue link in every
+   email only works for an authorized domain.
 7. **After the first deploy:** Templates → *Password reset* → ✏ → **Customize
-   action URL** → `https://isu-archive-9253b.web.app/` → Save (the URL is
-   shared by all templates). Then send a reset link to a test account and
-   check it opens the live site on "Create a new password".
+   action URL** → `https://isu-elibrary.web.app/` → Save (the URL is
+   shared by all templates). Then use Forgot password on the live site and
+   check the email's link opens "Create a new password" on
+   isu-elibrary.web.app (not Firebase's plain page).
 
 `firestore.rules` does **not** change: it already requires a verified
 `@isu.edu.ph` email, so the security boundary is identical for both sign-in
