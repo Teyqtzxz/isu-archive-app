@@ -117,7 +117,8 @@ src/
   components/
     LoginScreen.tsx  StaffDashboard.tsx  RegisterForm.tsx
     SearchScreen.tsx  StudentDashboard.tsx  CombinedSummaryPanel.tsx
-    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast, STATUS_LABELS
+    shared.tsx        ← ISUSeal, StatusBadge, DeptBadge, Toast (success /
+                        notice / error, toast.ts), STATUS_LABELS
 ```
 
 `App.tsx` renders screens with `{screen === "…" && <… />}` blocks, and the Register
@@ -141,7 +142,7 @@ only additively. Ownership of every other file is in `10` §2.
 | `theses: Thesis[]` | live data from Firestore |
 | `searchInitialQuery` | query handed from a dashboard into the search screen |
 | `summaryData` | the results the summary panel was opened for |
-| `toast` | transient message |
+| `toast` | the pop-up message `{ id, message, kind }` (`toast.ts`): success 3 s, notice 6 s, error 8 s with ×; the timer waits while the mouse or focus is on it; a new one replaces the old, and closing goes by `id` |
 
 Navigation:
 

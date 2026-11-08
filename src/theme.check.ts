@@ -125,6 +125,13 @@ const PAIRS: [string, string, string][] = [
   ["--on-fill", "--danger-fill", "danger button"],
   ["--on-fill", "--danger-fill-hover", "danger button, hover"],
   ["--toast-text", "--toast-bg", "toast"],
+  // The toast marks (errata #81): the tick or "!" on its circle is text-like (4.5:1);
+  // the notice and error circles must stand out on the toast (graphic, 3:1).
+  ["--toast-success-ink", "--toast-success", "toast tick on green"],
+  ["--toast-notice-ink", "--toast-notice", "toast ! on amber"],
+  ["--toast-error-ink", "--toast-error", "toast ! on red"],
+  ["--toast-notice", "--toast-bg", "toast amber circle (graphic, 3:1)"],
+  ["--toast-error", "--toast-bg", "toast red circle (graphic, 3:1)"],
   ["--isu-yellow-ink", "--isu-yellow", "yellow button, student avatar"],
   ["--on-fill", "--isu-blue", "role chip, staff avatar"],
 ];
