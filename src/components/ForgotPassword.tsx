@@ -144,7 +144,7 @@ export function ForgotPassword({ initialEmail }: { initialEmail: string }) {
       {step === "email" && (
         <form onSubmit={handleSubmit} className="login-form" noValidate>
           <div>
-            <label className="field-label" htmlFor="reset-email">ISU email</label>
+            <label className="field-label" htmlFor="reset-email">ISU username</label>
             <IsuEmailInput id="reset-email" value={email} disabled={busy} error={emailError}
               onChange={v => { setEmail(v); setEmailError(""); }}
               onBlur={() => { if (email.trim()) setEmailError(checkEmail(email).error ?? ""); }} />

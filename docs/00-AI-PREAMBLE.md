@@ -61,6 +61,10 @@ React 19 · Vite 8 · TypeScript 5.7 (strict) · Tailwind CSS v4 · Firebase Aut
 (Google + Email/Password) + Cloud Firestore + Hosting · Google Drive API v3 (PDF download) ·
 pdf.js (`pdfjs-dist`) · `oxfmt`
 
+**Live site:** https://isu-elibrary.web.app (Firebase Hosting site
+`isu-elibrary` in project `isu-archive-9253b`; `firebase.json` is Hosting only,
+so a deploy never changes the security rules — `08` §4, errata #83).
+
 ## Canonical types (`src/types.ts`)
 
 ```typescript
@@ -379,7 +383,8 @@ Real, working — **do not rewrite**:
   (step 05)
 - Google sign-in (ISU accounts only), role routing, session restore, sign-out
   with a "Sign out?" confirmation, and `firestore.rules` (step 03)
-- Email + password login (`docs/17`, errata #68): ISU email (or username) +
+- Email + password login (`docs/17`, errata #68): the **ISU username** box (a full
+  `@isu.edu.ph` address works too; label since errata #83) +
   an e-library **system** password — never the Gmail password, which no
   Google API lets a site check. Create account → verification email →
   "Check your ISU inbox" (I've verified = reload + `getIdToken(true)`);

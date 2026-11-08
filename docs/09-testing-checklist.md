@@ -67,7 +67,7 @@ account can be deleted in the console (Authentication → Users, and its
 `users/{uid}` document) by the owner.
 
 - [ ] **[auto]** `node src/auth.check.ts` ends with "All passed."
-- [ ] Login card: Email or ISU username · Password with an eye button ·
+- [ ] Login card: ISU username · Password with an eye button ·
       **Sign in** · "Forgot password?" and "Create account" · "or" ·
       **Continue with Google**. Light and dark both readable
 - [ ] Every password box has its own eye: Sign in (1), Create account (2:
@@ -106,8 +106,8 @@ account can be deleted in the console (Authentication → Users, and its
       (`test.account`) + password → same dashboard
 - [ ] Create account again with the same email → "This ISU email already has
       an account. Sign in, or use Forgot password? to set a password." under
-      the email box
-- [ ] **Forgot password** → ① email → ② "If an account exists for t•••@…"
+      the ISU username box
+- [ ] **Forgot password** → ① ISU username → ② "If an account exists for t•••@…"
       → email arrives → link (on localhost: Firebase's page; deployed:
       "Create a new password") → set a new one → old password fails, new
       one works. A made-up email shows the same step ② (no email arrives)
@@ -993,8 +993,17 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
 - [ ] **[auto]** `npm run build` passes with zero errors
 - [ ] A fresh `git clone` → install → build succeeds — this is the check that
       proves the repo is reproducible for whoever grades it
-- [ ] The deployed URL loads
-- [ ] Login, search, register and summary all work on the deployed URL
+- [ ] https://isu-elibrary.web.app loads (errata #83; `08` §4)
+- [ ] `curl -I` on `/`, `/?mode=resetPassword` and one `/assets/` file shows
+      `no-cache`, `no-cache`, `public, max-age=31536000, immutable` (`08` §4)
+- [ ] On the live site: sign in with password **and** with Google (no
+      `auth/unauthorized-domain`), Search, Read full study, Register with a
+      Drive link (the details are read; no 403 in the console), then leave
+      without saving, or save a test study and delete it
+- [ ] Summary of ticked results works on the live site
+- [ ] Forgot password on the live site → the email opens our "Create a new
+      password" page on isu-elibrary.web.app (`17` §6 step 7)
+- [ ] Refresh with F5 on the live site → no 404, still signed in
 - [ ] HTTPS padlock, no mixed-content warnings
 - [ ] `docs/` is committed in the repo
 - [ ] Latest commit is pushed to the remote

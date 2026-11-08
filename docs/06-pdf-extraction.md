@@ -31,7 +31,7 @@ loaded only when Register / Edit opens; a progress line. §9.
 **Why the Drive API.** A browser may only download a file from another site if
 that site allows it (CORS). Google Drive's ordinary download links
 (`drive.google.com/uc?…`, `drive.usercontent.google.com/download?…`) do not, so a
-direct `fetch` from `isu-archive-9253b.web.app` is blocked and auto-fill would
+direct `fetch` from `isu-elibrary.web.app` is blocked and auto-fill would
 fail on every thesis. The **Drive API v3** endpoint is designed to be called from
 web pages and does allow it. It is **free** — no billing account, no per-request
 charge, only generous rate limits that one-at-a-time registration never
@@ -45,8 +45,10 @@ approaches.
 3. **APIs & Services → Credentials → Create credentials → API key**
 4. Edit the key:
    - **Application restrictions → Websites**, add
-     `http://localhost:8443/*`, `https://isu-archive-9253b.web.app/*`,
-     `https://isu-archive-9253b.firebaseapp.com/*`
+     `http://localhost:8443/*`, `https://isu-elibrary.web.app/*` (the live
+     site, errata #83), `https://isu-archive-9253b.web.app/*`,
+     `https://isu-archive-9253b.firebaseapp.com/*`. Adding a site later: edit
+     the key, add the line, keep the others, Save (up to 5 minutes to apply)
    - **API restrictions → Restrict key → Google Drive API** only
 5. Give the key to C. It goes into `src/extractPdf.ts` as `DRIVE_API_KEY` and is
    committed — restricted to your domains and to downloads of files that are
@@ -737,7 +739,9 @@ adviser rule now accepts DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT and CPA,
 searchable); `search.ts` NAME_TITLES has the same degrees.
 
 **The abstract** loses a copy of the title at its start (only when its first letters
-are exactly the title's; TARUC 2024 was the one sample) and anything left of the
+are exactly the title's **and the text after it starts with a capital letter or a
+digit**, so an abstract whose first sentence begins with the title's words keeps them;
+TARUC 2024 was the one sample) and anything left of the
 labelled block (pdfText.ts stops at a block line ending in a full stop, e.g.
 "… Jr.").
 
