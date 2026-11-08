@@ -147,9 +147,12 @@ Navigation:
 
 ```
 Login
- ├─ STAFF   → Staff Dashboard (tabs: Dashboard / Register / Search / Settings)
+ ├─ STAFF   → Staff Dashboard (tabs: Dashboard / Register / Search / Statistics / Settings)
  │            ├─ Register tab      → Register screen
- │            └─ Search tab        → Search screen
+ │            ├─ Search tab        → Search screen
+ │            └─ Statistics tab    → department bars + top keywords, the library
+ │                                   charts (by year, added per month, top
+ │                                   advisers) and the Keyword model card
  └─ STUDENT → Student Dashboard (hero search) → Search screen
 
 Search screen ─ tick results ─ "View Summary (N)" → Summary panel (slide-up) ─ Close → back

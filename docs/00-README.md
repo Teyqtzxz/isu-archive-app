@@ -127,6 +127,7 @@ Verified against the code on 2026-09-30.
 - ~~"Why this rank?" term-by-term breakdown~~ — removed 2026-09-30 (group decision)
 - ☑ Filters: Department / Year; all ten departments + removable chips
 - ☑ Department statistics: studies per department, top keywords (staff Statistics tab, student dashboard)
+- ☑ Library charts: studies by year, added per month, top advisers (staff Statistics tab only, errata #76)
 - ☑ "Sign out?" confirmation on every Sign Out
 - ☑ Click a result title → abstract preview → "Open in Drive"
 - ☑ APA 7 citation in Study Details (professor, 2026-10-14)

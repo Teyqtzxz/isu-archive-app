@@ -134,6 +134,7 @@ and fake behaviour.**
 | "Why this rank?" breakdown | — | ❌ removed 2026-09-30 (group decision) |
 | Department/year filters | `SearchScreen` | ✅ done (status filter removed 2026-10-12) |
 | Department statistics | `stats.ts`, `DepartmentStats` | ✅ done (PR #22) |
+| Library charts (by year, added per month, top advisers) | `stats.ts`, `LibraryCharts` (staff Statistics only) | ✅ done (errata #76) |
 | Register processing states | `RegisterForm` (`extractState`) | ✅ driven by the real PDF read (step 06) |
 | Data | `subscribeToTheses` / `saveThesis` in `data.ts` | ✅ live Firestore (step 04). `DEPARTMENTS` lives in `types.ts` |
 | Login | `LoginScreen` | ✅ Google sign-in, ISU only (step 03) |
