@@ -357,6 +357,24 @@ most.
 - [ ] After the read, wheel to the end of the page with the mouse still → the
       mouse is not over Save. Move to Save and click → it posts on the first
       click
+- [ ] **Keyword buttons follow the same 1-second guard** (errata #77). Double-
+      and triple-click "Read PDF & continue" with the mouse still → no keyword
+      is added or removed and nothing is posted (0 of 24 runs at 1366×641,
+      1366×768, 1366×800, 1920×947, 1920×1080 and a 390×844 phone)
+- [ ] **Known limit, accepted (errata #77):** a single click or tap on the
+      same spot **after** the first second can land on a suggested keyword
+      and add it. Measured: 8 of 48 later clicks or taps (at 1.2 s and 2 s)
+      added a suggestion, at 1366×800 (4 authors, no printed keywords) and on a
+      390×844 phone (1 author, 4 printed keywords; Chrome moves a tap in the
+      gap onto the nearest chip); none removed a keyword or posted. After
+      review round 3 (fewer automatic keywords, so the chips sit elsewhere;
+      measured with a new test abstract): 12 of 48, at 1366×800 with both
+      study shapes and on the phone with 1 author and 4 printed keywords;
+      still none removed or posted. It can only
+      **add** a keyword, which shows in the Keywords list, and one click on its
+      × removes it. Check: at 1366×800 click "Read PDF & continue", wait
+      2 seconds, click again without moving → at most one keyword is added,
+      nothing is removed or posted
 - [ ] Garbage link → specific error message, no crash
 - [ ] Non-Drive URL is rejected before any download starts
 
@@ -461,27 +479,75 @@ most.
 
 - [ ] **[auto]** `node src/keywordModel.check.ts` ends with "All passed."
       (label normalisation, learned vs extracted, the P ≥ 0.9 + 5-evidence
-      guard, no duplicates, validation rules, phrase rules, Edit exclusion,
-      no leakage in leave-one-out, empty library)
-- [ ] **Register:** fill in a study → Read PDF & continue → a **"Suggested
-      keywords"** box above Keywords, at most **6** chips, each saying
-      "learned from N studies" or "from this abstract". Nothing is added
-      until a chip is clicked
-- [ ] Click a chip → it moves into Keywords exactly as if typed; the chip
-      disappears and another may take its place. A keyword already in the
-      list (any capitals or plural) is never suggested
+      guard, each word once per study, near-copies counted once, the
+      30-study rule, at most 3 learned of 6, the automatic count, removed
+      keywords, junk phrases, three-word terms, no duplicates, validation
+      rules, Edit exclusion, no leakage in leave-one-out, empty library)
+- [ ] **[auto]** `node src/similarity.check.ts`: `possibleDuplicates` gives the
+      same lists as comparing every pair (errata #77)
+- [ ] **Register, new study (errata #77):** fill in a study → Read PDF &
+      continue → keywords are **added automatically**, once: the PDF's own
+      keywords first, then up to **5** more, never past **8** in all (0
+      printed → 5 added, 3 → 5, 4 → 4, 7 → 1, 8 or more → 0). Each added one
+      has a small **AUTO** tag and a dashed edge, and a note says "Keywords
+      marked auto were chosen automatically. Remove any that do not fit."
+- [ ] Remove an auto keyword with its × (after the first second) → it is
+      gone and is **never added again by itself**: not after editing the
+      abstract, not after "Edit details" → Read PDF & continue with the same
+      PDF, not after a reload (the draft keeps the tags and the removed list),
+      not after reading another PDF. It stays offered as a chip; clicking it
+      adds it back without the tag
+- [ ] **Edit study** adds nothing automatically (only the chips)
+- [ ] A failed read ("Save Manually") adds nothing automatically; type the
+      abstract and use the chips
+- [ ] The e-library still loading → nothing is added until it arrives, then
+      once; the e-library failing to load → the abstract phrases are added
+      once
+- [ ] The "Suggested keywords" box shows the rest, at most **6** chips,
+      each saying "learned from N studies" or "from this abstract", at most 3
+      learned. Click a chip → it moves into Keywords exactly as if typed. A
+      keyword already in the list (any capitals or plural) is never suggested
 - [ ] At **10** keywords every chip is greyed out ("Up to 10 keywords can
       be added.")
-- [ ] **Edit study** on a study with copies (e.g. "thesis sample 2"): remove
-      one of its keywords → it comes back as a chip "learned from **2**
-      studies" (its copies — the study itself is never counted)
+- [ ] **Learned keywords only from 30 studies with keywords** (near-copies
+      counted once): below that every chip and auto keyword says "from this
+      abstract"; from 30 a learned one can be added or suggested
+- [ ] Junk phrases are not offered: "Nurses should", "participants
+      reported", "providing quality", "documents internally", "specific
+      plastic", "case suite" (`docs/15` §3). "perceived behavioral control"
+      comes as one keyword, not two halves
+- [ ] **Review round 2:** terms with a verb form survive — "monitoring
+      system", "real-time monitoring", "automated attendance system",
+      "reduced tillage", "improved varieties"; a three-word term seen only
+      once is not offered ("measure water temperature" gives "water
+      temperature"; "system sends SMS", "helps fish farmers" never appear);
+      "water quality monitoring system" gives "water quality" and "monitoring
+      system"
+- [ ] No two automatic keywords overlap: with "nurse-patient interaction"
+      added, "patient interaction" is only a chip; nothing inside a printed
+      keyword is added (printed "Marine Plastic Pollution" → "plastic
+      pollution" stays a chip); never both "quality care" and "care quality"
+- [ ] **Review round 3:** a phrase of the abstract is added automatically only
+      when it appears at least twice in the title plus abstract ("fish farmer"
+      and "fish farmers" count together); a phrase seen once is only a chip.
+      An abstract with no repeated phrase gets **no** automatic keyword (the
+      note "Keywords marked auto…" does not show). Learned keywords (30+
+      studies) are not counted
+- [ ] **[auto]** the 14 made-up capstone abstracts in `keywordModel.check.ts`
+      give all their must-have terms and none of their junk; at most 5
+      automatic keywords each, every one seen at least twice, no overlap
 - [ ] An abstract about a topic no stored study has → phrases only, no
       "learned" chip
+- [ ] Keyboard: Tab reaches each ×; a screen reader reads "Remove keyword …,
+      added automatically" on an auto keyword; Enter removes it
 - [ ] **Statistics tab (staff):** a **"Keyword model"** card under the
       library charts: training studies, known keywords, "Testing the
       model…" then "*N* studies tested, *M* copies hidden", Model vs
       Baseline for the three measures, and **"Fewer than 30 studies with
-      keywords — not reliable yet."** while under 30. Students never see it
+      keywords — not reliable yet."** while under 30. With near-copies it says
+      "*M* near-copies counted with their originals". The test still measures
+      the learned model below 30 (the 30 rule is for the Register form only).
+      Students never see it
 - [ ] Dark mode: chips and the card readable in Light and Dark
 - [ ] Nothing is saved by the suggestions or the card (Firestore console:
       no change until Confirm & Save / Save changes)

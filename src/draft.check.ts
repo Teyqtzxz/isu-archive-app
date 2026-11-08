@@ -40,6 +40,7 @@ const draft: RegisterDraft = {
   authors: ["Juan Dela Cruz"], newAuthor: "Ana Re", abstract: "This study…", keywords: ["rice"], newKw: "soi",
   step: "save", readState: "success", keptCurrent: false, readError: "",
   lastRead: { source: "file:study.pdf:1234:99", ok: true }, pdfName: "", baseUpdatedAt: "",
+  autoAdded: ["rice"], removedKeys: ["soil moisture"], autoFor: "file:study.pdf:1234:99",
 };
 const raw = JSON.stringify(draft);
 const want = { uid: "uid-A", studyId: null };
@@ -56,6 +57,15 @@ check("round trip: step", back?.step, "save");
 check("round trip: lastRead ok", back?.lastRead?.ok, true);
 check("details step with no read state", parseDraft(edit({ step: "details", readState: null }), want)?.step, "details");
 check("lastRead may be null", parseDraft(edit({ lastRead: null }), want)?.lastRead, null);
+check("round trip: automatic keywords (auto tags, removed, done for this PDF)",
+  JSON.stringify([back?.autoAdded, back?.removedKeys, back?.autoFor]), JSON.stringify([["rice"], ["soil moisture"], "file:study.pdf:1234:99"]));
+check("autoFor may be null (not added yet)", parseDraft(edit({ autoFor: null }), want)?.autoFor, null);
+const older = (o: Record<string, unknown>) => { const d: Record<string, unknown> = { ...draft, ...o }; delete d.autoAdded; delete d.removedKeys; delete d.autoFor; return JSON.stringify(d); };
+check("a draft saved before automatic keywords: kept, nothing tagged or removed",
+  JSON.stringify([parseDraft(older({}), want)?.autoAdded, parseDraft(older({}), want)?.removedKeys]), "[[],[]]");
+check("…and its PDF read counts as done, so a reload adds nothing", parseDraft(older({}), want)?.autoFor, "file:study.pdf:1234:99");
+check("…a failed or no read: nothing done yet (a failed read never adds)",
+  JSON.stringify([parseDraft(older({ lastRead: { source: "x", ok: false } }), want)?.autoFor, parseDraft(older({ lastRead: null }), want)?.autoFor]), "[null,null]");
 
 console.log("— Ignored drafts —");
 check("nothing stored", parseDraft(null, want), null);
@@ -81,6 +91,11 @@ check("save step without a read state", parseDraft(edit({ readState: null }), wa
 check("details step with a read state", parseDraft(edit({ step: "details" }), want), null);
 check("keptCurrent not a boolean", parseDraft(edit({ keptCurrent: "yes" }), want), null);
 check("bad lastRead", parseDraft(edit({ lastRead: { source: 1, ok: true } }), want), null);
+check("autoAdded not a list", parseDraft(edit({ autoAdded: "rice" }), want), null);
+check("11 auto keywords (max 10)", parseDraft(edit({ autoAdded: Array.from({ length: 11 }, (_, i) => `k${i}`) }), want), null);
+check("101 removed keywords (max 100)", parseDraft(edit({ removedKeys: Array.from({ length: 101 }, (_, i) => `k${i}`) }), want), null);
+check("autoFor a number", parseDraft(edit({ autoFor: 5 }), want), null);
+check("only some of the automatic fields", parseDraft(edit({ removedKeys: undefined }), want), null);
 check("unknown department → blank", parseDraft(edit({ form: { ...draft.form, department: "CAS" } }), want)?.form.department, "");
 
 console.log("— Changed or not (draft kept, \"Leave site?\") —");

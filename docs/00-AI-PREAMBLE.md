@@ -223,10 +223,12 @@ src/
                         Naive Bayes one-vs-rest (Laplace) on title
                         + abstract → keywords, plus TF-IDF two-word
                         phrases of the abstract: keywordKey,
-                        trainKeywordModel (excludeId),
-                        predictKeywords, extractPhrases,
-                        suggestKeywords, leaveOneOutFolds,
-                        evaluateKeywordModel, KEYWORD_MODEL;
+                        trainKeywordModel (excludeId, nearCopies),
+                        findNearCopies, predictKeywords,
+                        extractPhrases, suggestKeywords,
+                        autoKeywords, autoKeywordRoom,
+                        leaveOneOutFolds, evaluateKeywordModel,
+                        KEYWORD_MODEL (errata #65, #77);
                         words via similarity.ts (foldPlural,
                         isCountedTerm); examples in
                         keywordModel.check.ts
@@ -373,8 +375,9 @@ Real, working — **do not rewrite**:
   originality check on the Register / Edit save step and "Similar studies"
   in Study Details
 - Keyword model, Naive Bayes + TF-IDF phrases (`keywordModel.ts`, errata
-  #65): "Suggested keywords" on the Register / Edit save step and the
-  "Keyword model" accuracy card in the staff Statistics tab
+  #65, #77): keywords added automatically (tagged "auto") on the Register
+  save step of a new study, "Suggested keywords" on the Register / Edit save
+  step and the "Keyword model" accuracy card in the staff Statistics tab
 - Smart search box, Trie autocomplete + Levenshtein "Did you mean" /
   "Showing results for" (`smartSearch.ts`, errata #66): both search boxes
   and the Search screen
@@ -447,23 +450,44 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
 
 - A machine-learning model trained in the browser from the studies already
   loaded (once per data change, `useMemo`); nothing is stored, no AI service,
-  no library. Learned part: multinomial **Naive Bayes**, one-vs-rest per known
-  keyword, Laplace smoothing, features = title + abstract words (similarity's
-  word rules), labels = keywords normalised by `keywordKey()` ("Rice" = "rices").
-  Only studies with keywords are training studies. Extracted part: the top
-  **TF-IDF two-word phrases** of the abstract (never across punctuation; shown
-  as written, "low-cost sensors").
+  no library. Learned part: **Naive Bayes**, one-vs-rest per known keyword,
+  Laplace smoothing, features = title + abstract words (similarity's word
+  rules), **each word counted once per study**, labels = keywords normalised
+  by `keywordKey()` ("Rice" = "rices"). Only studies with keywords are
+  training studies, and **near-copies (≥ 80%, `possibleDuplicates` in
+  `similarity.ts`) count as one**. Extracted part: the top **TF-IDF phrases**
+  of the abstract, two words or a three-word term, never across punctuation,
+  shown as written ("low-cost sensors"), with the **junk-phrase filter** of
+  `docs/15` §3 (grammar words, report verbs in base and -s form, their -ing
+  form after a preposition or plural noun, adverbs, vague first words, past
+  forms, roman page numbers, the fixed terms "use case" and "test case").
+  A three-word term only when seen at least twice; an automatic keyword
+  from the abstract only when seen at least twice in the title plus
+  abstract; no automatic keyword overlaps a listed one, also not in another
+  word order.
+- **Learned keywords on the Register form only from 30 training studies**
+  (`KEYWORD_MODEL.reliableFrom`, near-copies counted once).
+- **Automatic keywords (Register, new study, errata #77):** once per
+  successful PDF read, when the e-library has loaded (or failed to): the
+  PDF's own keywords first, then up to **5**, never past **8** in all, at
+  most 2 learned; tagged **AUTO** with a remove ×; a removed keyword is never
+  added by itself again (it stays a chip). Never in Edit study or after a
+  failed read. The draft keeps the tags and the removed list.
 - **Save step (Register and Edit study):** "Suggested keywords", at most **6**,
-  learned first — only at **P ≥ 0.9 and ≥ 5 evidence words** — then phrases;
-  each chip says "learned from N studies" or "from this abstract". Never a
-  keyword the study already has; clicking adds it through `addKeywords()`
-  exactly like typing (same rules, max 10); **never added automatically**.
+  learned first — only at **P ≥ 0.9 and ≥ 5 evidence words**, at most 3 —
+  then phrases; each chip says "learned from N studies" or "from this
+  abstract". Never a keyword the study already has; clicking adds it through
+  `addKeywords()` exactly like typing (same rules, max 10). The 1-second
+  guard of errata #72 covers Save and the keyword buttons; a stray click
+  after that second can add a suggestion (accepted limit, `docs/15` §6).
   **Edit study never trains on the study being edited** (`excludeId`).
 - **Staff Statistics tab:** "Keyword model" card — training studies, known
   keywords, leave-one-out **with near-copies (≥ 80%) hidden**: "N studies
   tested, M copies hidden", model vs baseline (6 most common keywords) for
   ≥ 1 correct / precision / recall, and below 30 studies with keywords
-  "Fewer than 30 studies with keywords — not reliable yet." Never show the
+  "Fewer than 30 studies with keywords — not reliable yet." The card tests
+  the learned model even below 30 (the 30 rule is the Register form's).
+  Never show the
   plain (copies kept) score on screen; it is explained in `docs/15` §5.
 - Change a threshold only in `KEYWORD_MODEL` (`keywordModel.ts`), with an
   example in `keywordModel.check.ts`. Search ranking, similarity scores and

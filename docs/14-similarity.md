@@ -88,6 +88,18 @@ the score — at most 5, biggest first.
   idfs, computed only on the save step: 2 vectors + 2N dot products, well under
   a millisecond.
 - Study Details computes the similar studies of the one study that is open.
+- **Every near-copy at once** (`possibleDuplicates`, errata #77): the keyword
+  model (`docs/15`) needs, for every stored study, the others the originality
+  check would call a "Possible duplicate". Checking every pair took 19 s at
+  1,000 made-up studies. It gives **the same lists** (checked against the
+  every-pair way in `similarity.check.ts`) by skipping pairs that cannot
+  reach 80%. Take a study's words strongest first until the rest together are
+  under 0.795 of its length (79.5% rounds to 80%). Two studies can only reach
+  0.795 in an index when each has one of the other's strong words, because
+  `cos = Σ over the strong words + Σ over the rest ≤ Σ over the strong words +
+  |rest|`. Only those pairs get a quick score, and the ones that reach 0.795
+  are scored by the originality check's own rule (`originalityMatch`), both
+  ways, in both indexes. 39 ms at 300 and 141 ms at 1,000 made-up studies.
 
 ---
 

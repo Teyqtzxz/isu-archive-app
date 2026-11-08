@@ -248,20 +248,128 @@ export function originalityCheck(
   const matches: OriginalityMatch[] = [];
   index.overall.ids.forEach((id, i) => {
     if (id === excludeId) return;
-    const overall = cosine(vOverall, index.overall.vectors[i]);
-    const abstract = cosine(vAbstract, index.abstract.vectors[i]);
-    const overallPercent = similarityPercent(overall.score);
-    const abstractPercent = similarityPercent(abstract.score);
-    const byAbstract = abstractPercent > overallPercent;
-    const percent = byAbstract ? abstractPercent : overallPercent;
-    const level = similarityLevel(percent);
-    if (!level) return;
-    matches.push({
-      id, percent, basis: byAbstract ? "abstract" : "overall", overallPercent, abstractPercent,
-      sharedTerms: (byAbstract ? abstract : overall).sharedTerms, level,
-    });
+    const m = originalityMatch(index, vOverall, vAbstract, i);
+    if (m) matches.push(m);
   });
   return matches.sort((a, b) => b.percent - a.percent).slice(0, limit);
+}
+
+/** The draft's two vectors against stored study `i`: its match, or null below
+ *  THRESHOLDS.related. The one scoring rule of originalityCheck and
+ *  possibleDuplicates, so the two can never disagree. */
+function originalityMatch(index: OriginalityIndex, vOverall: TermVector, vAbstract: TermVector, i: number): OriginalityMatch | null {
+  const overall = cosine(vOverall, index.overall.vectors[i]);
+  const abstract = cosine(vAbstract, index.abstract.vectors[i]);
+  const overallPercent = similarityPercent(overall.score);
+  const abstractPercent = similarityPercent(abstract.score);
+  const byAbstract = abstractPercent > overallPercent;
+  const percent = byAbstract ? abstractPercent : overallPercent;
+  const level = similarityLevel(percent);
+  if (!level) return null;
+  return {
+    id: index.overall.ids[i], percent, basis: byAbstract ? "abstract" : "overall", overallPercent, abstractPercent,
+    sharedTerms: (byAbstract ? abstract : overall).sharedTerms, level,
+  };
+}
+
+/** A score at or above this rounds to THRESHOLDS.duplicate percent (79.5 → 80),
+ *  less a margin far above any rounding in the sums. Only used to skip pairs
+ *  that cannot reach it; the level itself always comes from originalityMatch. */
+const DUPLICATE_FLOOR = (THRESHOLDS.duplicate - 0.5) / 100 - 1e-6;
+
+/** A vector as unit weights over word numbers (looking words up by their
+ *  text was most of the time). `strong`: its strongest words, until the rest
+ *  together could no longer reach DUPLICATE_FLOOR; on a tie at the cut every
+ *  word of that weight, which can only add candidates. */
+interface PackedVector { terms: Int32Array; weights: Float64Array; strong: number[] }
+
+function packVectors(vectors: TermVector[], termNumber: (term: string) => number): PackedVector[] {
+  return vectors.map(v => {
+    const terms = new Int32Array(v.weights.size);
+    const weights = new Float64Array(v.weights.size);
+    if (v.norm === 0) return { terms, weights, strong: [] };
+    let k = 0;
+    for (const [t, w] of v.weights) {
+      terms[k] = termNumber(t);
+      weights[k++] = w / v.norm;
+    }
+    const sorted = weights.slice().sort();
+    let rest = 1, cut = Infinity;
+    for (let at = sorted.length - 1; at >= 0 && Math.sqrt(Math.max(0, rest)) >= DUPLICATE_FLOOR; at--) {
+      cut = sorted[at];
+      rest -= cut * cut;
+    }
+    const strong: number[] = [];
+    for (let at = 0; at < terms.length; at++) if (weights[at] >= cut) strong.push(terms[at]);
+    return { terms, weights, strong };
+  });
+}
+
+/**
+ * For every stored study (by index), the ids of the others that the
+ * originality check calls a "Possible duplicate" of it: exactly what
+ * originalityCheck(index, study, { excludeId: study.id, limit: Infinity })
+ * filtered to "duplicate" gives, best first, but without scoring every pair
+ * (that took 19 s at 1,000 studies). Why it is the same answer: with x and y
+ * unit vectors and x split into its strong words P and the rest R,
+ *   cos(x, y) = Σ over P + Σ over R ≤ Σ over P + |R| · |y| = Σ over P + |R|,
+ * and |R| < DUPLICATE_FLOOR by the choice of P, so in an index where a pair
+ * reaches the duplicate level y has one of x's strong words, and x one of
+ * y's (weights are never negative). Only those pairs are scored, once each,
+ * quickly first; the ones that can reach 79.5% are scored by
+ * originalityMatch both ways, in both the overall and the abstract-only
+ * index, exactly as originalityCheck does. docs/14 §1f.
+ */
+export function possibleDuplicates(index: OriginalityIndex): string[][] {
+  const n = index.overall.ids.length;
+  const numbers = new Map<string, number>();
+  const termNumber = (t: string) => {
+    let k = numbers.get(t);
+    if (k === undefined) numbers.set(t, k = numbers.size);
+    return k;
+  };
+  const parts = [index.overall, index.abstract].map(part => packVectors(part.vectors, termNumber));
+  /** For each word number, the studies having it, per index. */
+  const withWord = parts.map(packed => {
+    const lists: number[][] = Array.from({ length: numbers.size }, () => []);
+    packed.forEach((v, j) => { for (const t of v.terms) lists[t].push(j); });
+    return lists;
+  });
+  /** Study i's unit weights by word number, while i is being compared. */
+  const dense = new Float64Array(numbers.size);
+  /** checked[p][j] === i + 1: the pair i, j was already looked at in index p;
+   *  scored[j] === i + 1: it was already scored. */
+  const checked = parts.map(() => new Int32Array(n));
+  const scored = new Int32Array(n);
+  const found: { j: number; m: OriginalityMatch }[][] = Array.from({ length: n }, () => []);
+  const keep = (i: number, j: number) => {
+    const m = originalityMatch(index, index.overall.vectors[i], index.abstract.vectors[i], j);
+    if (m?.level === "duplicate") found[i].push({ j, m });
+  };
+  for (let i = 0; i < n; i++) {
+    parts.forEach((packed, p) => {
+      const x = packed[i];
+      for (let k = 0; k < x.terms.length; k++) dense[x.terms[k]] = x.weights[k];
+      for (const t of x.strong) {
+        for (const j of withWord[p][t]) {
+          if (j <= i || checked[p][j] === i + 1 || scored[j] === i + 1) continue;
+          checked[p][j] = i + 1;
+          const y = packed[j];
+          if (!y.strong.some(s => dense[s] > 0)) continue;
+          let dot = 0;
+          for (let k = 0; k < y.terms.length; k++) dot += dense[y.terms[k]] * y.weights[k];
+          if (dot < DUPLICATE_FLOOR) continue;
+          scored[j] = i + 1;
+          if (index.overall.ids[j] === index.overall.ids[i]) continue;
+          keep(i, j);
+          keep(j, i);
+        }
+      }
+      for (const t of x.terms) dense[t] = 0;
+    });
+  }
+  // Best first; equal percents in corpus order, as originalityCheck's stable sort leaves them.
+  return found.map(list => list.sort((a, b) => b.m.percent - a.m.percent || a.j - b.j).map(x => x.m.id));
 }
 
 /** The short reason under a match: "Abstract 100% similar" or "91% similar overall". */

@@ -4,7 +4,7 @@
 // The studies below are fake, made up for these examples only — never stored anywhere.
 import {
   MAX_MATCHES, THRESHOLDS, buildOriginalityIndex, buildSimilarityIndex, cosine, originalityCheck, originalityReason,
-  similarStudies, similarityLevel, similarityTerms, vectorOf, type SimilarityDoc,
+  possibleDuplicates, similarStudies, similarityLevel, similarityTerms, vectorOf, type SimilarityDoc,
 } from "./similarity.ts";
 
 let failed = 0;
@@ -133,6 +133,52 @@ check("Edit study: the study itself is never a match",
   originalityCheck(originality, copiedAbstract, { excludeId: "irrigation" }).some(m => m.id === "irrigation"), false);
 check("empty draft → no matches", originalityCheck(originality, { title: "", keywords: [], abstract: "" }), []);
 check("below 30% on both scores → not listed", originalityCheck(originality, STUDIES[3]).some(m => m.id === "irrigation"), false);
+
+console.log("\n── possibleDuplicates: every near-copy at once, same answer as the check ──");
+// What originalityCheck says, study by study, comparing every pair: the slow
+// way possibleDuplicates must agree with exactly (ids and their order).
+const slowDuplicates = (docs: SimilarityDoc[]) => {
+  const index = buildOriginalityIndex(docs);
+  return docs.map(d => originalityCheck(index, d, { excludeId: d.id, limit: Infinity }).filter(m => m.level === "duplicate").map(m => m.id));
+};
+const BASE = STUDIES.filter(s => s.abstract.trim() !== "");
+const COPIES: SimilarityDoc[] = [
+  ...STUDIES,
+  { ...BASE[0], id: "exact-copy" },
+  { ...BASE[0], id: "copy-of-copy", title: `${BASE[0].title} (final)` },
+  { ...BASE[1], id: "new-title", title: "A Different Title Typed by Hand", keywords: [] },
+  { ...BASE[2], id: "half", abstract: BASE[2].abstract.slice(0, Math.floor(BASE[2].abstract.length / 2)) },
+  { id: "empty", title: "", keywords: [], abstract: "" },
+  { id: "empty-2", title: "", keywords: [], abstract: "" },
+];
+const at = (id: string) => COPIES.findIndex(d => d.id === id);
+const fastLists = possibleDuplicates(buildOriginalityIndex(COPIES));
+check("same lists as comparing every pair, for every study", fastLists, slowDuplicates(COPIES));
+check("an exact copy and a copy with a longer title are found, both ways",
+  [fastLists[at("exact-copy")].includes(BASE[0].id), fastLists[at(BASE[0].id)].includes("copy-of-copy")], [true, true]);
+check("a copied abstract under a new title and no keywords is found (abstract-only score)", fastLists[at("new-title")], [BASE[1].id]);
+check("two empty studies are no copies of each other", fastLists[at("empty")], []);
+// Many made-up studies from a small vocabulary (most pairs share words) with
+// near-copies, partial copies and copies of copies, so skipping pairs would
+// show here if it ever skipped a real one.
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const vocab = ("soil rice water farm crop yield seed pest corn sugar cane mango goat pig duck fish pond feed price market " +
+  "road bridge school student teacher nurse patient clinic data system mobile web sensor solar wind river flood typhoon " +
+  "coast reef mangrove forest tree bamboo coffee cacao").split(" ");
+const words = (k: number) => Array.from({ length: k }, () => vocab[Math.floor(rnd() * vocab.length)]).join(" ");
+const MANY: SimilarityDoc[] = [];
+for (let i = 0; i < 120; i++) {
+  if (i > 5 && rnd() < 0.3) {
+    const src = MANY[Math.floor(rnd() * MANY.length)];
+    const abstract = rnd() < 0.5 ? src.abstract : `${src.abstract.slice(0, Math.floor(src.abstract.length * (0.5 + rnd() / 2)))} ${words(5)}`;
+    MANY.push({ id: `m${i}`, title: rnd() < 0.5 ? src.title : words(6), keywords: rnd() < 0.5 ? src.keywords : [], abstract });
+  } else MANY.push({ id: `m${i}`, title: words(6), keywords: [words(2)], abstract: `${words(25)}. ${words(25)}.` });
+}
+const manyFast = possibleDuplicates(buildOriginalityIndex(MANY));
+check("120 made-up studies with copies: same lists as comparing every pair", manyFast, slowDuplicates(MANY));
+check("…and there are copies to find (not an empty agreement)", manyFast.flat().length > 20, true);
+check("no studies at all", possibleDuplicates(buildOriginalityIndex([])), []);
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);
