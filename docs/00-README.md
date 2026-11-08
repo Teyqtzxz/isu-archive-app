@@ -117,7 +117,7 @@ Verified against the code on 2026-09-30.
 - ☑ Role routing: STAFF → Staff Dashboard · STUDENT → Student Dashboard
 - ☑ Sign out from every screen
 - ☑ Staff registers a study by pasting a Google Drive link (or reads the PDF from this computer)
-- ☑ System reads the PDF (first 15 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06)
+- ☑ System reads the PDF (page by page until the abstract, at most 40 pages, see `06` §4) → auto-fills Abstract + Keywords (step 06)
 - ◐ Fallback to manual entry if the PDF cannot be read — scanned PDFs, sharing
   problems and bad links now show the reason (step 06)
 - ☑ Staff checks the details → Confirm & Save (or Save Manually, abstract

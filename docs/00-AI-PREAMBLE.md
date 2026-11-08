@@ -167,6 +167,14 @@ src/
                         scores sentences via textOnly() only      ✅ EXISTS
   extractPdf.ts       ← pure: Drive API download or a local file +
                         pdf.js text extraction (step 06)          ✅ EXISTS
+  pdfText.ts          ← pure, no pdf.js: extractAbstractAndKeywords
+                        and extractFromPages (page by page, stop
+                        one page after the abstract, at most 40;
+                        scanned = <50 letters in pages 1–15;
+                        running header at the abstract's end
+                        dropped; wrapped keyword lines joined);
+                        examples in pdfText.check.ts
+                        (node src/pdfText.check.ts); errata #78   ✅ EXISTS
   stats.ts            ← pure: countByDepartment, topKeywords,
                         countAdded (this month/year in LOCAL
                         time, never UTC), and for the library
