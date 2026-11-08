@@ -8,6 +8,9 @@ The extraction code was checked by script against ten real bachelor's theses (§
 → "read a PDF from this computer", arXiv 1407.7143, abstract on page 11): the filled-in
 abstract matched the PDF's abstract page word for word (268 words) and the save
 succeeded. Still worth one run with an actual ISU thesis when one is available.
+**2026-11-08 (errata #78):** the PDF is now read page by page and reading stops one page
+after the abstract ends, at most 40 pages (was a fixed first 15); a contents line whose
+page number has a space inside ("ABSTRACT x i") is skipped. §4 and §8 third round.
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**
@@ -66,7 +69,8 @@ the demo plan changes.
 Staff paste a Google Drive share link and click Submit. The app then:
 
 1. Downloads the PDF **in the browser** through the Google Drive API — no server
-2. Reads text from the **first pages only** (`MAX_PAGES`, §4)
+2. Reads text **page by page from page 1** and stops one page after the abstract ends,
+   never more than `MAX_PAGES` = 40 pages (§4)
 3. Finds the `ABSTRACT` section and the `KEYWORDS` line with regex
 4. Fills the form so staff can review, edit, and confirm
 
@@ -136,6 +140,28 @@ Check the real filename against your installed version — look in
 
 Pure functions, no Firebase imports.
 
+> **Now split in two (errata #78).** `src/extractPdf.ts` keeps the Drive download and
+> pdf.js; `src/pdfText.ts` (no pdf.js, tested by `node src/pdfText.check.ts`) holds
+> `extractAbstractAndKeywords` and `extractFromPages`, which decides how far to read.
+> Both "From this computer" and "From Google Drive" go through the same
+> `extractFromBytes` → `extractFromPages`, so they read the same pages.
+>
+> **How far it reads.** Page 1, then page 2, and so on. After each page the text so far
+> is searched. `extractAbstractAndKeywords` only returns an abstract once the heading that
+> *ends* it (Keywords, Introduction, Chapter 1, …) has been read, so "found" also means
+> "its end is known". Then **one more page** is read, because the Keywords line is
+> sometimes at the top of the next page, and reading stops. With no abstract it goes on
+> to `MAX_PAGES` = 40 (or the last page), so a long thesis with no abstract costs 40
+> pages, never 2,000. A thesis with the abstract on page 5 stops at page 6 or 7.
+>
+> **Scanned PDFs.** Fewer than 50 letters in the **first 15 pages** (`SCAN_CHECK_PAGES`)
+> and no abstract → "probably scanned", the same window as before the cap went up. A
+> scanned PDF that prints only a page number on each page has 21 letters in 15 pages
+> but 71 in 40, so counting all 40 would have stopped calling it scanned.
+>
+> The listing below is the original step-06 version; read the two files for the
+> current code.
+
 ```typescript
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url";
@@ -146,7 +172,7 @@ const DRIVE_API_KEY = "REPLACE_WITH_KEY_FROM_A";
 
 /** Theses often put the abstract after the title page, approval sheet and
  *  acknowledgements, so 4 pages can miss it. Tune against real ISU PDFs (§8). */
-const MAX_PAGES = 15;   // was 8 — see §8 Results, second round
+const MAX_PAGES = 40;   // a cap, not a fixed read: was 8, then 15 — §8 third round
 
 /** Accepts /file/d/{id}/view · /file/d/{id} · ?id={id} · /open?id={id} */
 export function driveFileId(link: string): string | null {
@@ -240,7 +266,8 @@ export function extractAbstractAndKeywords(
     // Skip table-of-contents entries such as "ABSTRACT ........ 3" or "Abstract v":
     // in a thesis the contents page often comes before the abstract itself.
     // Resume just past this heading, or the skipped match swallows the real one.
-    if (/^(?:[\s.]*\.{3}|(?:\.\s){3}|[ivxlc\d]+\s*$)/i.test(m[1])) {
+    // A page number may have spaces inside: "x i", "1 2" (errata #78).
+    if (/^(?:[\s.]*\.{3}|(?:\.\s){3}|[ivxlc](?:\s*[ivxlc])*\s*$|\d(?:\s*\d)*\s*$)/i.test(m[1])) {
       abstractRe.lastIndex = m.index + "ABSTRACT".length;
       continue;
     }
@@ -308,7 +335,14 @@ thing as "the line containing KEYWORDS", so the match cannot work. Honour
 captures from `KEYWORDS:` to the end of the document — on a 4-page thesis that is
 three pages of chapter text, which then becomes ten garbage keyword chips. A
 `.slice(0, 10)` does not fix this; it just takes the first ten fragments of the
-garbage.
+garbage. **But a keyword list can wrap** (errata #78 round 2: 13 of 30 real theses), so
+the lines it wraps onto are joined, with strict limits: the first next line only when
+the list ends in `,` `;` `&` "and" "or", or that line has commas or semicolons itself,
+or it is a short ending like "advancement."; after that only while the list still ends
+in a separator; at most 3 lines; never an empty line, a heading (CHAPTER,
+INTRODUCTION, …), a running header, or a line whose parts are longer than 6 words
+(a sentence). A word broken at a hyphen ("socio-" / "economic") is joined without a
+space, and "self - efficacy" becomes "self-efficacy".
 
 **Match `KEY WORDS`.** `\bKEY\s?WORDS?\b` covers `KEYWORD`, `KEYWORDS`, `KEY WORD`
 and `KEY WORDS`, in any case. The spaced spelling is common in real theses. Do not
@@ -330,8 +364,9 @@ start of a line. Only `KEYWORDS`, `CHAPTER 1` and `TABLE OF CONTENTS` may run on
 
 **Skip the table of contents.** Theses often print the contents page *before* the
 abstract, so the first `ABSTRACT` in the text is the entry `Abstract ........ v`. A
-heading line that is only dot leaders or a page number is skipped, and the search
-resumes just past it — a plain `matchAll` would let the skipped match swallow the real
+heading line that is only dot leaders or a page number is skipped (also a number
+printed with a space inside, "ABSTRACT x i" for xi or "1 2" for 12 — DANDO 2022), and
+the search resumes just past it — a plain `matchAll` would let the skipped match swallow the real
 heading.
 
 ---
@@ -462,7 +497,8 @@ the app.
 Test against **real PDFs**, not ones you imagine. Take 3–4 actual ISU thesis
 PDFs shared as "Anyone with the link", and paste the extracted text into a
 scratch script to inspect it before trusting it in the form. Note on which page
-each abstract actually starts, and adjust `MAX_PAGES` if 15 is not enough.
+each abstract actually starts. Reading stops by itself after the abstract; `MAX_PAGES`
+(40) is only the cap for a PDF with no abstract.
 
 - [ ] The §0 day-1 spike printed `200 application/pdf` from `localhost:8443`
 
@@ -553,6 +589,93 @@ it in the editable abstract box before saving.
 Only one of the first six PDFs had a keywords line. Its `identity and access management`
 became two chips (`identity`, `access management`) because keywords are also split on
 "and"; staff can fix that in the review step.
+
+### Results — third round, 2026-11-08 (errata #78)
+
+30 real theses (mostly UP Open University; the two Geneston-Dino files are the same
+file). Same method: the app's own `extractPdf.ts` through `extractFromFile` ("From this
+computer"), only the pdf.js import swapped for its Node build; pages read counted by
+wrapping `getPage`; time is the middle of 3 runs in Node (no download).
+
+Two problems with the old fixed 15 pages:
+
+- **2025 CALAMLAM** (138 pages): front matter to page xvii, abstract heading on page 17
+  → "Could not find an abstract or keywords". Now found (1,599 characters), 19 pages read.
+  The PDF has no Keywords line anywhere, so no keywords.
+- **DANDO 2022** (150 pages): the contents line is "ABSTRACT x i" (xi with a space), not
+  skipped, so the **contents page** was filled in as the abstract ("x i CHAPTER I:
+  INTRODUCTION 1 Background of the Study 1 …"). Now the real abstract on page 11
+  (1,249 characters), same 2 keywords, 12 pages read.
+
+| PDF | Pages | Abstract on page | Pages read before → after | Result |
+|---|---|---|---|---|
+| 2025 CALAMLAM | 138 | 17 | 15 → 19 | nothing → ✓ found |
+| ALFONSO 2024 | 74 | 13 | 15 → 14 | same |
+| ANTOLIN 2023 | 138 | 11 | 15 → 13 | same |
+| ARCANGEL 2025 | 155 | 8 | 15 → 10 | same |
+| ASUNCION 2020 | 135 | 12 | 15 → 15 | same |
+| CALIMLIM 2024 | 117 | 13 | 15 → 15 | same |
+| CAMACHO_HG 2026 | 77 | 11 | 15 → 12 | same |
+| CLARO-AZUCENA 2022 | 136 | none (no abstract or keywords on any of the 136 pages) | 15 → 40 | same: "Please type them in" |
+| CRUZ 2026 | 112 | 5 | 15 → 7 | same |
+| DANDO 2022 | 150 | 11 | 15 → 12 | contents page → ✓ real abstract |
+| DELA PENA 2023 | 156 | 12 | 15 → 14 | same |
+| DIMAANO 2024 | 39 | 12 | 15 → 13 | same |
+| FULLEROS-2025 | 82 | 10 | 15 → 11 | same |
+| GARCES 2024 | 118 | 7 | 15 → 9 | same |
+| GESULGA 2025 | 53 | 10 | 15 → 11 | same |
+| GREGORIO 2022 | 2,613 | 12 | 15 → 14 | same (128 → 117 ms) |
+| Geneston-Dino (2 copies) | 104 | 13 | 15 → 15 | same |
+| JACA-2022 | 48 | 8 | 15 → 10 | same |
+| LACAP 2024 | 50 | 9 | 15 → 11 | same |
+| NAVARRO 2023 | 78 | 10 | 15 → 12 | same |
+| NGOJO 2025 | 180 | 12 | 15 → 14 | same |
+| PANES 2025 | 57 | 8 | 15 → 9 | same |
+| POCAAN-2021 | 77 | 5 | 15 → 8 | same |
+| SUBABA 2024 | 97 | 12 | 15 → 14 | same |
+| TAN-2020 | 97 | 11 | 15 → 15 | same |
+| TARUC 2024 | 98 | 11 | 15 → 12 | same |
+| VIZCARA-2022 | 58 | 12 | 15 → 14 | same |
+| [Espan_a] R&DM 300 | 156 | 7 | 15 → 9 | same |
+| [N300] Caraan | 96 | 8 | 15 → 9 | same |
+
+"Same" means the same abstract and keywords, character for character. For all 30, a
+full 40-page read gives the same result as the early stop. Time per PDF 43–217 ms (was
+78–191 ms); the longest after is CALAMLAM, which now reads 19 pages, and CLARO-AZUCENA,
+which reads 40 (176 ms).
+
+**Not tested here:** "From Google Drive" with a real download (it uses the same
+`extractFromBytes`, but the key only works from our sites) and a read in the browser.
+
+#### Review round 2, 2026-11-08 — the end of the abstract and the keyword lines
+
+Same 30 PDFs, same method. Three fixes in `pdfText.ts`:
+
+- **Running header / page number at the end of the abstract.** Five abstracts ended in
+  page furniture: the study's short title with a page number, printed under the
+  abstract or at the top of the next page (ASUNCION 2020, LACAP 2024, NGOJO 2025, and
+  TAN-2020 twice: a blank page's header, then the next page's), or "Page 8" (JACA-2022).
+  A trailing line is dropped when its words, with a page number, are on **at least two
+  lines** of the text read (so it is repeated from page to page) and what is left ends
+  a sentence. "Page N" joins the trailing page marks. All five now end on their last
+  sentence.
+- **Wrapped keyword lines** (rules in §4 "Bound the keyword capture"). 13 theses
+  had a cut list, not 3: ALFONSO ("food" → "food security" + 5 more), ANTOLIN, ARCANGEL,
+  CALIMLIM, CAMACHO_HG, DELA PENA, FULLEROS, GARCES, Geneston-Dino, LACAP, PANES,
+  TARUC, [Espan_a]. All now give the whole printed list.
+- **"self - efficacy" → "self-efficacy"** in keywords (a hyphen with a space on both
+  sides, between letters; "pre- or post-test" and "2019 - 2024" are kept).
+
+18 of 30 changed (5 abstracts, 14 keyword lists, LACAP both), all to what the PDF
+prints; the other 12 are the same character for character, and no page count changed.
+Time per PDF 36–209 ms (round 1: 43–217). A first version of the header rule was slow
+on long lines (201 ms of text rules on CLARO-AZUCENA's 40 pages); it now reads the
+page number from the end of the line and counts headers only when needed (15 ms).
+
+**Known limit:** a running header in the **middle** of an abstract that runs over two
+pages is kept (ASUNCION, CALIMLIM, TAN, VIZCARA: e.g. "… Care Nurses xiii The study
+showed …"). Staff can delete it in the abstract box; a later round could drop it with
+the same repeated-header test.
 
 ---
 

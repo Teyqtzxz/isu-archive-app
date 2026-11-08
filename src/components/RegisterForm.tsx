@@ -722,7 +722,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
             <div className="spin-core"><Icon name="file" size={18} /></div>
           </div>
           <div className="extract-title">Reading PDF and filling in details...</div>
-          <div className="extract-sub">pdf.js · {pdfFile ? "From this computer" : "From Google Drive"} · Scanning pages 1–{MAX_PAGES}</div>
+          <div className="extract-sub">pdf.js · {pdfFile ? "From this computer" : "From Google Drive"} · Scanning up to {MAX_PAGES} pages</div>
           <div className="progress-track">
             <div className="progress-fill" />
           </div>

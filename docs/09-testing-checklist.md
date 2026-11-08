@@ -285,6 +285,25 @@ most.
 - [ ] **[auto]** `grep -rn "drive.usercontent" src/` returns nothing — downloads go
       through the Drive API
 - [ ] **[auto]** `node src/validation.check.ts` ends with "All passed."
+- [ ] **[auto]** `node src/pdfText.check.ts` ends with "All passed." (how far the
+      PDF is read, contents lines, scanned PDFs — errata #78)
+- [ ] **Abstract past page 15** (errata #78): choose a thesis whose abstract
+      starts after page 15 (e.g. a UP Open University thesis with front matter
+      to page xvii, abstract on page 17) → while reading, the panel says
+      "Scanning up to 40 pages" → DETAILS FILLED IN with that abstract, not
+      "Could not find an abstract or keywords in that PDF." Same with its Drive
+      link (no PDF chosen)
+- [ ] A thesis whose contents page lists "ABSTRACT x i" (xi printed with a
+      space) → the abstract box holds the real abstract, not the contents page
+- [ ] The abstract ends on its last sentence: no study title, page number or
+      "Page 8" after it (e.g. a thesis whose page header is "Short Title   xiii")
+- [ ] A keyword list printed over two lines gives every keyword, whole (e.g.
+      "Theory of Reasoned" / "Action, …" → "Theory of Reasoned Action"), and the
+      study title or "Chapter I" under the list is not a keyword;
+      "self - efficacy" shows as "self-efficacy"
+- [ ] A long thesis (2,000+ pages) with the abstract near page 12 fills in as
+      fast as a short one; a thesis with no abstract at all still shows
+      "Could not find an abstract or keywords in that PDF. Please type them in."
 - [ ] Clicking "Read PDF & continue" with an empty form shows a red message
       under **each** missing field (Drive link, Title, Authors, Department,
       Adviser) and puts the cursor in the first one. An adviser of only spaces
