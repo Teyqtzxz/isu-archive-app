@@ -22,7 +22,6 @@ export interface DraftFields {
   newAuthor: string;
   abstract: string;
   keywords: string[];
-  newKw: string;
 }
 
 export interface RegisterDraft extends DraftFields {
@@ -49,8 +48,10 @@ export interface RegisterDraft extends DraftFields {
   autoAdded: string[];
   /** Keyword keys staff removed: never added by themselves again. */
   removedKeys: string[];
-  /** The PDF read (lastRead.source) the keywords were already added for, or
-   *  null: after a reload they are not added a second time. */
+  /** What the keywords were already added for, or null: after a reload they
+   *  are not added a second time. A PDF read's lastRead.source, or
+   *  "typed:" + lastRead.source for an abstract typed after a failed read
+   *  (errata #80). */
   autoFor: string | null;
 }
 
@@ -87,7 +88,11 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
   if (typeof f !== "object" || f === null) return null;
   if (![f.driveLink, f.title, f.department, f.year, f.adviser].every(isText)) return null;
   if (!isList(o.authors, MAX_AUTHORS) || !isList(o.keywords, MAX_KEYWORDS)) return null;
-  if (![o.newAuthor, o.abstract, o.newKw, o.readError, o.pdfName, o.baseUpdatedAt].every(isText)) return null;
+  if (![o.newAuthor, o.abstract, o.readError, o.pdfName, o.baseUpdatedAt].every(isText)) return null;
+  // Drafts saved before errata #80 also hold the text typed in the old "Add a
+  // keyword" box. Staff no longer add keywords by hand, so it is dropped: it
+  // was never in the list. The rest of such a draft still loads.
+  if (o.newKw !== undefined && !isText(o.newKw)) return null;
   if (o.step !== "details" && o.step !== "save") return null;
   if (o.step === "save" ? o.readState !== "success" && o.readState !== "needs_review" : o.readState !== null) return null;
   if (typeof o.keptCurrent !== "boolean") return null;
@@ -107,7 +112,7 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
       department: (DEPARTMENTS as readonly string[]).includes(department) ? department : "",
     },
     authors: o.authors, newAuthor: o.newAuthor as string,
-    abstract: o.abstract as string, keywords: o.keywords, newKw: o.newKw as string,
+    abstract: o.abstract as string, keywords: o.keywords,
     step: o.step, readState: o.readState as RegisterDraft["readState"], keptCurrent: o.keptCurrent,
     readError: o.readError as string,
     lastRead,
@@ -126,7 +131,7 @@ export function sameAsStart(now: DraftFields, start: DraftFields): boolean {
     && now.form.department === start.form.department && now.form.year === start.form.year
     && now.form.adviser === start.form.adviser
     && sameList(now.authors, start.authors) && now.newAuthor === start.newAuthor
-    && now.abstract === start.abstract && sameList(now.keywords, start.keywords) && now.newKw === start.newKw;
+    && now.abstract === start.abstract && sameList(now.keywords, start.keywords);
 }
 
 /** The remembered staff screen, or null (nothing stored, junk, another account). */

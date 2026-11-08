@@ -159,7 +159,7 @@ check("by name only", pdfFileProblem({ name: "Study.PDF", type: "", size: MB }),
 check("not a PDF", pdfFileProblem({ name: "study.docx", type: "application/msword", size: MB }), { message: MSG.pdfNotPdf, keep: false });
 check("empty", pdfFileProblem({ name: "study.pdf", type: "application/pdf", size: 0 }), { message: MSG.pdfEmpty, keep: false });
 check("over 100 MB: warned, kept", pdfFileProblem({ name: "study.pdf", type: "application/pdf", size: 101 * MB }), { message: MSG.pdfTooLarge, keep: true });
-check("existing size message unchanged", MSG.pdfTooLarge, "That PDF is larger than 100 MB. Please type the abstract and keywords.");
+check("existing size message unchanged", MSG.pdfTooLarge, "That PDF is larger than 100 MB. Please type or paste the abstract.");
 
 console.log("\n— Google Drive link —");
 const id = "1AbCdEfGhIjKlMnOpQrStUvWxYz012345";

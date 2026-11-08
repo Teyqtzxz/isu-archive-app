@@ -32,12 +32,12 @@ const blocked = () => { throw new Error("SecurityError: storage is blocked"); };
 
 const blank: DraftFields = {
   form: { driveLink: "", title: "", department: "", year: "2026", adviser: "" },
-  authors: [], newAuthor: "", abstract: "", keywords: [], newKw: "",
+  authors: [], newAuthor: "", abstract: "", keywords: [],
 };
 const draft: RegisterDraft = {
   v: 1, uid: "uid-A", studyId: null,
   form: { driveLink: "https://drive.google.com/file/d/abc/view", title: "Rice yield", department: "Agriculture", year: "2025", adviser: "Dr. Maria Santos" },
-  authors: ["Juan Dela Cruz"], newAuthor: "Ana Re", abstract: "This study…", keywords: ["rice"], newKw: "soi",
+  authors: ["Juan Dela Cruz"], newAuthor: "Ana Re", abstract: "This study…", keywords: ["rice"],
   step: "save", readState: "success", keptCurrent: false, readError: "",
   lastRead: { source: "file:study.pdf:1234:99", ok: true }, pdfName: "", baseUpdatedAt: "",
   autoAdded: ["rice"], removedKeys: ["soil moisture"], autoFor: "file:study.pdf:1234:99",
@@ -96,6 +96,20 @@ check("11 auto keywords (max 10)", parseDraft(edit({ autoAdded: Array.from({ len
 check("101 removed keywords (max 100)", parseDraft(edit({ removedKeys: Array.from({ length: 101 }, (_, i) => `k${i}`) }), want), null);
 check("autoFor a number", parseDraft(edit({ autoFor: 5 }), want), null);
 check("only some of the automatic fields", parseDraft(edit({ removedKeys: undefined }), want), null);
+
+console.log("— Drafts from before errata #80 (the old typed keyword box) —");
+const oldDraft = parseDraft(edit({ newKw: "soi" }), want);
+check("a draft with text in the old keyword box still loads", oldDraft?.form.title, "Rice yield");
+check("… its keywords are kept", oldDraft?.keywords.join("|"), "rice");
+check("… the typed text is dropped (never in the list)", oldDraft !== null && "newKw" in oldDraft, false);
+check("old keyword box text that is not text → ignored draft", parseDraft(edit({ newKw: 5 }), want), null);
+const onlyTyped = parseDraft(JSON.stringify({ ...draft, ...blank, form: { ...blank.form }, step: "details", readState: null,
+  lastRead: null, autoAdded: [], removedKeys: [], autoFor: null, newKw: "soil" }), want);
+check("a draft whose only change was the old keyword box = unchanged (cleared)", !!onlyTyped && sameAsStart(onlyTyped, blank), true);
+check("round trip: keywords added for a typed abstract (autoFor typed:)",
+  parseDraft(edit({ readState: "needs_review", lastRead: { source: "drive:x", ok: false }, autoFor: "typed:drive:x" }), want)?.autoFor, "typed:drive:x");
+check("a new draft has no keyword box text", "newKw" in JSON.parse(raw), false);
+
 check("unknown department → blank", parseDraft(edit({ form: { ...draft.form, department: "CAS" } }), want)?.form.department, "");
 
 console.log("— Changed or not (draft kept, \"Leave site?\") —");
@@ -104,7 +118,6 @@ check("a title typed", sameAsStart({ ...blank, form: { ...blank.form, title: "R"
 check("year changed", sameAsStart({ ...blank, form: { ...blank.form, year: "2024" } }, blank), false);
 check("an author added", sameAsStart({ ...blank, authors: ["Juan Dela Cruz"] }, blank), false);
 check("an author typed, not added", sameAsStart({ ...blank, newAuthor: "J" }, blank), false);
-check("a keyword typed, not added", sameAsStart({ ...blank, newKw: "s" }, blank), false);
 check("typed then deleted again", sameAsStart({ ...blank, form: { ...blank.form, title: "" } }, blank), true);
 const study: DraftFields = { ...draft, form: { ...draft.form } };
 check("Edit: untouched study = start", sameAsStart({ ...draft, form: { ...draft.form } }, study), true);

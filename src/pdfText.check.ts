@@ -3,7 +3,7 @@
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 // All page texts below are made up.
 import {
-  MAX_PAGES, MSG_NOT_FOUND, MSG_SCANNED, extractAbstractAndKeywords, extractFromPages,
+  MAX_PAGES, MSG_NOT_FOUND, MSG_SCANNED, extractAbstractAndKeywords, extractFromPages, takeKeywordsLine,
 } from "./pdfText.ts";
 
 let failed = 0;
@@ -284,6 +284,38 @@ check("after a joined line with no separator at its end, the title line under it
 check("at most 3 more lines are joined",
   kwOf("Keywords: a1,\nb2,\nc3,\nd4,\ne5\n"), ["a1", "b2", "c3", "d4"]);
 check("a one-line list is unchanged", kwOf("Keywords: rice, floods\nCHAPTER I\n"), ["rice", "floods"]);
+
+console.log("— A Keywords line pasted into the abstract box (errata #80) —");
+const ABS = "This study measured rice yield under drip irrigation in Isabela farms over two seasons.";
+check("own line: moved out, same parsing as a PDF",
+  takeKeywordsLine(`${ABS}\nKeywords: rice yield; drip irrigation, and Isabela farms.`),
+  { abstract: ABS, keywords: ["rice yield", "drip irrigation", "Isabela farms"] });
+check("KEY WORDS with a dash, blank lines around",
+  takeKeywordsLine(`${ABS}\n\nKEY WORDS — rice yield, soil\n\n`), { abstract: ABS, keywords: ["rice yield", "soil"] });
+check("the label alone, the list on the next line",
+  takeKeywordsLine(`${ABS}\nKeywords\nrice yield, soil`), { abstract: ABS, keywords: ["rice yield", "soil"] });
+check("a wrapped list is joined (the PDF reader's rule)",
+  takeKeywordsLine(`${ABS}\nKeywords: Theory of Reasoned\nAction, climate neutrality`),
+  { abstract: ABS, keywords: ["Theory of Reasoned Action", "climate neutrality"] });
+check("after the last sentence on the same line (line break lost)",
+  takeKeywordsLine(`${ABS} Keywords: rice yield, soil`), { abstract: ABS, keywords: ["rice yield", "soil"] });
+check("self - efficacy → self-efficacy, as from a PDF",
+  takeKeywordsLine(`${ABS}\nKeywords: self - efficacy, nursing`)?.keywords, ["self-efficacy", "nursing"]);
+check("text after the list stays in the abstract",
+  takeKeywordsLine(`${ABS}\nKeywords: rice, soil\n\nA last line typed after it.`),
+  { abstract: `${ABS}\n\nA last line typed after it.`, keywords: ["rice", "soil"] });
+check("no label → null", takeKeywordsLine(ABS), null);
+check("a sentence that starts with Keywords is not a label",
+  takeKeywordsLine(`${ABS}\nKeywords are words that describe a study.`), null);
+check("“these keywords: …” inside a sentence is not a label",
+  takeKeywordsLine("The search used these keywords: rice, soil, and water in Isabela farms."), null);
+check("“keywords.” at the end of a sentence, no colon after it → not a label",
+  takeKeywordsLine("The librarian assigned keywords. Rice farmers were then asked."), null);
+check("the label with nothing after it: removed, no keywords",
+  takeKeywordsLine(`${ABS}\nKeywords:`), { abstract: ABS, keywords: [] });
+check("the same list read from a PDF gives the same keywords",
+  takeKeywordsLine(`${ABS}\nKeywords: rice yield; drip irrigation, and Isabela farms.`)?.keywords,
+  extractAbstractAndKeywords(`ABSTRACT\n${ABS} More words here to pass forty letters.\nKeywords: rice yield; drip irrigation, and Isabela farms.\n`).keywords);
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);

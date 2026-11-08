@@ -624,8 +624,10 @@ export function autoKeywordRoom(has: number): number {
 }
 
 /**
- * The keywords the Register form adds by itself when the save step opens for
- * a new study after a PDF was read (docs/15 §6): the best suggestions after
+ * The keywords the Register form adds by itself to a new study (docs/15 §6),
+ * once: when the save step opens after a PDF was read, or, with no usable
+ * abstract read, when staff leave the abstract box with a typed one (errata
+ * #80). Staff only remove keywords, never add them. The best suggestions after
  * the study's own keywords, autoKeywordRoom() of them (fewer only when
  * the suggestions run out), at most autoMaxLearned learned (none below reliableFrom),
  * never one in `removed` (keys staff took off; one removed never comes back
@@ -634,7 +636,7 @@ export function autoKeywordRoom(has: number): number {
  * the phrases seen at least KEYWORD_MODEL.autoMinCount times in the title
  * plus abstract (phraseCount), best first; then, while there is room, the
  * other phrases in their usual order (best score first). The suggestions
- * left over stay as chips, not added.
+ * left over are not shown (errata #80).
  */
 export function autoKeywords(model: KeywordModel, doc: KeywordText, removed: Iterable<string> = []): KeywordSuggestion[] {
   const room = autoKeywordRoom(doc.keywords.length);
@@ -642,7 +644,7 @@ export function autoKeywords(model: KeywordModel, doc: KeywordText, removed: Ite
   // Never one inside another listed or added keyword, or the other way round
   // ("patient interaction" with "nurse-patient interaction"), nor the same
   // words in another order ("quality care" with "care quality"): the better
-  // one (earlier in the list) is added, the other stays a chip.
+  // one (earlier in the list) is added, the other is not.
   const listed = doc.keywords.map(keywordKey).filter(Boolean);
   const sameWords = (a: string, b: string) => a.split(" ").sort().join(" ") === b.split(" ").sort().join(" ");
   const overlaps = (a: string, b: string) => ` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `) || sameWords(a, b);
@@ -657,6 +659,18 @@ export function autoKeywords(model: KeywordModel, doc: KeywordText, removed: Ite
     out.push(s);
   }
   return out;
+}
+
+/**
+ * Undo after the × on the Register / Edit save step (errata #80): `keyword`
+ * back at `index` (or at the end, if the list got shorter). null when it is
+ * listed again already (same keywordKey) or the list holds `max` keywords.
+ */
+export function reinsertKeyword(list: readonly string[], keyword: string, index: number, max: number): string[] | null {
+  const key = keywordKey(keyword);
+  if (list.length >= max || list.some(k => keywordKey(k) === key)) return null;
+  const at = Math.max(0, Math.min(index, list.length));
+  return [...list.slice(0, at), keyword, ...list.slice(at)];
 }
 
 /** "learned from 3 studies" / "from this abstract", under each chip. */

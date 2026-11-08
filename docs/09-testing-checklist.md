@@ -303,7 +303,8 @@ most.
       "self - efficacy" shows as "self-efficacy"
 - [ ] A long thesis (2,000+ pages) with the abstract near page 12 fills in as
       fast as a short one; a thesis with no abstract at all still shows
-      "Could not find an abstract or keywords in that PDF. Please type them in."
+      "Could not find an abstract or keywords in that PDF. Please type or paste
+      the abstract."
 - [ ] Clicking "Read PDF & continue" with an empty form shows a red message
       under **each** missing field (Drive link, Title, Authors, Department,
       Adviser) and puts the cursor in the first one. An adviser of only spaces
@@ -347,10 +348,9 @@ most.
 - [ ] Abstract and keywords come from the actual PDF
 - [ ] **Keyword chips contain only keywords** — no page 2–4 text bleeding in
 - [ ] A PDF using `KEY WORDS:` with a space parses correctly
-- [ ] Staff can edit the abstract and add/remove keyword chips
-- [ ] Keywords: `rice, soil` adds two chips; `2024` → "A keyword must contain
-      a word, not only numbers or symbols."; Add is disabled at 10 keywords
-- [ ] A keyword typed but not added is saved with the study
+- [ ] Staff can edit the abstract and **remove** keywords with × (errata #80):
+      there is **no** "Add a keyword" box, no "+ Add" and no "Suggested
+      keywords" box, on Register or on Edit study (details in §4d)
 - [ ] An abstract under 50 words → "The abstract looks too short (N words). …"
       on leaving the box and on save; nothing is saved
 - [ ] "Confirm & Save" → "Study posted!" toast → document with `status: "POSTED"`
@@ -376,24 +376,24 @@ most.
 - [ ] After the read, wheel to the end of the page with the mouse still → the
       mouse is not over Save. Move to Save and click → it posts on the first
       click
-- [ ] **Keyword buttons follow the same 1-second guard** (errata #77). Double-
+- [ ] **× and Undo follow the same 1-second guard** (errata #77, #80). Double-
       and triple-click "Read PDF & continue" with the mouse still → no keyword
       is added or removed and nothing is posted (0 of 24 runs at 1366×641,
       1366×768, 1366×800, 1920×947, 1920×1080 and a 390×844 phone)
-- [ ] **Known limit, accepted (errata #77):** a single click or tap on the
-      same spot **after** the first second can land on a suggested keyword
-      and add it. Measured: 8 of 48 later clicks or taps (at 1.2 s and 2 s)
-      added a suggestion, at 1366×800 (4 authors, no printed keywords) and on a
-      390×844 phone (1 author, 4 printed keywords; Chrome moves a tap in the
-      gap onto the nearest chip); none removed a keyword or posted. After
-      review round 3 (fewer automatic keywords, so the chips sit elsewhere;
-      measured with a new test abstract): 12 of 48, at 1366×800 with both
-      study shapes and on the phone with 1 author and 4 printed keywords;
-      still none removed or posted. It can only
-      **add** a keyword, which shows in the Keywords list, and one click on its
-      × removes it. Check: at 1366×800 click "Read PDF & continue", wait
-      2 seconds, click again without moving → at most one keyword is added,
-      nothing is removed or posted
+- [ ] **Known limit, accepted (errata #80; it replaces the #77 one):** a
+      single stray click or tap on the same spot **after** the first second.
+      Measured in 48 such clicks or taps (at 1.2 s and 2 s, the 6 sizes above,
+      4 authors with no printed keywords and 1 author with 4): **0 added** a
+      keyword (before #80, with the suggestion chips: 10 of 48) and **2
+      removed one**, both on the **390×844 phone** (1 author, 4 printed
+      keywords), a stray **tap about 1.2 s after the step opened**, which
+      Chrome moved from the gap in the keyword row onto the × of "Irrigation
+      scheduling". **"Removed Irrigation scheduling. Undo"** was shown each
+      time; 0 removed on desktop sizes; none posted the study. No further
+      guard is used. Check: on a phone, tap "Read PDF & continue", wait about
+      1 second and tap again on the same spot → at most one keyword is
+      removed, the Undo line shows it, and Undo puts it back; nothing is
+      posted
 - [ ] Garbage link → specific error message, no crash
 - [ ] Non-Drive URL is rejected before any download starts
 
@@ -419,8 +419,10 @@ most.
       `updatedBy` (your uid); `registeredAt`, `registeredBy` and `status` are
       unchanged, and the study keeps its place in the newest-first list
 - [ ] **Edit with a PDF:** choose a PDF → the button says "Read PDF & continue"
-      → PROCESSING → "Details filled in:" with the abstract and keywords read
-      from that PDF; Save changes keeps them
+      → PROCESSING → "Details filled in:" with the abstract read from that
+      PDF; its printed keywords replace the saved ones **only if it prints
+      some** — a PDF with no keywords line keeps the saved keywords (errata
+      #80); nothing is added automatically; Save changes keeps them
 - [ ] A PDF that cannot be read (scanned) in Edit → "Could not read the PDF."
       and the study's current abstract and keywords are **kept**, not blanked
 - [ ] **Validation on edit:** clear the title → "Continue" shows "Please fill
@@ -494,7 +496,7 @@ most.
       prints nothing
 - [ ] Search results, ranking and relevance % are exactly as before
 
-## 4d. Keyword model — suggested keywords and accuracy card (`15`)
+## 4d. Keyword model — automatic keywords, × and Undo, accuracy card (`15`)
 
 - [ ] **[auto]** `node src/keywordModel.check.ts` ends with "All passed."
       (label normalisation, learned vs extracted, the P ≥ 0.9 + 5-evidence
@@ -502,7 +504,12 @@ most.
       30-study rule, at most 3 learned of 6, the automatic count and fill-up
       order (errata #79), removed keywords, junk phrases (also a vague word at
       the end), three-word terms, no duplicates, validation
-      rules, Edit exclusion, no leakage in leave-one-out, empty library)
+      rules, Edit exclusion, no leakage in leave-one-out, empty library, Undo
+      putting a keyword back in its place (errata #80))
+- [ ] **[auto]** `node src/pdfText.check.ts`: a "Keywords:" line in a typed
+      abstract is moved out and read like a PDF's (errata #80);
+      `node src/draft.check.ts`: a draft with text in the old keyword box still
+      loads, that text dropped
 - [ ] **[auto]** `node src/similarity.check.ts`: `possibleDuplicates` gives the
       same lists as comparing every pair (errata #77)
 - [ ] **Register, new study (errata #77):** fill in a study → Read PDF &
@@ -511,42 +518,65 @@ most.
       printed → 5 added, 3 → 5, 4 → 4, 7 → 1, 8 or more → 0). Each added one
       has a small **AUTO** tag and a dashed edge, and a note says "Keywords
       marked auto were chosen automatically. Remove any that do not fit."
+- [ ] **No manual way to add (errata #80):** no "Add a keyword" box, no
+      "+ Add", no "Suggested keywords" box, on Register and on Edit study
 - [ ] Remove an auto keyword with its × (after the first second) → it is
-      gone and is **never added again by itself**: not after editing the
-      abstract, not after "Edit details" → Read PDF & continue with the same
-      PDF, not after a reload (the draft keeps the tags and the removed list),
-      not after reading another PDF. It stays offered as a chip; clicking it
-      adds it back without the tag
-- [ ] **Edit study** adds nothing automatically (only the chips)
-- [ ] A failed read ("Save Manually") adds nothing automatically; type the
-      abstract and use the chips
+      gone, **"Removed *keyword*. Undo"** shows under the list, and it is
+      **never added again by itself**: not after editing the abstract, not
+      after "Edit details" → Read PDF & continue with the same PDF, not after
+      a reload (the draft keeps the tags and the removed list), not after
+      reading another PDF
+- [ ] **Undo** → the keyword is back **in the same place**, with its AUTO tag
+      if it had one; the line goes. A second × replaces the line (only the
+      latest can be undone). Without Undo the line goes after **8 seconds**;
+      with the mouse on it, or keyboard focus on Undo, it stays, and goes
+      8 seconds after leaving
+- [ ] **Double-click on ×** → only that keyword goes (the next one slides
+      under the mouse; × ignores clicks for 0.5 s after a removal or Undo); a
+      normal second click after that removes the next one
+- [ ] **Edit study** removes only: the saved keywords each have ×, Undo
+      works, nothing is ever added (not from a typed abstract, not from a
+      pasted Keywords line, which stays in the abstract)
+- [ ] **A failed read ("Save Manually"), or a read with no abstract**
+      (2022 CLARO-AZUCENA): the line under Keywords says "No keywords yet.
+      They are added automatically from the abstract when you leave the
+      abstract box (50 words or more)." Type under 50 words and leave the box
+      → nothing; type or paste the full abstract and leave the box (click
+      elsewhere or Tab) → keywords are added **once** with AUTO tags, by the
+      same rules (keywords the read found first, up to 5, never past 8,
+      learned ones from 30 studies). Change the abstract and leave again →
+      nothing added or removed; F5 → nothing added a second time
+- [ ] **Typed abstract, then straight to Save:** type the abstract and press
+      Save at once → not posted; keywords appear and **"Keywords were added.
+      Check them, then click Save."** shows under Save; press Save again →
+      posted once with those keywords. Same with Tab to Save and Enter
+- [ ] **Pasted "Keywords:" line:** paste an abstract ending with
+      "Keywords: drip irrigation; hybrid corn, and Isabela farms." and leave
+      the box → that line leaves the abstract, the three are listed first
+      without AUTO, then the automatic ones. Remove one, paste the line again
+      → it is not added back
 - [ ] The e-library still loading → nothing is added until it arrives, then
       once; the e-library failing to load → the abstract phrases are added
       once
-- [ ] The "Suggested keywords" box shows the rest, at most **6** chips,
-      each saying "learned from N studies" or "from this abstract", at most 3
-      learned. Click a chip → it moves into Keywords exactly as if typed. A
-      keyword already in the list (any capitals or plural) is never suggested
-- [ ] At **10** keywords every chip is greyed out ("Up to 10 keywords can
-      be added.")
 - [ ] **Learned keywords only from 30 studies with keywords** (near-copies
-      counted once): below that every chip and auto keyword says "from this
-      abstract"; from 30 a learned one can be added or suggested
-- [ ] Junk phrases are not offered: "Nurses should", "participants
+      counted once): below that only abstract phrases are added; from 30 a
+      learned one can be added (headless Chrome, typed abstract: 29 studies →
+      no "aquaculture", 30 → "aquaculture" first)
+- [ ] Junk phrases are not added: "Nurses should", "participants
       reported", "providing quality", "documents internally", "specific
       plastic", "case suite" (`docs/15` §3). "perceived behavioral control"
       comes as one keyword, not two halves
 - [ ] **Review round 2:** terms with a verb form survive — "monitoring
       system", "real-time monitoring", "automated attendance system",
       "reduced tillage", "improved varieties"; a three-word term seen only
-      once is not offered ("measure water temperature" gives "water
+      once is not added ("measure water temperature" gives "water
       temperature"; "system sends SMS", "helps fish farmers" never appear);
       "water quality monitoring system" gives "water quality" and "monitoring
       system"
 - [ ] No two automatic keywords overlap: with "nurse-patient interaction"
-      added, "patient interaction" is only a chip; nothing inside a printed
-      keyword is added (printed "Marine Plastic Pollution" → "plastic
-      pollution" stays a chip); never both "quality care" and "care quality"
+      added, "patient interaction" is not; nothing inside a printed keyword is
+      added (printed "Marine Plastic Pollution" → no "plastic pollution");
+      never both "quality care" and "care quality"
 - [ ] **Errata #79 (fill the room):** the phrases that appear at least twice
       in the title plus abstract ("fish farmer" and "fish farmers" count
       together) are added first, then the room is filled with the next
@@ -554,16 +584,20 @@ most.
       gets **5** unless its abstract has fewer phrases. An abstract with no
       repeated phrase still gets its once-seen phrases. Learned keywords (30+
       studies) are not counted
-- [ ] The **Suggested keywords** box shows only what was **not** added; its
-      hint starts "Not added. Click one to add it." No phrase ends in a vague
-      word ("producing various", "… several", "… specific")
+- [ ] No added phrase ends in a vague word ("producing various", "…
+      several", "… specific")
 - [ ] **[auto]** the 14 made-up capstone abstracts in `keywordModel.check.ts`
       give all their must-have terms and none of their junk; 5 automatic
       keywords each, those seen twice before any seen once, no overlap
 - [ ] An abstract about a topic no stored study has → phrases only, no
-      "learned" chip
+      learned keyword
 - [ ] Keyboard: Tab reaches each ×; a screen reader reads "Remove keyword …,
-      added automatically" on an auto keyword; Enter removes it
+      added automatically" on an auto keyword; Enter removes it and focus
+      moves to the × now in its place (to **Undo** when the list is empty);
+      the Undo line is read out ("Removed …. Undo", a polite live region);
+      Enter on Undo puts it back and focuses its ×. Leaving the abstract box
+      with a typed abstract is read out ("5 keywords were added from the
+      abstract: …")
 - [ ] **Statistics tab (staff):** a **"Keyword model"** card under the
       library charts: training studies, known keywords, "Testing the
       model…" then "*N* studies tested, *M* copies hidden", Model vs
@@ -572,9 +606,10 @@ most.
       "*M* near-copies counted with their originals". The test still measures
       the learned model below 30 (the 30 rule is for the Register form only).
       Students never see it
-- [ ] Dark mode: chips and the card readable in Light and Dark
-- [ ] Nothing is saved by the suggestions or the card (Firestore console:
-      no change until Confirm & Save / Save changes)
+- [ ] Dark mode: keywords, the AUTO tag, the Undo line, the note under Save
+      and the card readable in Light and Dark
+- [ ] Nothing is saved by ×, Undo, the automatic keywords or the card
+      (Firestore console: no change until Confirm & Save / Save changes)
 
 ## 4e. Unsaved draft, remembered tab and "Leave site?" (errata #71)
 
@@ -600,12 +635,16 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
       the save step reopens with the abstract, keywords and (manual entry)
       the read error; no PDF is needed to save. After a good read,
       Edit details → Continue with no PDF keeps the abstract (no Drive read)
+- [ ] **A draft from before errata #80** (text typed in the old "Add a
+      keyword" box) still restores: its keywords stay, the typed text is gone
+      (it was never added); a draft whose only change was that text is
+      cleared
 - [ ] **"I checked — register anyway"** is never restored: after a reload a
       possible duplicate asks for the tick again
 - [ ] **Save waits for the studies:** reload on the save step → while
       "Loading the e-library…" shows, the save button is disabled with
       **"Loading the e-library to check for duplicates…"** under it; once
-      loaded the originality check and suggested keywords appear as before
+      loaded the originality check and automatic keywords appear as before
       and the button works. If the e-library fails to load, the button stays
       disabled and says **"Could not load the e-library. Check your
       connection and reload the page."**

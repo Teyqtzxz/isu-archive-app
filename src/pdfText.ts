@@ -16,8 +16,8 @@ export const MIN_TEXT_CHARS = 50;
 export const SCAN_CHECK_PAGES = 15;
 
 export const MSG_SCANNED =
-  "This PDF has no readable text — it is probably scanned. Please type the abstract and keywords.";
-export const MSG_NOT_FOUND = "Could not find an abstract or keywords in that PDF. Please type them in.";
+  "This PDF has no readable text — it is probably scanned. Please type or paste the abstract.";
+export const MSG_NOT_FOUND = "Could not find an abstract or keywords in that PDF. Please type or paste the abstract.";
 
 /** "Label: value" lines that some abstract pages print above the abstract
  *  itself — common in Philippine theses ("Title: …", "Researcher: …"). */
@@ -127,9 +127,11 @@ function looksLikeKeywords(line: string): boolean {
  *  itself, or when it is a short ending such as "advancement." (4 words at
  *  most, full stop). After that, only while the list still ends in a
  *  separator, at most 3 lines in all. Never an empty line, a heading, a
- *  running header (see runningHeads) or a line with a sentence-long part. */
-function keywordContinuation(first: string, lines: string[], from: number, isRunningHead: (line: string) => boolean): string {
+ *  running header (see runningHeads) or a line with a sentence-long part.
+ *  `end` is the index of the first line not joined. */
+function keywordContinuation(first: string, lines: string[], from: number, isRunningHead: (line: string) => boolean): { text: string; end: number } {
   let text = first;
+  let end = from;
   for (let j = from; j < lines.length && j < from + 3; j++) {
     const next = lines[j].trim();
     if (!next || KW_STOP_LINE.test(next) || isRunningHead(next) || !looksLikeKeywords(next)) break;
@@ -139,8 +141,25 @@ function keywordContinuation(first: string, lines: string[], from: number, isRun
     if (!joins) break;
     // A word broken at a hyphen ("socio-" / "economic") is joined without a space.
     text = /\p{L}-$/u.test(text) ? text + next : `${text} ${next}`;
+    end = j + 1;
   }
-  return text;
+  return { text, end };
+}
+
+/** The keyword text after the label → the list: a trailing sentence dropped,
+ *  split on , ; and "and", at most 10. */
+function parseKeywordText(kwRaw: string): string[] {
+  return kwRaw
+    ? kwRaw
+        .split(/\.\s|\n/)[0]                 // drop a trailing sentence
+        .split(/[,;]|\band\b/i)
+        .map((k) => k.trim().replace(/[.;:]+$/, ""))
+        // "self - efficacy" → "self-efficacy": a hyphen with a space on BOTH
+        // sides, between letters ("pre- or post-test" keeps its space).
+        .map((k) => k.replace(/(\p{L}) +- +(\p{L})/gu, "$1-$2"))
+        .filter((k) => k.length > 1 && k.length < 60)
+        .slice(0, 10)
+    : [];
 }
 
 export function extractAbstractAndKeywords(
@@ -198,24 +217,51 @@ export function extractAbstractAndKeywords(
         while (++at < lines.length && !lines[at].trim());
         kwRaw = (lines[at] ?? "").trim();
       }
-      kwRaw = keywordContinuation(kwRaw, lines, at + 1, isRunningHead);
+      kwRaw = keywordContinuation(kwRaw, lines, at + 1, isRunningHead).text;
       break;
     }
   }
 
-  const keywords = kwRaw
-    ? kwRaw
-        .split(/\.\s|\n/)[0]                 // drop a trailing sentence
-        .split(/[,;]|\band\b/i)
-        .map((k) => k.trim().replace(/[.;:]+$/, ""))
-        // "self - efficacy" → "self-efficacy": a hyphen with a space on BOTH
-        // sides, between letters ("pre- or post-test" keeps its space).
-        .map((k) => k.replace(/(\p{L}) +- +(\p{L})/gu, "$1-$2"))
-        .filter((k) => k.length > 1 && k.length < 60)
-        .slice(0, 10)
-    : [];
+  return { abstract, keywords: parseKeywordText(kwRaw) };
+}
 
-  return { abstract, keywords };
+/** A keywords label that starts a line: "Keywords: rice, soil", "KEY WORDS —
+ *  rice", or "Keywords" alone with the list on the next line. "Keywords are
+ *  …" (a sentence) is not one: text after the label needs : . or a dash. */
+const TYPED_KW_LINE = /^\s*KEY\s?WORDS?\s*(?:[:.\-–—]\s*(.*))?$/i;
+/** The same label after the last sentence of a line ("… in Isabela. Keywords:
+ *  rice, soil"), as when a pasted abstract lost its line break. Only with : or
+ *  a dash here, so a sentence such as "… used these keywords. Rice …" is left alone. */
+const TYPED_KW_TAIL = /([.!?]["”)]?)\s+KEY\s?WORDS?\s*[:\-–—]\s*(.+)$/i;
+
+/**
+ * A "Keywords:" line pasted or typed into the abstract box (Register, errata
+ * #80): the study's printed keywords, read with the same rules as from a PDF
+ * (wrapped lines joined, split on , ; and "and", a trailing sentence dropped,
+ * at most 10). Returns the abstract without that line and the keywords, or
+ * null when the text has no such line. The last such line counts.
+ */
+export function takeKeywordsLine(typed: string): { abstract: string; keywords: string[] } | null {
+  const lines = typed.split("\n");
+  const noRunningHeads = () => false;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const own = TYPED_KW_LINE.exec(lines[i]);
+    const tail = own ? null : TYPED_KW_TAIL.exec(lines[i]);
+    if (!own && !tail) continue;
+    // Text before the label on the same line stays in the abstract.
+    const before = tail ? lines[i].slice(0, tail.index + tail[1].length) : "";
+    let at = i;
+    let kwRaw = ((own ? own[1] : tail![2]) ?? "").trim();
+    if (!kwRaw) {
+      // The label alone: the list is on the next line with text.
+      while (++at < lines.length && !lines[at].trim());
+      kwRaw = (lines[at] ?? "").trim();
+    }
+    const { text, end } = keywordContinuation(kwRaw, lines, at + 1, noRunningHeads);
+    const rest = [...lines.slice(0, i), ...(before.trim() ? [before] : []), ...lines.slice(end)];
+    return { abstract: rest.join("\n").trim(), keywords: parseKeywordText(text) };
+  }
+  return null;
 }
 
 /** Read pages one at a time (page 1 first) and stop early. extractAbstractAndKeywords

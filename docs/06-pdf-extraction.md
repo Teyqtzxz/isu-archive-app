@@ -616,7 +616,7 @@ Two problems with the old fixed 15 pages:
 | ASUNCION 2020 | 135 | 12 | 15 → 15 | same |
 | CALIMLIM 2024 | 117 | 13 | 15 → 15 | same |
 | CAMACHO_HG 2026 | 77 | 11 | 15 → 12 | same |
-| CLARO-AZUCENA 2022 | 136 | none (no abstract or keywords on any of the 136 pages) | 15 → 40 | same: "Please type them in" |
+| CLARO-AZUCENA 2022 | 136 | none (no abstract or keywords on any of the 136 pages) | 15 → 40 | same: "Please type them in" (since errata #80: "Please type or paste the abstract."; keywords then come from it) |
 | CRUZ 2026 | 112 | 5 | 15 → 7 | same |
 | DANDO 2022 | 150 | 11 | 15 → 12 | contents page → ✓ real abstract |
 | DELA PENA 2023 | 156 | 12 | 15 → 14 | same |
