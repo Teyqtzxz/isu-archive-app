@@ -6,6 +6,7 @@
 // node src/draft.check.ts), the try/catch storage wrappers below it.
 import { DEPARTMENTS, type StaffTab } from "./types.ts";
 import { MAX_AUTHORS, MAX_KEYWORDS } from "./validation.ts";
+import { DETAIL_FIELDS, type DetailField } from "./pdfDetails.ts";
 
 export const DRAFT_VERSION = 1;
 const DRAFT_PREFIX = "isu-draft:";
@@ -53,6 +54,12 @@ export interface RegisterDraft extends DraftFields {
    *  "typed:" + lastRead.source for an abstract typed after a failed read
    *  (errata #80). */
   autoFor: string | null;
+  /** The details still holding the value a PDF read put there (the "from
+   *  PDF" tag, errata #82). Drafts saved before have none. */
+  fromPdf: DetailField[];
+  /** The grey notes under the details after a read (only the academic year
+   *  printed, two advisers, …). Drafts saved before have none. */
+  pdfNotes: Partial<Record<DetailField, string>>;
 }
 
 /** The staff screen to return to after a reload. */
@@ -103,6 +110,13 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
   const hasAuto = o.autoAdded !== undefined || o.removedKeys !== undefined || o.autoFor !== undefined;
   if (hasAuto && (!isList(o.autoAdded, MAX_KEYWORDS) || !isList(o.removedKeys, MAX_REMOVED_KEYWORDS)
     || (o.autoFor !== null && !isText(o.autoFor)))) return null;
+  // The from-PDF fields came with errata #82 under the same version: a draft
+  // without them was saved before, and nothing in it is tagged.
+  const isField = (v: unknown): v is DetailField => (DETAIL_FIELDS as readonly unknown[]).includes(v);
+  if (o.fromPdf !== undefined && (!Array.isArray(o.fromPdf) || o.fromPdf.length > DETAIL_FIELDS.length || !o.fromPdf.every(isField))) return null;
+  const notes = o.pdfNotes as Record<string, unknown> | null | undefined;
+  if (notes !== undefined && (typeof notes !== "object" || notes === null || Array.isArray(notes)
+    || !Object.entries(notes).every(([k, v]) => isField(k) && isText(v)))) return null;
   const lastRead = lr ? { source: lr.source as string, ok: lr.ok as boolean } : null;
   const department = f.department as string;
   return {
@@ -120,6 +134,8 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
     autoAdded: hasAuto ? o.autoAdded as string[] : [],
     removedKeys: hasAuto ? o.removedKeys as string[] : [],
     autoFor: hasAuto ? o.autoFor as string | null : lastRead?.ok ? lastRead.source : null,
+    fromPdf: o.fromPdf === undefined ? [] : [...new Set(o.fromPdf as DetailField[])],
+    pdfNotes: notes === undefined ? {} : { ...notes as Partial<Record<DetailField, string>> },
   };
 }
 

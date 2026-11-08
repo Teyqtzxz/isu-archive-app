@@ -11,6 +11,10 @@ succeeded. Still worth one run with an actual ISU thesis when one is available.
 **2026-11-08 (errata #78):** the PDF is now read page by page and reading stops one page
 after the abstract ends, at most 40 pages (was a fixed first 15); a contents line whose
 page number has a space inside ("ABSTRACT x i") is skipped. §4 and §8 third round.
+**2026-11-09 (errata #82):** PDF first — the title, authors, department, year completed
+and adviser are read from the PDF too (labelled abstract block, title page, approval
+sheet; never guessed, never overwriting), all on one Check & save screen; pdf.js is
+loaded only when Register / Edit opens; a progress line. §9.
 **Owner:** C · **Depends on:** 04 · **Next:** 07 or 08
 
 **Prompt to your AI:**
@@ -72,7 +76,8 @@ Staff paste a Google Drive share link and click Submit. The app then:
 2. Reads text **page by page from page 1** and stops one page after the abstract ends,
    never more than `MAX_PAGES` = 40 pages (§4)
 3. Finds the `ABSTRACT` section and the `KEYWORDS` line with regex
-4. Fills the form so staff can review, edit, and confirm
+4. Fills the form so staff can review, edit, and confirm — since errata #82 also the
+   title, authors, department, year completed and adviser (§9)
 
 If the PDF is scanned, image-only, or the fetch fails, the app falls back to
 manual entry. That fallback is a designed state, not an error path.
@@ -118,6 +123,10 @@ npm install pdfjs-dist
 This dependency is pre-approved for this step (preamble rule 6).
 
 ### The worker is required
+
+> **Since errata #82** `extractPdf.ts` does not import pdf.js at the top: it loads it
+> (and the worker URL) with `import()` the first time it is needed, sets `workerSrc`
+> then, and keeps one `PDFWorker` for every read (§9.3). The rule below still holds.
 
 In pdfjs-dist v4 and later, an unset `workerSrc` produces
 `Warning: Setting up fake worker` and then a hang or a hard failure on
@@ -476,8 +485,9 @@ auto-fill. The Drive link is still required and saved — it is what students op
 study", view-only) and what staff open ("Open in Drive"). Files over 100 MB or not ending in
 `.pdf` are refused.
 
-**Back and Edit details.** The form has **"← Back to dashboard"**; the review screen has
-**"← Edit details"**, which returns to the form with every field kept. Continuing again with the
+**Back and Change PDF.** The form has **"← Back to dashboard"**; the review screen has
+**"← Change PDF"** (called "Edit details" before errata #82), which returns to step 1 with
+every field kept. Continuing again with the
 same link/file does not re-read the PDF when the last read succeeded, so edits to the abstract
 and keywords survive and Drive is not asked for the same file twice. If the last read failed
 (e.g. Drive busy), it tries again but keeps anything typed in the meantime.
@@ -676,6 +686,155 @@ page number from the end of the line and counts headers only when needed (15 ms)
 pages is kept (ASUNCION, CALIMLIM, TAN, VIZCARA: e.g. "… Care Nurses xiii The study
 showed …"). Staff can delete it in the abstract box; a later round could drop it with
 the same repeated-header test.
+
+---
+
+## 9. Study details from the PDF, and speed (errata #82, 2026-11-09)
+
+**The flow is PDF first.** Register step 1 holds only "Choose PDF from this computer"
+and the Google Drive link (still required: students open it). "Read PDF & continue"
+reads the PDF, then **one** screen, **Check & save**, holds every detail (Title,
+Authors, Department, Year completed, Adviser), the abstract, the keywords, the
+originality check and Save. "← Change PDF" goes back to step 1 with everything kept.
+All rules are checked on Save (cursor to the first message). The errata #72
+protections are unchanged: the screen opens at the top, the 1-second Save guard,
+Read and Save as split buttons from 480 px; so are #80 (keywords automatic,
+remove-only, Undo) and #71 (drafts).
+
+### 9.1 Where each detail comes from (`src/pdfDetails.ts`, pure)
+
+`pdfText.ts` `readPages()` keeps the text of every page it read (the same pages
+as before: from page 1 to one page after the abstract, at most 40), and
+`readDetails()` reads them. First match wins; **a detail the PDF does not clearly
+give stays empty.**
+
+| Detail | 1st | 2nd | 3rd |
+|---|---|---|---|
+| Title | the labelled block under ABSTRACT ("Title :", wrapped lines joined) | the title page (ISU: the lines above "A Thesis"; UP Open University: between the author and "… Adviser:"). In capitals with a running header above it whose **letters are identical** → the header's normal letters | the approval sheet ("entitled “…”") |
+| Authors | the block ("Authors :", one name per line; a line that is not a name → the block's list is not used at all) | the title page ("By:" names up to the date; the UPOU author line) | the approval sheet ("submitted by … in partial") |
+| Department | the Program line (block, else the title page's degree line) when it names **exactly one** of the ten departments as whole words | — | — |
+| Year completed | the title page date ("December 2024", "22 September 2025", "15/08/2025", also after a "Critic" block or "Date of Submission") | — | never from "AY 2024-2025": then empty, with the note "The PDF gives only the academic year (AY 2024-2025) …" |
+| Adviser | the block ("Adviser :") | the title page ("Thesis / Special Problem / … Adviser:"); **two names** ("Thesis Advisers:") → empty, with a note listing both | the approval sheet (the line above "Thesis Adviser") |
+
+**Names.** As typed names: `fixCapitals` for a name in capitals ("DELA CRUZ" →
+"Dela Cruz", "L." stays "L.", "JR." → "Jr.", "III" stays); mixed case is kept
+("Melinda dP. …"). Degrees after a **student's** name are dropped ("…, RN", "BSN, RN,
+CEN"), as APA lists authors; "REYES - DINO" → "Reyes-Dino". The **adviser** is kept as
+printed with its degree ("…, DIT"); "Dr." is never added or changed; a name part in
+capitals gets normal capitals ("Dr. JEAN A. SANTOS" → "Dr. Jean A. Santos"). Known weak
+spots, which the tag asks staff to check: "DL." → "Dl.", "MCDONALD" → "Mcdonald", "DE
+LOS SANTOS" → "De Los Santos"; "PENA" stays "Pena" (no ñ is invented).
+
+**Titles** are never re-cased by the app (it would break PhilSCA, R&D, LoG, EHR,
+MSMEs): a title printed only in capitals stays so, with the grey note "The title is
+printed in capital letters and is kept as printed. Retype it in normal letters if you
+wish."
+
+**Checked like typed values.** Every filled value goes through `validation.ts`; one
+that breaks a rule is shown with the normal message at once. For real title pages the
+adviser rule now accepts DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT and CPA,
+"Ph. D." (saved as PhD), and Jr., Sr., II, III after the name (part of the name, still
+searchable); `search.ts` NAME_TITLES has the same degrees.
+
+**The abstract** loses a copy of the title at its start (only when its first letters
+are exactly the title's; TARUC 2024 was the one sample) and anything left of the
+labelled block (pdfText.ts stops at a block line ending in a full stop, e.g.
+"… Jr.").
+
+**"FROM PDF".** Each filled detail has the words **FROM PDF** in its label (text, so a
+screen reader says "Title, required, from PDF"; not colour alone) until staff change
+it. A scanned PDF or a failed read fills nothing: staff type everything, as before.
+When the abstract is not found but the title page is readable, the details are still
+filled.
+
+**Never overwritten (`fillFromPdf`).** A read fills a detail only when it is empty or
+still holds an earlier PDF's value (still tagged). What staff typed or changed is kept,
+with a grey note "The PDF shows a different title: “…”. Yours is kept." A tagged
+detail the new PDF does not give is emptied.
+
+**Edit study with a PDF.** The study's title, authors, department, year and adviser
+are never replaced; only an empty one (e.g. an old record with no authors) is filled
+and tagged; the notes show what the PDF prints instead. The abstract and keywords work
+as before: the abstract is replaced by the PDF's, the keywords only when it prints
+some (errata #80). Edit with no PDF ("Continue") changes nothing.
+
+**Drafts.** Two optional draft fields, `fromPdf` (the tagged details) and `pdfNotes`.
+A draft saved before has neither and loads as before: one from the old step 1 (details
+typed there) opens on step 1 with "Choose the PDF again" and keeps what was typed (the
+read fills only empty details); one from the old save step opens on Check & save.
+**Year completed** (the label on Register and Edit; the field is still `year`) now
+starts **empty** on a new study instead of this year.
+
+### 9.2 The 31 sample PDFs
+
+30 UP Open University theses and one ISU thesis (private; never in the repo, its text
+is not used in any check file — `pdfDetails.check.ts` uses made-up text in both
+layouts). Script: `readStudy()` vs `main`'s reader on each file.
+
+- **ISU thesis:** all five details from the labelled block / title page, every value
+  passes validation (the adviser's DIT now does); abstract and keywords identical to
+  `main`.
+- **UPOU:** title, author and year on all 30 (ANTOLIN 2023 prints the university's two
+  lines as one; read as well). Department only where the programme is one of the ten:
+  Nursing (7), Education (1); the other 22 are left on "Select dept.". Adviser on 28;
+  empty on the two Geneston-Dino copies (two advisers, note). Titles: 9 in normal
+  letters from the running header (letters identical, checked one by one: ALFONSO,
+  CAMACHO_HG, DANDO — "XenConservation" is how its own header and abstract spell it —
+  FULLEROS, GESULGA, both Geneston-Dino, España, Caraan), 4 printed in normal letters,
+  1 in capitals with a subtitle in normal letters (GREGORIO, as printed, no note), 16 in
+  capitals with the note (5 of them with one word that is not: "(PhilSCA)", "(LoG)",
+  "DZLB's", "MSMEs", the scan typo "TEACmNG"; the note is shown when at least 85% of
+  the letters are capitals).
+  CLARO-AZUCENA keeps its scan typo "TEACmNG" (as printed; still no abstract, as on
+  `main`).
+- **Abstract and keywords:** identical to `main` on 29 of the 30; TARUC 2024's
+  abstract no longer starts with its title (2,478 → 2,330 characters).
+
+### 9.3 Speed (fixes 1 and 2)
+
+1. **pdf.js is loaded only when needed.** `extractPdf.ts` imports it with `import()`;
+   Register / Edit calls `preloadPdfReader()` when it opens, so pdf.js and its worker
+   (one `PDFWorker`, reused for every read) load while staff choose the file.
+   Students and the other screens never download it: the main bundle went from
+   **407 KB to 282 KB** (gzip); pdf.js is its own 129 KB file.
+2. **Progress line** under the spinner: "Starting the PDF reader…", "Downloading 3.1
+   of 11.6 MB…" (Drive, from Content-Length), "Reading page 5 (up to 40)…".
+
+Not in this change: reading only the needed byte ranges from Drive. It cut the bytes
+3–16× in a local test, but whether the Drive API answers Range requests with CORS
+could not be tested without a real shared file; a separate later change, once it can
+be tested on real Drive.
+
+Measured in headless Chrome, assets served gzip from 127.0.0.1 with Chrome's network
+throttling, the sample PDFs as local files (ms; first read = click "Read" → last page
+read, after Register opened and ~3 s to choose the file):
+
+| Network | What | `main` | errata #82 |
+|---|---|---|---|
+| local | main bundle download | 45 | 36 |
+| 10 Mbps | main bundle download (every visitor) | 455 | 340 |
+| 3 Mbps | main bundle download (every visitor) | 1,248 | 932 |
+| 10 Mbps | first read: ISU thesis, 6 pages | 575 | 149 |
+| 10 Mbps | first read: GREGORIO 2022 (2,613 pages), 14 pages | 621 | 183 |
+| 10 Mbps | first read: 2025 CALAMLAM (abstract p. 17), 19 pages | 658 | 196 |
+| 10 Mbps | first read: FULLEROS 2025 (biggest, 11.6 MB), 11 pages | 590 | 138 |
+| 3 Mbps | first read: ISU thesis | 1,341 | 124 |
+| 3 Mbps | first read: GREGORIO 2022 | 1,386 | 152 |
+| 3 Mbps | first read: 2025 CALAMLAM | 1,380 | 180 |
+| 3 Mbps | first read: FULLEROS 2025 | 1,345 | 120 |
+
+Before the change, in the same setup: the Drive way (whole download) took 3.2 s (ISU
+thesis), 8.5 s (GREGORIO), 4.6 s (CALAMLAM) and 11.3 s (FULLEROS) at 10 Mbps — the
+download is most of it, and the progress line now shows it. A local file's own read
+(open + pages + rules) is 0.12–0.36 s on every sample.
+
+### 9.4 Checks
+
+`node src/pdfDetails.check.ts` (both layouts, made-up text: block, backups, AY only,
+departments, credentials, running headers, two advisers, never guess, the title in the
+abstract, readStudy, fillFromPdf); `pdfText.check.ts` (readPages, the progress line);
+`draft.check.ts` (old drafts, `fromPdf`, `pdfNotes`); `validation.check.ts` and
+`search.check.ts` (the new degrees and suffixes).
 
 ---
 

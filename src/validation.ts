@@ -46,7 +46,7 @@ export const MSG = {
   yearFuture: (thisYear: number) => `The year can't be later than ${thisYear}.`,
   adviserRequired: "Please fill in the adviser.",
   adviserFull: "Type the adviser's full name, e.g. Dr. Maria Santos",
-  adviserDegree: "After a comma, only a degree can follow: PhD, EdD, MSc, MS, MA, MIT, MBA, RN, PE, CE.",
+  adviserDegree: "After a comma, only Jr., Sr., II, III or a degree can follow: PhD, EdD, MSc, MS, MA, MIT, MBA, RN, PE, CE, DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT, CPA.",
   abstractRequired: "Please fill in: Abstract. Copy it from the PDF. Search uses it to find this study.",
   abstractShort: (words: number) =>
     `The abstract looks too short (${words} word${words === 1 ? "" : "s"}). Copy the full abstract from the PDF — at least ${ABSTRACT_MIN_WORDS} words.`,
@@ -167,20 +167,34 @@ export function cleanAuthorList(names: string[]): Added {
 /** Titles the adviser's name may start with; the period is optional.
  *  Two-word titles and "Mrs" come first so "Mr" does not take their place. */
 const ADVISER_TITLE = /^(?:asst\.? prof|assoc\.? prof|prof|dr|engr|mrs|mr|ms|atty)\.?(?= )/i;
-/** The degrees that may follow the adviser's name after a comma, as saved. */
-export const DEGREES = ["PhD", "EdD", "MSc", "MS", "MA", "MIT", "MBA", "RN", "PE", "CE"] as const;
+/** The degrees that may follow the adviser's name after a comma, as saved.
+ *  DIT … CPA added for errata #82 (printed on real title pages). Keep
+ *  search.ts NAME_TITLES and MSG.adviserDegree in step. */
+export const DEGREES = [
+  "PhD", "EdD", "MSc", "MS", "MA", "MIT", "MBA", "RN", "PE", "CE",
+  "DIT", "MAN", "MAEd", "MAT", "MSIT", "MSCS", "MPA", "DPA", "LPT", "CPA",
+] as const;
 
-/** "Ph.D." / "phd" → "PhD"; null when not one of DEGREES. */
+/** "Ph.D." / "Ph. D." / "phd" → "PhD"; null when not one of DEGREES. */
 function degreeOf(typed: string): string | null {
-  const key = typed.replace(/\./g, "").toLowerCase();
+  const key = typed.replace(/[.\s]/g, "").toLowerCase();
   return DEGREES.find(d => d.toLowerCase() === key) ?? null;
+}
+
+/** "jr" / "JR." → "Jr.", "iii" → "III": a suffix after the adviser's name
+ *  and a comma ("Roberto Figueroa, Jr."). Part of the name, not a degree. */
+function suffixOf(typed: string): string | null {
+  if (!SUFFIX.test(typed)) return null;
+  const word = typed.replace(/\./g, "");
+  return /^(jr|sr)$/i.test(word) ? `${word[0].toUpperCase()}${word[1].toLowerCase()}.` : word.toUpperCase();
 }
 
 /**
  * The adviser: required, a first name and a surname, optionally after a title
  * (Dr., Engr., Prof., Asst. Prof., Assoc. Prof., Mr., Mrs., Ms., Atty.) and
- * before degrees ("Maria Santos, PhD"). The "Surname, Given" comma form is
- * for authors only: here a comma can only be followed by a degree.
+ * before degrees ("Maria Santos, PhD"). A suffix may come first after a comma
+ * ("Roberto Figueroa, Jr., PhD", errata #82). The "Surname, Given" comma form
+ * is for authors only: here a comma can only be followed by a suffix or a degree.
  */
 export function checkAdviser(typed: string): Checked {
   const name = cleanSpaces(typed);
@@ -188,10 +202,12 @@ export function checkAdviser(typed: string): Checked {
   if (name.length > MAX_ADVISER) return fail(name, MSG.nameLong(MAX_ADVISER));
   if (!NAME_CHARS.test(name) || !hasLetter(name)) return fail(name, MSG.nameChars);
   const [main, ...after] = name.split(",").map(p => p.trim());
+  const suffixes: string[] = [];
+  while (after.length > 0 && suffixOf(after[0])) suffixes.push(suffixOf(after.shift()!)!);
   const degrees = after.map(degreeOf);
   if (degrees.some(d => !d)) return fail(name, MSG.adviserDegree);
   if (nameWordCount(main.replace(ADVISER_TITLE, "")) < 2) return fail(name, MSG.adviserFull);
-  return ok([fixCapitals(main), ...degrees].join(", "));
+  return ok([fixCapitals(main), ...suffixes, ...degrees].join(", "));
 }
 
 // ─── Title ───────────────────────────────────────────────────────────────────
