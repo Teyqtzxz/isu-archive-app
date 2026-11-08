@@ -57,7 +57,7 @@ export const MSG = {
   alreadyListed: (items: string[]) => `${items.join(", ")} ${items.length === 1 ? "is" : "are"} already in the list.`,
   pdfNotPdf: "That file is not a PDF.",
   pdfEmpty: "That file is empty. Choose the study's PDF again.",
-  pdfTooLarge: `That PDF is larger than ${MAX_PDF_MB} MB. Please type the abstract and keywords.`,
+  pdfTooLarge: `That PDF is larger than ${MAX_PDF_MB} MB. Please type or paste the abstract.`,
   driveNotDrive: "That does not look like a Google Drive link.",
   driveNoId: "Could not find a file id in that link. Make sure it is a shared file link.",
   drivePaste: "Please paste a Google Drive link.",

@@ -3,19 +3,22 @@
 **Status:** ☑ DONE — branch `feat/keyword-model` (errata #65); automatic
 keywords, the reliability fix and the junk-phrase filter on `feat/auto-keywords`
 (errata #77); automatic keywords fill their room on `feat/auto-keywords-fill`
-(errata #79).
+(errata #79); keywords automatic only, staff only remove (with Undo), also from
+a typed abstract, on `feat/keywords-auto-only` (errata #80).
 **Code:** `src/keywordModel.ts` (pure, no React, no Firebase) · examples in
 `src/keywordModel.check.ts` (`node src/keywordModel.check.ts`) · UI in
-`RegisterForm.tsx` (automatic keywords and "Suggested keywords") and
+`RegisterForm.tsx` (automatic keywords, × and Undo) and
 `KeywordModelCard.tsx` (staff Statistics tab).
 
 The professor asked us to "build a model in your system". This is a
 **keyword predictor**: a machine-learning model that the app trains itself, in
 the browser, from the studies already stored. When a **new** study's PDF has
-been read, the save step **adds the best keywords automatically**, marked
-"auto"; staff review them and remove any that do not fit (§6). The rest stay
-as suggestions to click, on Register and on Edit study. The staff Statistics
-tab shows what the model learned and how accurate it is.
+been read (or, with no abstract read, when staff type one), the save step
+**adds the best keywords automatically**, marked "auto"; staff review them and
+remove any that do not fit (§6). Staff **never add a keyword by hand**
+(errata #80): there is no typing box and no click-to-add box, on Register or
+on Edit study, only × and a short Undo. The staff Statistics tab shows what
+the model learned and how accurate it is.
 
 Nothing new is stored, nothing is sent anywhere, and no AI service or new
 library is used: the model is plain arithmetic in one file written for this
@@ -47,8 +50,8 @@ words, plain numbers and ~100 common words dropped.
 
 **Labels are normalised** the same way, so "Rice", "rice " and "rices" are one
 keyword (`keywordKey()`: `rice`), and "Low-cost Sensors" and "low-cost
-sensors" are one (`low cost sensor`). The chip shows the spelling used most
-often. Studies with no keywords are not training examples: having no keywords
+sensors" are one (`low cost sensor`). A learned keyword is added with the
+spelling used most often. Studies with no keywords are not training examples: having no keywords
 means "not labelled", not "none of these keywords apply".
 
 The model is trained **once per data change** (`useMemo` on the studies list),
@@ -258,16 +261,16 @@ A three-word term scores as its best part. One longer than a keyword may be
 
 ### The suggestions
 
-At most **6** chips: learned ones first (highest probability first, **at most
-3**, so learned ones cannot crowd the abstract out), then phrases. Learned
-ones only from **30** training studies (§4). Never a keyword the study already
-has (compared by the normalised key, so "Rices" counts as "rice"), never the
-same keyword twice, never one the Keywords box would refuse (`validation.ts`:
-2–60 characters, a letter, no comma). Each chip says **"learned from N
-studies"** or **"from this abstract"**. Clicking a chip adds it through the
-same `addKeywords()` as typing it (repeats ignored, at most 10 keywords). For
-a new study the best ones are added by themselves first (§6); the chips are
-the rest.
+`suggestKeywords()` ranks the candidates: learned ones first (highest
+probability first, **at most 3**, so learned ones cannot crowd the abstract
+out), then phrases. Learned ones only from **30** training studies (§4).
+Never a keyword the study already has (compared by the normalised key, so
+"Rices" counts as "rice"), never the same keyword twice, never one the
+keyword rules would refuse (`validation.ts`: 2–60 characters, a letter, no
+comma). `autoKeywords()` (§6) adds the best of this list by itself. Until
+errata #80 the rest were shown as "Suggested keywords" chips to click
+("learned from N studies" / "from this abstract"); now they are not shown,
+because staff do not add keywords by hand.
 
 ---
 
@@ -413,25 +416,61 @@ yet."** Students do not see it.
 
 ---
 
-## 6. Automatic keywords on the Register form (errata #77, #79)
+## 6. Automatic keywords on the Register form (errata #77, #79, #80)
 
 The professor asked for keywords chosen automatically, with staff reviewing
-them and removing any. `autoKeywords()` in `keywordModel.ts`; the form part
-is in `RegisterForm.tsx`.
+them and removing any. Since errata #80 that is the **only** way keywords get
+into a new study: staff **cannot add one by hand** (no "Add a keyword" box, no
+"+ Add", no "Suggested keywords" box); they only remove with ×, and can undo
+that. `autoKeywords()` in `keywordModel.ts`; the form part is in
+`RegisterForm.tsx`.
 
-**When.** A **new** study, **once per PDF read**: when the save step opens
-after a **successful** read and the e-library has loaded. If the e-library
-fails to load, the abstract phrases alone are added (no learned keyword can
-come from an empty model anyway). Going back with "Edit details" and
-continuing with the same PDF does not add again; reading another PDF replaces
-the keywords with that PDF's own (as before) and adds once for it. **Never** in
-Edit study, never after a failed read (staff type the abstract and use the
-chips), never when a reloaded draft already had its add.
+**When: a PDF read.** A **new** study, **once per PDF read**: when the save
+step opens after a **successful** read whose abstract passes the abstract
+check (`checkAbstract`: 50 words or more), and the e-library has loaded. If
+the e-library fails to load, the abstract phrases alone are added (no learned
+keyword can come from an empty model anyway). Going back with "Edit details"
+and continuing with the same PDF does not add again; reading another PDF
+replaces the keywords with that PDF's own (as before) and adds once for it.
+Never when a reloaded draft already had its add.
+
+**When: a typed abstract (errata #80).** When the PDF could not be read, or
+was read but gave no usable abstract (2022 CLARO-AZUCENA has none in its 136
+pages; a PDF can also give only its keywords), staff type or paste the
+abstract. **When they leave the abstract box** and it passes the abstract
+check, the same automatic keywords are added, **once**, by the same rules as
+for a PDF: the keywords the read did find stay first, room up to 5, never
+past 8 in all, learned ones only from 30 studies, never a removed one. Under
+50 words nothing is added; leaving the box again later with a longer abstract
+adds them then. **Changing the abstract afterwards adds and removes nothing**
+(running again would bring back or reshuffle keywords staff already checked).
+The draft remembers it (`autoFor` = `"typed:"` + the failed read), so a
+reload never adds twice. If the e-library has not loaded yet, nothing is
+added on that leave; the next leave after it loads adds them.
+
+**A pasted "Keywords:" line (errata #80).** If the typed or pasted abstract
+has a line such as "Keywords: rice yield; drip irrigation, and Isabela farms."
+(also "KEY WORDS —", the label alone with the list on the next line, or the
+label right after the last sentence when the line break was lost), leaving the
+box **moves that line out of the abstract** and lists its keywords as
+**printed keywords**: no AUTO tag, before the automatic ones. The parsing is
+the PDF reader's (`takeKeywordsLine` in `pdfText.ts`: wrapped lines joined,
+split on , ; and "and", "self - efficacy" → "self-efficacy", at most 10). A
+keyword staff removed is not added back from such a line. "Keywords are words
+that…" (a sentence) and "these keywords: …" inside a sentence are left alone.
+In **Edit study** the line is left in the abstract and nothing is added.
+
+**Never in Edit study.** Edit study only removes: the saved keywords are
+shown with ×, nothing is added by itself, not from a typed abstract either.
+If staff choose the PDF again and **it prints keywords**, they replace the
+list (they are the study's own); if it prints **none**, the saved keywords
+stay.
 
 **How many.** The PDF's own printed keywords stay first. Then the best
-suggestions (the same order as the chips: learned first, at most **2**
+suggestions (the order of §3: learned first, at most **2**
 learned), at most **5**, and never past **8** keywords in all, so 2 of the 10
-places stay free for staff. Since errata #79 the room is **filled**; fewer are
+places stay free (since errata #80 only a pasted Keywords line or a PDF
+with more printed keywords can use them). Since errata #79 the room is **filled**; fewer are
 added only when the study has no more suggestions:
 
 | Printed keywords | 0 | 1–3 | 4 | 5 | 6 | 7 | 8–10 |
@@ -447,7 +486,7 @@ step now fills its room in two passes:
    appear **at least twice in the title plus abstract** (`autoMinCount`),
    best first;
 2. then, while there is room, the **other phrases in their usual order**
-   (best TF-IDF score first, the same order as the chips).
+   (best TF-IDF score first, the order of §3).
 
 `phraseCount()` counts with the same folding as `keywordKey()`: "fish
 farmer" and "fish farmers" count together, a three-word term counts as
@@ -472,53 +511,84 @@ elements" were added; now also "Radyo DZLB", "storytelling elements" and
 **No overlapping keywords** (review rounds 2 and 3). A suggestion that
 contains a listed or already added keyword, is part of one, or has **the
 same words in another order** (compared word by word on the normalised key)
-is **not added**; the next one takes its place, and it stays a chip. The
-better one is the one ranked first. Examples: "quality care" is added,
-"care quality" stays a chip;
-"nurse-patient interaction" is added, "patient interaction" stays a chip;
-"Control Management" is added, "Control Management System" stays a chip;
+is **not added**; the next one takes its place. The better one is the one
+ranked first. Examples: "quality care" is added, "care quality" is not;
+"nurse-patient interaction" is added, "patient interaction" is not;
+"Control Management" is added, "Control Management System" is not;
 with the printed "Marine Plastic Pollution" and "Plastic Waste Management",
-"plastic pollution", "plastic waste" and "waste management" stay chips, and
-with the printed "Climate change", "climate change adaptation" does.
+"plastic pollution", "plastic waste" and "waste management" are not, and
+with the printed "Climate change", "climate change adaptation" is not.
 
 **What staff see.** Each added keyword has a small **AUTO** tag and a dashed
 edge until the study is saved, and a note: "Keywords marked auto were chosen
 automatically. Remove any that do not fit." Screen readers hear "…, added
 automatically" and the × is "Remove keyword …, added automatically". The
-rest stay as chips in the **Suggested keywords** box, whose hint starts
-**"Not added. Click one to add it."** (errata #79), so nobody takes them for
-keywords of the study. The box stays because it is the undo for a removed
-keyword.
+suggestions not added are **not shown** (errata #80; until then a "Suggested
+keywords" box offered them to click). With no keywords the line under
+"Keywords" says why: "No keywords yet. They are added automatically from the
+abstract when you leave the abstract box (50 words or more).", "Keywords are
+added automatically once the e-library has loaded." or "No keywords were
+found for this study. Keywords are optional." In Edit study: "Remove any
+keyword that does not fit. Nothing is added here; a PDF chosen again that
+prints keywords replaces them." Keywords stay **optional** for saving. Screen
+readers also hear what leaving the abstract box added ("5 keywords were added
+from the abstract: …").
+
+**× and Undo (errata #80).** × removes a keyword (auto, printed or saved).
+Under the list, **"Removed *keyword*. Undo"** appears for **8 seconds**; the
+time waits while the mouse is on that line or Undo has keyboard focus, and
+starts again in full when it leaves. **Undo** puts the keyword back **where it
+was**, with its AUTO tag if it had one, and it may be added by itself again.
+Only the latest removal can be undone (another × replaces the line). The line
+is a polite live region (`role="status"`), so screen readers read it. After
+a ×, keyboard focus goes to the × now in that place (or the one before), or to
+Undo when the list is empty; after Undo, to the keyword put back. Undo is not
+kept across a reload.
 
 **Removed stays removed.** A keyword removed with its × (auto or not) is
 remembered by its key and is **never added again by itself**: not when the
 step opens again, not when the abstract changes, not for another PDF. It
-stays offered as a chip; clicking it adds it back (without the tag) — that is
-the undo. **Printed keywords win:** if a newly read PDF prints a keyword that
+can only come back with **Undo** (errata #80; before that, by clicking its
+suggestion chip). **Printed keywords win:** if a newly read PDF prints a keyword that
 staff removed earlier, it is listed, because the PDF's own keywords always
 come first. Example: "drip irrigation" was added automatically and removed;
 then a PDF whose keywords line says "Drip irrigation" is read → it is the
 first keyword; it is never added *automatically* again.
 
 **After a reload.** The unsaved draft (`draft.ts`) keeps the tags, the
-removed keys and which PDF read already had its add, so a reload adds
-nothing. A draft saved before this change that had a read PDF counts as
-done.
+removed keys and which PDF read (or typed abstract) already had its add, so a
+reload adds nothing. A draft saved before #77 that had a read PDF counts as
+done. A draft saved before #80 still loads: its keywords stay (they can be
+removed); text typed in the old "Add a keyword" box but never added is
+dropped, and a draft whose only change was that text counts as unchanged and
+is cleared.
 
-**Stray clicks.** The 1-second guard of errata #72 also covers the keyword
-buttons (suggestion chips, ×, + Add): a double or triple click on "Read PDF &
-continue" never adds or removes a keyword (0 of 24 runs). **Known limit,
-accepted:** a single stray click or tap on the same spot **after** that
-second can land on a suggestion chip and add it — 8 of 48 such clicks or taps
-at 1.2 s and 2 s did, at 1366×800 and on a 390×844 phone; none removed a
-keyword or posted. After round 3, with fewer automatic keywords (so the chips
-sit elsewhere) and a new test abstract: 12 of 48, at the same two sizes,
-still none removed or posted. After errata #79 (the room is filled again, so
-the chips move back): 10 of 48, at 1366×800 with both study shapes and on
-the 390×844 phone, still none removed or posted, and 0 of 24 inside the
-first second. It can only add a keyword, which shows in the Keywords list,
-and one click on its × removes it. No other click rule is used: a rule about
-the mouse not having moved ignored deliberate clicks in errata #72.
+**Stray clicks.** The 1-second guard of errata #72 covers Save, × and Undo,
+and starts again when leaving the abstract box adds keywords (the list grows
+and Save moves down). A **Save** press inside that restarted second is not
+taken, but **not silently**: "Keywords were added. Check them, then click
+Save." appears under Save (a polite live region), at once when the abstract
+box was left by pressing Save, and the **next** Save press (or the next Enter
+/ Space) is taken. When the box was left by pressing Save, only that press is
+turned down (a new press is taken, even if the first one missed Save as it
+moved). Headless Chrome: leaving the box elsewhere and pressing Save inside
+the second → not posted, the note shows, the next press posts once; pressing
+Save straight from the box, by mouse or Tab + Enter → the same. After a removal or an Undo, × ignores
+clicks for **0.5 s** (the double-click window): the next keyword slides
+under the mouse, and the second click of a double-click must not remove it;
+a normal second click after that removes it (headless Chrome: a second click
+100 and 300 ms later removed nothing more, 600 ms later removed the next).
+
+A double or triple click on "Read PDF & continue" never adds or removes a
+keyword (0 of 24 runs). **Known limit, accepted (errata #80):** in 48 single
+stray clicks or taps on the same spot **after** that second (at 1.2 s and 2 s,
+6 window sizes, 2 study shapes), **none added** a keyword (there is nothing
+left to add with; before #80: 10 of 48) and **2 removed one**: both on the
+**390×844 phone**, 1 author and 4 printed keywords, a stray **tap about 1.2 s
+after the step opened**, which Chrome's touch targeting snapped onto the × of
+"Irrigation scheduling". Each time "Removed Irrigation scheduling. Undo" was
+shown. **0 on desktop sizes, none posted the study.** No further guard is
+used: a longer one would also ignore deliberate removals.
 
 ---
 
@@ -535,8 +605,7 @@ the mouse not having moved ignored deliberate clicks in errata #72.
   row): the model cannot tell them apart until some study has one without the
   other.
 - **Naive Bayes probabilities are over-confident** on long texts; that is why
-  the evidence rule exists, and why the chips show "learned from N studies"
-  instead of a percentage.
+  the evidence rule exists, and why no percentage is shown to staff.
 - **Phrases are two or three words and statistical, with word lists, not
   grammar:** the filter (§3) knows fixed lists of verbs and grammar words, so
   a verb outside them gets through, above all one ending in -s right after a
@@ -566,19 +635,28 @@ the mouse not having moved ignored deliberate clicks in errata #72.
   and LACAP (8 printed) get none: they have no room.
 - **Good terms seen once are now added when there is room** ("stock levels",
   "grain yield", "elementary school", "feed conversion", "Radyo DZLB"), but
-  they stay chips when the repeated phrases and better-scoring ones fill
+  they are not added when the repeated phrases and better-scoring ones fill
   the room first ("tertiary hospital", "Real-time monitoring"). **A junk
   filler can take a good term's place:** in the greenhouse capstone "system
   waters" and "set level" score above "Real-time monitoring", so they are
-  added and it stays a chip.
+  added and it is not (since errata #80 it is not shown either).
 - **A repeated fragment is still added:** "IoT-based water", "web-based
   inventory", "Fish fed", "Philippines University" each appear twice. The
   AUTO tag is there so staff can remove them.
 - **Junk in the abstract becomes junk phrases:** a PDF's publisher lines
   ("Procedia Computer Science") can be suggested; the common ones are in
   `PHRASE_STOP_WORDS`.
-- **A stray click after the first second can add a suggestion** (§6, known
-  limit). It never removes a keyword or saves the study.
+- **A stray tap after the first second can remove a keyword on a phone** (§6,
+  known limit, errata #80): 2 of 48 stray clicks or taps, both on a 390×844
+  phone about 1.2 s after the step opened; "Removed … Undo" shown each time;
+  0 on desktop sizes; never saved. Stray adds went from 10 of 48 to 0.
+- **No keyword can be added by hand** (errata #80). A study whose PDF prints no
+  keywords and whose abstract gives few phrases gets only what the model
+  finds; a missing good term cannot be typed in. In Edit study nothing can be
+  added at all, except by choosing a PDF that prints keywords.
+- **A typed abstract gets its keywords once** (§6): if staff paste the wrong
+  abstract first, then the right one, the keywords of the first stay (staff
+  remove them) and none come from the second.
 
 ---
 

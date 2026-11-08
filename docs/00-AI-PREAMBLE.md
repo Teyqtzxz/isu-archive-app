@@ -383,9 +383,10 @@ Real, working — **do not rewrite**:
   originality check on the Register / Edit save step and "Similar studies"
   in Study Details
 - Keyword model, Naive Bayes + TF-IDF phrases (`keywordModel.ts`, errata
-  #65, #77): keywords added automatically (tagged "auto") on the Register
-  save step of a new study, "Suggested keywords" on the Register / Edit save
-  step and the "Keyword model" accuracy card in the staff Statistics tab
+  #65, #77, #80): keywords added automatically (tagged "auto") on the
+  Register save step of a new study, from the PDF or a typed abstract; staff
+  only remove them (× and Undo), on Register and Edit study; the "Keyword
+  model" accuracy card in the staff Statistics tab
 - Smart search box, Trie autocomplete + Levenshtein "Did you mean" /
   "Showing results for" (`smartSearch.ts`, errata #66): both search boxes
   and the Search screen
@@ -454,7 +455,7 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   `similarity.check.ts`. It is a screening aid, not a plagiarism verdict:
   paraphrasing is not caught (`docs/14` §5).
 
-### Keyword model — suggested keywords and accuracy (`docs/15`)
+### Keyword model — automatic keywords and accuracy (`docs/15`)
 
 - A machine-learning model trained in the browser from the studies already
   loaded (once per data change, `useMemo`); nothing is stored, no AI service,
@@ -476,20 +477,33 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   word order.
 - **Learned keywords on the Register form only from 30 training studies**
   (`KEYWORD_MODEL.reliableFrom`, near-copies counted once).
-- **Automatic keywords (Register, new study, errata #77, #79):** once per
-  successful PDF read, when the e-library has loaded (or failed to): the
-  PDF's own keywords first, then up to **5**, never past **8** in all, at
-  most 2 learned; tagged **AUTO** with a remove ×; a removed keyword is never
-  added by itself again (it stays a chip). Never in Edit study or after a
-  failed read. The draft keeps the tags and the removed list.
-- **Save step (Register and Edit study):** "Suggested keywords" (hint "Not
-  added. Click one to add it."), at most **6**,
-  learned first — only at **P ≥ 0.9 and ≥ 5 evidence words**, at most 3 —
-  then phrases; each chip says "learned from N studies" or "from this
-  abstract". Never a keyword the study already has; clicking adds it through
-  `addKeywords()` exactly like typing (same rules, max 10). The 1-second
-  guard of errata #72 covers Save and the keyword buttons; a stray click
-  after that second can add a suggestion (accepted limit, `docs/15` §6).
+- **Staff never add a keyword by hand (errata #80):** no "Add a keyword"
+  box, no "+ Add", no "Suggested keywords" box, on Register or Edit study.
+  Keywords come only from the PDF (printed ones), a pasted "Keywords:" line
+  and the model; staff remove them with ×. Keywords stay optional.
+- **Automatic keywords (Register, new study, errata #77, #79, #80):** once
+  per successful PDF read whose abstract passes the abstract check, when the
+  e-library has loaded (or failed to); with no usable abstract read, **once
+  when staff leave the abstract box** with a typed abstract that passes it
+  (changing it later adds and removes nothing). The keywords the read found
+  first, then up to **5**, never past **8** in all, at most 2 learned (only
+  at **P ≥ 0.9 and ≥ 5 evidence words**); tagged **AUTO**; a removed keyword
+  is never added by itself again. A pasted "Keywords:" line (`takeKeywordsLine`
+  in `pdfText.ts`, the PDF reader's parsing) leaves the abstract and its
+  keywords are listed as printed ones. The draft keeps the tags, the removed
+  list and what already had its add (`autoFor`, `"typed:"` for a typed
+  abstract); old drafts' typed keyword-box text is dropped.
+- **× and Undo (Register and Edit study, errata #80):** "Removed *keyword*.
+  Undo" for 8 s (held while the mouse or focus is on it), a polite live
+  region; Undo puts it back in its place with its tag. **Edit study** only
+  removes: nothing added, a pasted line left in the abstract; a PDF chosen
+  again replaces the keywords only if it prints some. The 1-second guard of
+  errata #72 covers Save, × and Undo and restarts when a typed abstract adds
+  keywords: a Save press then is not taken but shows "Keywords were added.
+  Check them, then click Save." and the next press is taken. × ignores
+  clicks for 0.5 s after a removal or Undo. Accepted limit: a stray tap after
+  the guard removed a keyword in 2 of 48 runs, both on a 390×844 phone, Undo
+  shown, never saved (`docs/15` §6).
   **Edit study never trains on the study being edited** (`excludeId`).
 - **Staff Statistics tab:** "Keyword model" card — training studies, known
   keywords, leave-one-out **with near-copies (≥ 80%) hidden**: "N studies

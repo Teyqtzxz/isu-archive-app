@@ -25,7 +25,7 @@ export function driveLinkToFileUrl(link: string): string | null {
 }
 
 const DRIVE_BUSY =
-  "Google Drive is busy or limiting downloads right now. Wait a few minutes and try again, or type the abstract and keywords.";
+  "Google Drive is busy or limiting downloads right now. Wait a few minutes and try again, or type or paste the abstract.";
 
 /** Waits between retries. Google asks clients to back off on 5xx (Drive API
  *  "Resolve errors" guide); a few seconds is enough for one registration. */

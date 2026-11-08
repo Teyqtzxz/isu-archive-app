@@ -53,7 +53,7 @@ one at a time.
 | 12 | `12-how-to-contribute.md` | everyone | **read once if you have never used GitHub** |
 | 13 | `13-prompt-templates.md` | everyone | **copy-paste prompts for every step — start here** |
 | 14 | `14-similarity.md` | — | document similarity (TF-IDF + cosine): originality check and Similar studies — method, worked example, thresholds, limits (for the defense) |
-| 15 | `15-keyword-model.md` | — | keyword model (Naive Bayes + TF-IDF phrases): suggested keywords on Register / Edit and the staff accuracy card — what a model is, Naive Bayes by hand, leave-one-out vs baseline, limits (for the defense) |
+| 15 | `15-keyword-model.md` | — | keyword model (Naive Bayes + TF-IDF phrases): automatic keywords on Register (staff only remove, with Undo) and the staff accuracy card — what a model is, Naive Bayes by hand, leave-one-out vs baseline, limits (for the defense) |
 | 16 | `16-smart-search.md` | — | smart search box: Trie autocomplete and Levenshtein "Did you mean" — the distance table by hand, a Trie drawing, ranking and tie-breaks, when the search corrects itself ("Showing results for"), real-data examples, limits (for the defense) |
 | 17 | `17-email-login.md` | — | email + password login next to Continue with Google: why a system password (not the Gmail password), where passwords are stored (hashed by Firebase, never visible), Create account / verify / Forgot password flows, one person = one uid, console steps, limits (for the defense) |
 
@@ -131,7 +131,7 @@ Verified against the code on 2026-09-30.
 - ☑ "Sign out?" confirmation on every Sign Out
 - ☑ Click a result title → abstract preview → "Open in Drive"
 - ☑ APA 7 citation in Study Details (professor, 2026-10-14)
-- ☑ Keyword model: suggested keywords on the save step + accuracy card in staff Statistics (professor: "build a model in your system", `15`)
+- ☑ Keyword model: automatic keywords on the save step, staff only remove them (errata #80) + accuracy card in staff Statistics (professor: "build a model in your system", `15`)
 - ☑ Smart search box: Trie autocomplete in both search boxes + Levenshtein "Did you mean" on the Search screen, correcting itself only in the safe zero-result case (`16`)
 - ☑ Combined summary of ticked results, extractive (MMR over BM25), with APA 7 in-text citations (step 07, `07` §8)
 - ☑ Responsive headers with safe-area handling

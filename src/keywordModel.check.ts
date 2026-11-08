@@ -4,7 +4,7 @@
 // The studies below are fake, made up for these examples only — never stored anywhere.
 import {
   KEYWORD_MODEL, autoKeywordRoom, autoKeywords, evaluateKeywordModel, extractPhrases, findNearCopies, isAdverb,
-  keywordKey, leaveOneOutFolds, phraseCount, predictKeywords, suggestKeywords, suggestionSource, trainKeywordModel,
+  keywordKey, leaveOneOutFolds, phraseCount, predictKeywords, reinsertKeyword, suggestKeywords, suggestionSource, trainKeywordModel,
   type KeywordStudy,
 } from "./keywordModel.ts";
 import { addKeywords } from "./validation.ts";
@@ -524,6 +524,15 @@ check("suggest for an empty draft", suggestKeywords(empty, { title: "", abstract
 check("evaluate nothing", evaluateKeywordModel([]), {
   tested: 0, copiesHidden: 0, model: { hitRate: 0, precision: 0, recall: 0 }, baseline: { hitRate: 0, precision: 0, recall: 0 },
 });
+
+console.log("— Undo after × (errata #80): reinsertKeyword —");
+check("back in its old place", reinsertKeyword(["rice", "corn"], "soil", 1, 10), ["rice", "soil", "corn"]);
+check("first place", reinsertKeyword(["rice", "corn"], "soil", 0, 10), ["soil", "rice", "corn"]);
+check("the list got shorter since → at the end", reinsertKeyword(["rice"], "soil", 3, 10), ["rice", "soil"]);
+check("into an empty list", reinsertKeyword([], "soil", 0, 10), ["soil"]);
+check("listed again already (another spelling) → null", reinsertKeyword(["Fish Farmers"], "fish farmer", 0, 10), null);
+check("list full → null", reinsertKeyword(Array.from({ length: 10 }, (_, i) => `k${i}`), "soil", 0, 10), null);
+check("the list given is not changed", (() => { const l = ["rice"]; reinsertKeyword(l, "soil", 0, 10); return l; })(), ["rice"]);
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);
