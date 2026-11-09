@@ -334,6 +334,72 @@ console.log("\n— readPages and the progress line (errata #82) —");
   const none = await readPages(5, async n => `Plain text of page ${n} with enough letters to not look scanned at all.`);
   check("no abstract → MSG_NOT_FOUND, pages still kept", [none.problem, none.pages.length], [MSG_NOT_FOUND, 5]);
 }
+console.log("\n— Running heads INSIDE the abstract, at a page break (errata #89) —");
+{
+  // Every page starts with the title on 2 lines of its own and the page number
+  // on a third (UP Open University layout).
+  const T1 = "Weather Alerts Among Rice Farmers";
+  const T2 = "in Echague, Isabela";
+  const head = (num: string) => `${T1}\n${T2}\n${num}\n`;
+  const roman = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv"];
+  const front = (n: number) => `${head(roman[n - 1] ?? String(n))}Front matter text for page ${n}.\n`;
+  const pdf = (at: Record<number, string>, numPages = 20) =>
+    fake(numPages, Object.fromEntries(Array.from({ length: numPages }, (_, i) => [i + 1, at[i + 1] ?? front(i + 1)])));
+  const B2a = "Farmers who read the alerts planted";
+  const B2b = "two weeks later and lost less of their harvest to early floods.";
+  const KW = "Keywords: rice farming, text alerts, floods\n";
+  const WANT_KW = ["rice farming", "text alerts", "floods"];
+  const got = (r: Awaited<ReturnType<typeof run>>) => typeof r === "object" ? [r.abstract, r.keywords] : r;
+  const split = (num: string) => ({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n`, 10: `${num}${B2b}\n${KW}` });
+
+  let r = await run(pdf(split(head("viii"))));
+  check("2-line title + “viii” at the top of the next page → removed, sentence joined; keywords the same",
+    got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(`${T1}\n${T2}\nxi\nv\n`)));
+  check("page number split over 2 lines (“xi” / “v”) → both removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(head("x i v"))));
+  check("lower-case roman with spaces (“x i v”) on its own line → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(head("14"))));
+  check("arabic page number (“14”) → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n${head("vii")}`, 10: `${head("viii")}${B2b}\n${KW}` }));
+  check("running head at the BOTTOM of the page (a footer before the break) → removed too",
+    got(r), [WANT_ABSTRACT, WANT_KW]);
+
+  // Condition 1: spaces inside a number only for lower-case roman letters.
+  r = await run(pdf(split(head("X I V"))));
+  check("NOT removed: upper-case letters with spaces (“X I V”) are not a page number",
+    got(r), [`${BODY1} ${B2a} ${T1} ${T2} X I V ${B2b}`, WANT_KW]);
+  // A one-line running head with a spaced number, as “… Nurses x i v”.
+  const oneLine = (num: string) => `Weather Alerts Among Rice Farmers ${num}\n`;
+  r = await run(fake(20, {
+    3: oneLine("x i i"), 5: oneLine("x v"),
+    9: `ABSTRACT\n${BODY1}\n${B2a}\n`, 10: `${oneLine("x i v")}${B2b}\n${KW}`,
+  }));
+  check("one line “Title x i v”, the title seen with other numbers → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+
+  // Condition 2: only at a page break.
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n${head("viii")}${B2b}\n${KW}` }));
+  check("NOT removed: the same lines in the middle of a page (no page break there)",
+    got(r), [`${BODY1} ${B2a} ${T1} ${T2} viii ${B2b}`, WANT_KW]);
+  const text = [1, 2, 3].map(front).join("\n") + `ABSTRACT\n${BODY1}\n${B2a}\n${head("viii")}${B2b}\n${KW}`;
+  check("NOT removed: page breaks unknown (text given without them)",
+    extractAbstractAndKeywords(text).abstract, `${BODY1} ${B2a} ${T1} ${T2} viii ${B2b}`);
+
+  // Things that must stay.
+  const inSentence = `The web based ${T1} ${T2} was conceptualized to help farmers.`;
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${inSentence}\n${B2a}\n`, 10: `${head("viii")}${B2b}\n${KW}` }));
+  check("the title inside a sentence stays; only the running head goes",
+    got(r), [`${BODY1} ${inSentence} ${B2a} ${B2b}`, WANT_KW]);
+  r = await run(pdf(split("A Title Printed Only Once\nOn This Page\nviii\n")));
+  check("NOT removed: title lines seen only once, with a page number",
+    got(r), [`${BODY1} ${B2a} A Title Printed Only Once On This Page viii ${B2b}`, WANT_KW]);
+  // Condition 3: numbers inside the abstract (statistics) stay; only the head goes.
+  const stats = "p=0.02), attitude vs length of service (rho= -.144 * , p=0.04), (X 2 =22.534*p=0.03).";
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\nknowledge vs compliance (X 2 =1230.954 a ,\n`, 10: `${head("viii")}${stats}\n2\n${B2a}\n${B2b}\n${KW}` }));
+  check("statistics and a lone “2” inside the text stay; only the running head is removed",
+    got(r), [`${BODY1} knowledge vs compliance (X 2 =1230.954 a , ${stats} 2 ${WANT_ABSTRACT.slice(BODY1.length + 1)}`, WANT_KW]);
+}
+
 check("progress: starting", progressText({ kind: "loading" }), "Starting the PDF reader…");
 check("progress: download with a size", progressText({ kind: "download", loaded: 3250000, total: 12152854 }), "Downloading 3.1 of 11.6 MB…");
 check("progress: download, size unknown", progressText({ kind: "download", loaded: 524288, total: null }), "Downloading 0.5 MB…");

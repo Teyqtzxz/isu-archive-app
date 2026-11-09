@@ -59,9 +59,18 @@ const CONTENTS_ENTRY = /^(?:[\s.]*\.{3}|(?:\.\s){3}|[ivxlc](?:\s*[ivxlc])*\s*$|\
 
 /** A page number at the end of a line: "Short Title of the Study   xiii",
  *  "… 14". Roman numbers in one case only, so a word like "Civil" is not one.
- *  Matched from the end (no backtracking over the line), as this runs on
- *  every line of up to 40 pages. */
-const PAGE_NUMBER_AT_END = /\s+(?:[ivxlc]+|[IVXLC]+|\d{1,4})$/u;
+ *  A lower-case roman number may have spaces inside ("… Nurses x i v",
+ *  errata #89), only as 2 or more single letters. Matched from the end (no
+ *  backtracking over the line), as this runs on every line of up to 40 pages. */
+const PAGE_NUMBER_AT_END = /\s+(?:[ivxlc]+|[IVXLC]+|\d{1,4}|[ivxlc](?: [ivxlc])+)$/u;
+
+/** A whole line that is only a page number: "viii", "XII", "14", or a
+ *  lower-case roman number with spaces inside ("x i v", 2 or more single
+ *  letters). */
+function isPageNumberLine(line: string): boolean {
+  const t = line.trim();
+  return t.length <= 8 && (/^(?:[ivxlc]+|[IVXLC]+|\d{1,4})$/.test(t) || /^[ivxlc](?: [ivxlc])+$/.test(t));
+}
 
 /** The words in front of a line's closing page number, or null. */
 function headText(line: string): string | null {
@@ -89,6 +98,81 @@ function runningHeads(allLines: string[]): (line: string) => boolean {
     const words = headText(line);
     return words !== null && (seen.get(words) ?? 0) >= 2;
   };
+}
+
+/** How many times each whole line (trimmed, with letters) is in the text
+ *  read. Counted on first use only, like runningHeads. */
+function lineCounts(allLines: string[]): (line: string) => number {
+  let seen: Map<string, number> | null = null;
+  return (line) => {
+    if (!seen) {
+      seen = new Map();
+      for (const l of allLines) {
+        const t = l.trim();
+        if (/\p{L}/u.test(t)) seen.set(t, (seen.get(t) ?? 0) + 1);
+      }
+    }
+    return seen.get(line.trim()) ?? 0;
+  };
+}
+
+/** The number of lines in the running head that starts at line i, or 0.
+ *  Either one line of title words + page number (runningHeads), or the title
+ *  on 1–3 lines of its own, each seen on at least 2 lines of the text, then
+ *  the page number as a whole line, or split over 2 short lines ("xi" / "v",
+ *  as a UP Open University thesis prints "xiv", errata #89). */
+function headBlockLength(
+  lines: string[], i: number, isRunningHead: (line: string) => boolean, timesSeen: (line: string) => number,
+): number {
+  if (isRunningHead(lines[i].trim())) return 1;
+  let j = i;
+  while (j < lines.length && j - i < 3) {
+    const t = lines[j].trim();
+    if (!/\p{L}/u.test(t) || isPageNumberLine(t) || timesSeen(t) < 2) break;
+    j++;
+  }
+  if (j === i || j >= lines.length) return 0;
+  const a = lines[j].trim();
+  const b = (lines[j + 1] ?? "").trim();
+  // The split number first, or "xi" alone would be taken and "v" left behind.
+  if (/^[ivxlc]{1,4}$/.test(a) && /^[ivxlc]{1,2}$/.test(b)) return j - i + 2;
+  return isPageNumberLine(a) ? j - i + 1 : 0;
+}
+
+/** Drop running heads INSIDE the abstract, where it runs onto the next page
+ *  (errata #89): "… by offering" / title / "xiv" / "flexible learning …".
+ *  Only a block that starts a page or ends one (`pageStarts`: the index in
+ *  `allLines` of each page's first line), and only with abstract text after
+ *  it: a running head at the end is left to stripTrailingRunningHeads. The
+ *  lines around it are later joined with one space. A title inside a sentence
+ *  is never a whole line of its own, so it stays. */
+function stripMiddleRunningHeads(
+  body: string, firstLine: number, allLines: string[], pageStarts: ReadonlySet<number>,
+  isRunningHead: (line: string) => boolean, timesSeen: (line: string) => number,
+): string {
+  const startsPage = (g: number) => {
+    for (let x = g; ; x--) {
+      if (pageStarts.has(x)) return true;
+      if (x === 0 || allLines[x - 1].trim()) return false;
+    }
+  };
+  const endsPage = (g: number) => {
+    let x = g;
+    while (x < allLines.length && !allLines[x].trim() && !pageStarts.has(x)) x++;
+    return x >= allLines.length || pageStarts.has(x);
+  };
+  const lines = body.split("\n");
+  const kept: string[] = [];
+  for (let k = 0; k < lines.length; k++) {
+    const n = lines[k].trim() ? headBlockLength(lines, k, isRunningHead, timesSeen) : 0;
+    const textAfter = n > 0 && lines.slice(k + n).some((l) => l.trim());
+    if (textAfter && (startsPage(firstLine + k) || endsPage(firstLine + k + n))) {
+      k += n - 1;
+      continue;
+    }
+    kept.push(lines[k]);
+  }
+  return kept.join("\n");
 }
 
 /** Drop the running header or footer printed under the abstract or at the top
@@ -162,13 +246,19 @@ function parseKeywordText(kwRaw: string): string[] {
     : [];
 }
 
+/** `pageStarts`: the line index in `text` where each page starts (readPages
+ *  gives it). Without it, running heads inside the abstract are kept, as the
+ *  page breaks are not known. */
 export function extractAbstractAndKeywords(
   text: string,
+  pageStarts: readonly number[] = [],
 ): { abstract: string; keywords: string[] } {
   const flat = text.replace(/[ \t\u00a0]+/g, " ");
 
   const lines = flat.split("\n");
   const isRunningHead = runningHeads(lines);
+  const timesSeen = lineCounts(lines);
+  const starts = new Set(pageStarts);
 
   // --- Abstract: after the heading, stop at the next section heading.
   // Length-bounded (40–4000 chars) so a missing terminator cannot run away.
@@ -196,8 +286,12 @@ export function extractAbstractAndKeywords(
     // Text on the heading line itself ("ABSTRACT: This study…") is abstract
     // text, so the header-block check only applies when the heading stood alone.
     const sameLine = m[1].replace(/^[:.\-\u2013\u2014]\s*/, "");
-    // Running header / footer lines at the end belong to the page, not the abstract.
-    const body = stripTrailingRunningHeads(m[2], isRunningHead);
+    // Running header / footer lines belong to the page, not the abstract:
+    // first those at a page break inside it, then those at its end.
+    const bodyAt = m.index + m[0].length - m[2].length;
+    const firstLine = flat.slice(0, bodyAt).split("\n").length - 1;
+    const inner = starts.size ? stripMiddleRunningHeads(m[2], firstLine, lines, starts, isRunningHead, timesSeen) : m[2];
+    const body = stripTrailingRunningHeads(inner, isRunningHead);
     abstract = `${sameLine}\n${sameLine.trim() ? body : stripHeaderBlock(body)}`
       .replace(/\s+/g, " ")
       .trim()
@@ -311,19 +405,23 @@ export async function readPages(
   let stopAfter = last;
   let pagesRead = 0;
   const pages: string[] = [];
+  const pageStarts: number[] = [];                    // line index of each page's first line
+  let lineCount = 0;
   for (let n = 1; n <= stopAfter; n++) {
     onPage?.(n);
     const raw = await pageText(n);
     pages.push(raw);
     const page = raw + "\n";                          // page break
+    pageStarts.push(lineCount);
+    lineCount += page.split("\n").length - 1;
     text += page;
     if (n <= SCAN_CHECK_PAGES) scanText += page;
     pagesRead = n;
-    if (stopAfter === last && extractAbstractAndKeywords(text).abstract) {
+    if (stopAfter === last && extractAbstractAndKeywords(text, pageStarts).abstract) {
       stopAfter = Math.min(n + 1, last);
     }
   }
-  const { abstract, keywords } = extractAbstractAndKeywords(text);
+  const { abstract, keywords } = extractAbstractAndKeywords(text, pageStarts);
   const problem = !abstract && scanText.replace(/\s/g, "").length < MIN_TEXT_CHARS ? MSG_SCANNED
     : !abstract && keywords.length === 0 ? MSG_NOT_FOUND
     : null;

@@ -684,10 +684,36 @@ Time per PDF 36–209 ms (round 1: 43–217). A first version of the header rule
 on long lines (201 ms of text rules on CLARO-AZUCENA's 40 pages); it now reads the
 page number from the end of the line and counts headers only when needed (15 ms).
 
-**Known limit:** a running header in the **middle** of an abstract that runs over two
-pages is kept (ASUNCION, CALIMLIM, TAN, VIZCARA: e.g. "… Care Nurses xiii The study
-showed …"). Staff can delete it in the abstract box; a later round could drop it with
-the same repeated-header test.
+**Running header in the middle of the abstract (errata #89, 2026-11-09).** Until #89 a
+running header where the abstract runs over two pages stayed in the abstract (e.g.
+"… by offering Perception on the Motivational Factors … Among Nurses xi v flexible
+learning options …"). `stripMiddleRunningHeads` now drops it, and the text on both
+sides is joined with one space. A block counts as a running head when it is either:
+
+- one line of title words + a page number, the same words with a page number on at
+  least two lines of the text read (the round-2 test above), or
+- the title on **1–3 lines of its own**, each seen on at least two lines of the text,
+  then the page number as a **whole line** ("viii", "14", "x i v"), or split over two
+  short lines ("xi" / "v" for xiv, "xii" / "i" for xiii), as UP Open University theses
+  print it (GARCES 2024, Geneston-Dino, [Espan_a]).
+
+A page number with spaces inside counts only for lower-case roman numbers with 2 or
+more single letters ("x i v", "… Nurses x i v"); "X I V" does not. A block is dropped
+only where a **page starts or ends**: `readPages` passes each page's first line
+(`pageStarts`). Called without page breaks, `extractAbstractAndKeywords` keeps it, and
+the same lines in the middle of a page are kept. A block with no abstract text after
+it is left to the end-of-abstract rule (sentence check). A title inside a sentence
+("the web-based Access Control Management System was conceptualized", VIZCARA,
+JACA) is never a whole line of its own, so it stays.
+
+31 sample PDFs before/after: 10 abstracts lose a running head and nothing else
+(ARCANGEL, ASUNCION, CALIMLIM, DELA PENA, GARCES, both Geneston-Dino copies, TAN,
+VIZCARA, [Espan_a]); no keyword list changed; the other 21, the private ISU thesis
+among them, are the same character for character.
+
+**Still kept (known limits):** words split by the PDF's text layer ("s uch",
+"mentors hip"), a word hyphenated across the page break, and an arabic page number
+with a space inside on one line ("1 2").
 
 ---
 
