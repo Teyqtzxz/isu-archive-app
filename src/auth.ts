@@ -45,6 +45,11 @@ export const AUTH_MSG = {
   unauthorizedDomain: "Sign-in is not enabled for this web address yet. Contact the Research Department.",
   linkDomain: "Email links are not enabled for this web address yet. Contact the Research Department.",
   badLink: "This link no longer works. Request a new one.",
+  // Forgot password's sign-in link (errata #85): ONE text for expired, used,
+  // wrong email and no account, so nothing tells a stranger who has an account.
+  linkUnusable: "This link can't be used. It may have expired or been used already, or it is not for the ISU email you typed. Request a new link and open the newest email. No account yet? Use Create account.",
+  linkAskEmail: "This link was opened on another device or browser. Type the ISU username you asked the link for.",
+  linkOtherEmail: "The email may say \"Sign in to …\" or \"Reset your password\". Either link lets you set a new password.",
   googleInUse: "This Google account is already connected to another e-library account.",
   notVerified: "Not verified yet. Open the link in your ISU inbox first.",
   failed: "Something went wrong. Try again.",

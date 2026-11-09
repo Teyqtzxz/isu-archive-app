@@ -4,9 +4,11 @@ import "./App.css";
 import type { NewThesis, Role, Screen, StaffTab, Thesis } from "./types";
 import { auth } from "./firebase";
 import {
-  checkEmailVerified, deleteThesis, getUserProfile, isIsuEmail, saveThesis, signOutUser, subscribeToTheses, updateThesis,
+  checkEmailVerified, deleteThesis, getUserProfile, isIsuEmail, linkReset, saveThesis, signOutUser, subscribeToTheses,
+  updateThesis,
 } from "./data";
 import { SLOW_WAIT_MS } from "./auth";
+import { describeLinkForLog, parseEmailAction } from "./emailLink";
 import { LoginScreen } from "./components/LoginScreen";
 import { VerifyEmailScreen } from "./components/VerifyEmailScreen";
 import { AuthActionScreen, type AuthActionExit } from "./components/AuthActionScreen";
@@ -79,13 +81,22 @@ export default function App() {
   // the study to reopen in the edit form once the live list has arrived.
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   const cancelDelete = useCallback(() => setConfirmDelete(null), []);
-  // A link from a Firebase email (?mode=resetPassword|verifyEmail&oobCode=…)
-  // opens AuthActionScreen over everything else (docs/17 §5).
-  const [emailAction, setEmailAction] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    const mode = p.get("mode"), oobCode = p.get("oobCode");
-    return mode && oobCode ? { mode, oobCode } : null;
-  });
+  // A link from a Firebase email (?mode=resetPassword|verifyEmail|signIn&oobCode=…)
+  // opens AuthActionScreen over everything else (docs/17 §5, §9).
+  const [emailAction, setEmailAction] = useState(() => parseEmailAction(window.location.href));
+  // Forgot password's sign-in link (errata #85) signs the person in when they
+  // press Save. Until they leave that screen, routeSignedInUser does nothing:
+  // no dashboard, and no users/{uid} profile write. Set from the first render,
+  // before the auth listener below exists.
+  const holdRouting = useRef(emailAction?.kind === "sign-in");
+  const linkLogged = useRef(false);
+  useEffect(() => {
+    if (!emailAction || linkLogged.current) return;
+    linkLogged.current = true; // once, also under StrictMode's second effect run
+    console.info(describeLinkForLog(window.location.href)); // names only, never values
+    // The sign-in link is kept in memory only: off the address bar at once.
+    if (emailAction.kind === "sign-in") window.history.replaceState(null, "", window.location.pathname);
+  }, [emailAction]);
   // "Send a new link" on an expired reset link opens the login card on Forgot password.
   const [loginForgot, setLoginForgot] = useState(false);
 
@@ -93,6 +104,7 @@ export default function App() {
   // screen — for a fresh sign-in, a session restored on refresh, and a
   // password account that has just verified its email ("I've verified").
   const routeSignedInUser = useCallback(async (user: User | null) => {
+    if (holdRouting.current) return;
     const run = ++routeRun.current;
     try {
       if (!user) {
@@ -300,6 +312,16 @@ export default function App() {
   // its dashboard instead of leaving it on "Check your ISU inbox".
   async function exitEmailAction(to: AuthActionExit) {
     window.history.replaceState(null, "", window.location.pathname);
+    if (emailAction?.kind === "sign-in") {
+      // A half-finished reset never leaves a session behind, and the normal
+      // saved session is back before the login screen can sign anyone in.
+      await linkReset(emailAction.href).leave();
+      holdRouting.current = false;
+      setEmailAction(null);
+      setLoginForgot(to === "forgot");
+      await routeSignedInUser(auth.currentUser);
+      return;
+    }
     setEmailAction(null);
     setLoginForgot(to === "forgot");
     const user = auth.currentUser;
@@ -333,7 +355,9 @@ export default function App() {
   }
 
   if (emailAction) {
-    return <AuthActionScreen mode={emailAction.mode} oobCode={emailAction.oobCode} onExit={exitEmailAction} />;
+    return emailAction.kind === "sign-in"
+      ? <AuthActionScreen mode="signIn" oobCode="" signInHref={emailAction.href} onExit={exitEmailAction} />
+      : <AuthActionScreen mode={emailAction.mode} oobCode={emailAction.oobCode} onExit={exitEmailAction} />;
   }
 
   if (!authReady) {

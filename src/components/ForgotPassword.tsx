@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { sendPasswordReset } from "../data";
-import { checkEmail, maskEmail, messageFor } from "../auth";
+import { AUTH_MSG, checkEmail, maskEmail, messageFor } from "../auth";
 import { ButtonSpinner, Icon, IsuEmailInput } from "./shared";
 
 /** ① Email → ② Check your inbox → ③ New password (AuthActionScreen, opened from the link). */
@@ -57,8 +57,9 @@ export function StateBadge({ kind }: { kind: BadgeKind }) {
 }
 
 /**
- * The Forgot password view inside the login card. Firebase emails a link; the
- * link opens this app on AuthActionScreen to choose the new password. The same
+ * The Forgot password view inside the login card. Firebase emails a sign-in
+ * link that opens this app on AuthActionScreen to choose the new password
+ * (past the free daily limit, a reset link to Firebase's page; errata #85). The same
  * link adds a first password to a Google-only account, and lets the real
  * owner take back an account someone else created with their email (docs/17).
  */
@@ -124,6 +125,8 @@ export function ForgotPassword({ initialEmail }: { initialEmail: string }) {
           <p className="state-help">
             If an account exists for <strong>{maskEmail(checkEmail(email).value)}</strong>, we sent a link to set a new password.
           </p>
+          {/* Sign-in link first, the reset email when the daily limit is hit (errata #85). */}
+          <p className="state-help">{AUTH_MSG.linkOtherEmail}</p>
         </>
       )}
 

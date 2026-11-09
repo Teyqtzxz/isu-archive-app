@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { checkEmailVerified, resendVerification, signOutUser } from "../data";
+import { checkEmailVerified, resendVerification, signOutUser, verificationSendFailure } from "../data";
 import { AUTH_MSG, messageFor } from "../auth";
 import { StateBadge } from "./ForgotPassword";
 import { ButtonSpinner, ISUSeal, Icon, SlowNotice } from "./shared";
@@ -27,6 +27,14 @@ export function VerifyEmailScreen({ email, onVerified, slow }: { email: string; 
   // Set at once, so a fast double click never runs a request twice.
   const inFlight = useRef(false);
   const busy = checking || sending;
+
+  // The email after Create account could not be sent (errata #84): show the
+  // same message Resend shows, and let Resend be pressed at once.
+  useEffect(() => verificationSendFailure.subscribe(e => {
+    setNotice("");
+    setError(messageFor(e, "email") ?? AUTH_MSG.failed);
+    setCooldown(0);
+  }), []);
 
   useEffect(() => {
     if (cooldown <= 0) return;

@@ -8,7 +8,10 @@ console steps in §6 are still to be done by the owner.
 in `src/data.ts` (auth section) · UI in `src/components/LoginScreen.tsx`
 (Sign in, Create account, Forgot password), `ForgotPassword.tsx`,
 `VerifyEmailScreen.tsx` ("Check your ISU inbox"), `AuthActionScreen.tsx`
-(the page an email link opens) · routing in `src/App.tsx`
+(the page an email link opens) · `src/verifySend.ts` (Create account, then the
+verification email; `node src/verifySend.check.ts`) · `src/emailLink.ts`
+(Forgot password's email sign-in link, §9; `node src/emailLink.check.ts`) ·
+routing in `src/App.tsx`
 (`routeSignedInUser`).
 
 The professor's requirement: **users log in with their email and password in
@@ -115,7 +118,12 @@ role comes from `users/{uid}`, as for Google).
 2. `createUserWithEmailAndPassword` — Firebase creates the account **and signs
    the user in**.
 3. `updateProfile(displayName)` — so the dashboards greet them by name.
-4. `sendEmailVerification` — the link goes to the ISU inbox.
+4. `sendEmailVerification` — the link goes to the ISU inbox. If it cannot
+   be sent, the account still exists and the user still lands on "Check your
+   ISU inbox", which shows the same error Resend would show and offers
+   **Resend email** at once (no cooldown). `verifySend.ts` hands the failure
+   to that screen, because Firebase signs the user in (and App.tsx may open
+   the screen) before the send has finished (errata #84).
 5. The listener sees `emailVerified = false` → **"Check your ISU inbox"**:
    - **I've verified** → `reload()` + `getIdToken(true)` → dashboard. No
      second sign-in. If the link was not clicked yet: *"Not verified yet. Open
@@ -137,6 +145,12 @@ routes it to "Check your ISU inbox" before reading the profile.
 ① ISU username → ② *"If an account exists for j•••@isu.edu.ph, we sent a link…"*
 (the **same words** for an email with no account) → ③ the link opens our
 "Create a new password" screen → "Password changed" → Sign in.
+
+Since errata #85 the email is an **email sign-in link**, which always opens
+our page even though the action URL cannot be changed; past the free plan's
+daily limit it is the old reset email, which opens Firebase's plain page
+(§9). Step ② says so: *"The email may say "Sign in to …" or "Reset your
+password". Either link lets you set a new password."*
 
 This is also how:
 - a **Google-only** user adds a password (§3 case A), and
@@ -267,7 +281,9 @@ and in case Firebase's behaviour changes; it costs nothing when B3 happens.
 
 Firebase sends the emails and checks the one-time code in each link — all
 free and from the browser. The console's **action URL** decides where a link
-opens. Set to the deployed app (§6 step 7), a link opens
+opens. **For this project the action URL cannot be changed** (§6 step 7), so
+for now every link opens Firebase's plain page (below). Set to the deployed
+app, a link would open
 `https://isu-elibrary.web.app/?mode=…&oobCode=…`, and App.tsx shows
 `AuthActionScreen` over everything else:
 
@@ -276,6 +292,10 @@ opens. Set to the deployed app (§6 step 7), a link opens
 - `verifyEmail` → "Email verified" → Continue. If this browser is signed in to
   that account, Continue goes straight to the dashboard.
 - Expired or used → "This link no longer works" (+ Send a new link for a reset).
+- `signIn` (Forgot password's email sign-in link, errata #85) → the same
+  "Create a new password" screen. This one opens our app **today**, without
+  the action URL change: Firebase's page always sends a sign-in link on to the
+  app (§9).
 
 ### Design (errata #69)
 
@@ -306,7 +326,8 @@ All three email-link screens share one look, in `App.css` next to the
   (`::-ms-reveal`) is hidden in `App.css`.
 
 **The console refuses a `localhost` action URL**, so while testing on this
-computer the links open Firebase's own page. That page works too (it sets the
+computer the links open Firebase's own page (and, while the change is
+blocked, on the live site too). That page works too (it sets the
 password or verifies the email) and shows a **Continue** button back to the
 app, because `data.ts` passes `url: <this app>` with every email. Our
 "Create a new password" screen is therefore first seen on the deployed site.
@@ -319,10 +340,14 @@ the same steps on the free plan, and the "no backend server" design stays.
 
 ## 6. Firebase console steps (the owner does these)
 
-1. **Authentication → Sign-in method → Email/Password → Enable.** Leave
-   "Email link (passwordless sign-in)" off. While Email/Password is off, sign
-   in says "Password sign-in is not turned on yet", and reset emails are
-   *still sent* but every link fails.
+1. **Authentication → Sign-in method → Email/Password → Enable**, and turn
+   **"Email link (passwordless sign-in)" ON** (errata #85: Forgot password
+   sends an email sign-in link, §9). With it off, Forgot password still works
+   but always sends the old reset email (Firebase's plain page). While
+   Email/Password is off, sign in says "Password sign-in is not turned on
+   yet", and reset emails are *still sent* but every link fails. Turning email
+   link on gives no new way in: the link is only good to whoever can open
+   that ISU inbox, who could already reset the password.
 2. **Authentication → Settings → User account linking:** check that **"Link
    accounts that use the same email"** is selected (the default). This is what
    keeps one person = one uid.
@@ -349,6 +374,13 @@ the same steps on the free plan, and the "no backend server" design stays.
    shared by all templates). Then use Forgot password on the live site and
    check the email's link opens "Create a new password" on
    isu-elibrary.web.app (not Firebase's plain page).
+   **Blocked (2026-11-09):** the console says "An error occurred when
+   updating URL", and the Identity Toolkit API answers `400
+   EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED` for every new value; only the current
+   `https://isu-archive-9253b.firebaseapp.com/__/auth/action` saves. A
+   support request is open. Sending `handleCodeInApp: true` with the email
+   does **not** get around it: tested on localhost on 2026-11-09, the reset
+   link still opened Firebase's hosted page, so it was removed (errata #84).
 
 `firestore.rules` does **not** change: it already requires a verified
 `@isu.edu.ph` email, so the security boundary is identical for both sign-in
@@ -374,7 +406,20 @@ methods.
   and get the same notice.
 - **The action URL cannot point at localhost** (§5), so the in-app "Create a
   new password" and "Email verified" screens are fully tested only after
-  deploying.
+  deploying. **For this project it cannot be changed at all yet**
+  (`EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`, support request open, §6 step 7), so
+  the verification link and the fallback reset link open Firebase's plain
+  page, including on the live site. Forgot password's sign-in link does not
+  need the change (§9).
+- **Only 5 email sign-in links a day for the whole project** on the free
+  Spark plan (Google's limit; more needs the Blaze plan with a card). After
+  that, Forgot password sends the old reset email instead (§9), so it never
+  stops working; it only opens Firebase's plain page. Requests for addresses
+  with no account also use up the 5.
+- **A no-account sign-in link that could not be deleted stays behind** (§9
+  case 2): a verified account with no name and no profile. Harmless (it
+  can only be used by the owner of that inbox), but delete it in the console
+  (Authentication → Users) if you see one with no name.
 - **Password strength beyond the five rules is not checked** (no
   common-password list). `Password1!` passes.
 - **The new-password rules are enforced by the app, not by Firebase's server.**
@@ -404,4 +449,115 @@ the masked email, the 15-second constant and message, and every Firebase error
 code → words, including "wrong password" and "unknown email" giving the **same**
 sentence.
 
-Browser steps: `09` §1 (email + password sign-in).
+`node src/emailLink.check.ts` — 66 examples for §9: which link opened the
+app (reset, verify, sign-in, a sign-in link inside `link=`, wrong case, no
+code), the console line (names only), which send errors fall back, the kept
+email (24 h, broken or blocked storage), and every Save outcome (saved, no
+account deleted and signed out, delete failing, someone signed in, wrong
+email, offline, weak password, requires-recent-login, two Saves at once).
+
+Browser steps: `09` §1 (email + password sign-in) and §1c (Forgot password
+by email sign-in link).
+
+---
+
+## 9. Forgot password by email sign-in link (errata #85)
+
+**Why.** The action URL cannot be changed (§6 step 7), so a reset email
+always opens Firebase's plain page. Firebase's documentation says an email
+**sign-in** link must always be completed in the app, unlike reset and verify
+links: Firebase's page sends it on to the `url` we give, with
+`handleCodeInApp: true`. So Forgot password signs the person in with the
+link, and our page then sets the password with `updatePassword`.
+
+**The flow.**
+
+1. Forgot password → `sendSignInLinkToEmail(auth, email, { url: <this
+   app>/, handleCodeInApp: true })`. The email is kept in localStorage
+   (`isu.resetLinkEmail`, with the time), as Firebase advises.
+   **Fallback:** on **any** error except `auth/network-request-failed`,
+   `auth/invalid-email` and `auth/missing-email` (those are shown), the old
+   `sendPasswordResetEmail` is sent instead. The real code for the 5-a-day
+   limit is not known, so it is not listed; only the code is logged
+   (`[auth] sign-in link not sent, sending the reset email instead
+   auth/…`). The screen after is the same either way.
+2. The link opens `/?apiKey=…&oobCode=…&mode=signIn&lang=en` (expected; the
+   owner's test confirms it, below). `emailLink.ts parseEmailAction` picks the
+   screen; Firebase's `isSignInWithEmailLink` must agree. The link is taken
+   off the address bar at once (`replaceState`) and kept in memory.
+3. Our "Create a new password" (same design, checklist, confirm box, eyes),
+   **plus Cancel**. The link is used only when **Save** is pressed, so opening
+   or reloading the page does not use it up.
+4. Save → our checklist → `setPersistence(inMemoryPersistence)` →
+   `signInWithEmailLink` → `updatePassword` on the user it returned → sign out
+   → `setPersistence(indexedDBLocalPersistence)` → "Password changed" →
+   **Sign in**.
+
+**The hard cases.**
+
+1. **Routing.** While the screen is open, `routeSignedInUser` in App.tsx does
+   nothing (`holdRouting`, set on the first render, before the auth
+   listener): no dashboard, no `users/{uid}` read or write. The session is
+   **memory only**, so another open e-library tab never sees it (it would
+   route it and write the profile). Leaving signs out, switches back to the
+   saved session, then routes as usual.
+2. **No account for that email.** A sign-in link **creates** an account. If
+   `getAdditionalUserInfo(...).isNewUser` is true, the account is deleted at
+   once (tried twice), the session ends, and the screen says the one safe
+   sentence used for expired, used, wrong-email and no-account links:
+   *"This link can't be used. It may have expired or been used already, or
+   it is not for the ISU email you typed. Request a new link and open the
+   newest email. No account yet? Use Create account."* If the delete fails
+   both times, the session still ends; the account stays (§7).
+3. **Opened on another device or browser.** No kept email → "Confirm your
+   ISU email" asks for the **ISU username** (same box as Sign in). A wrong one
+   gives the safe sentence. The kept email is cleared when the flow ends.
+4. **An account already signed in here.** Nothing happens until it signs
+   out: *"An account is signed in on this browser (j•••@isu.edu.ph). Sign out
+   to set a new password with this link, or cancel to keep using it."* Cancel
+   goes to that account's dashboard. The password is always set on the user
+   `signInWithEmailLink` returned, never on whoever is signed in.
+5. **Google-only account.** One account per email (§6 step 2), so the link
+   signs in to the **same uid** and `updatePassword` adds the password. Firebase
+   may remove the Google provider when a verified email sign-in arrives (§3,
+   Google is not "trusted" for @isu.edu.ph); then the next Continue with
+   Google gets the "connect Google" notice (§3 B2) and joins it again. Not
+   tested with a real account yet.
+6. **Address bar.** Cleaned at once; the link works once.
+7. **Errors.** Weak password: our checklist first, then Firebase's
+   `auth/weak-password` under the box (Save again does not sign in again). No
+   connection: the message, the session stays, Save again. Anything else
+   (expired, used, wrong email, `requires-recent-login`, email link turned
+   off): the safe sentence and the session ends.
+8. **Two Saves at once** (a double click, React's dev StrictMode): one
+   shared promise per link (`data.ts linkReset`), so the link is used once.
+9. **Leaving early.** Cancel, Send a new link and the other buttons sign out
+   first. Closing the tab or Back leaves nothing: the session was in memory.
+   The saved session is switched back on before any normal sign-in.
+
+**The `[email-link]` console line.** Every email link prints one line with
+the mode and the parameter **names** only, e.g.
+`[email-link] mode=signIn params=apiKey,lang,mode,oobCode`. Never a code or
+key, so it can be read out or pasted.
+
+**Owner's real test** (localhost:8443; each test uses 1 of the 5 emails a day;
+never paste the link or its code):
+
+a) **Own STAFF account.** Forgot password → the email → our "Create a new
+   password" page on localhost:8443 → a new password → Sign in → still
+   **STAFF**, and Authentication → Users shows the **same UID** as before.
+   Open the browser console (F12) **before** clicking the link and read the
+   `[email-link]` line: it must say `mode=signIn` and list `oobCode`.
+b) **Another device or browser.** Open the email link on the phone or in
+   another browser → it must ask for the **ISU username** before the password
+   form. A link asked for on localhost:8443 goes back to **localhost:8443**,
+   which a phone cannot open: on the phone, ask for the link on the live site
+   (after a deploy), or use another browser on this PC (Edge, or a Chrome
+   guest window).
+c) **The fallback.** At the end of the day, the 6th Forgot password → the
+   **reset email** arrives (Firebase's plain page). The console shows
+   `[auth] sign-in link not sent, sending the reset email instead auth/…`;
+   write down that code for the errata.
+
+Also look, after (a), at the Users row's providers. If a Google-only account
+was used, note whether Google is still listed (case 5).
