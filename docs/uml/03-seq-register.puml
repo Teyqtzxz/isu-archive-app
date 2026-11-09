@@ -1,0 +1,83 @@
+@startuml 03-seq-register
+' ISU Research Study E-Library - Sequence: Register a study (final, main a7d5ed9)
+' Checked against: src/components/RegisterForm.tsx (handleSubmit, applyDetails,
+' autoKeywords effect, originalityCheck, handleSave), src/extractPdf.ts,
+' src/pdfText.ts (readPages), src/pdfDetails.ts (readStudy, fillFromPdf),
+' src/App.tsx (onSave -> saveThesis), src/data.ts (saveThesis)
+title Register a study (Staff)
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+autonumber
+
+actor Staff
+participant "RegisterForm\n(Register tab)" as Form
+participant "extractPdf.ts" as Extract
+participant "pdf.js\n(loaded on demand)" as Pdfjs
+participant "pdfText.ts /\npdfDetails.ts" as Reader
+participant "keywordModel.ts" as KW
+participant "similarity.ts" as Sim
+participant "App.tsx" as App
+participant "data.ts" as Data
+participant "Google Drive API v3" as Drive
+database "Cloud Firestore\ntheses" as FS
+
+Staff -> Form : open Register tab
+Form -> Extract : preloadPdfReader()
+Extract -> Pdfjs : import pdfjs-dist + worker
+Staff -> Form : Choose PDF from this computer (optional)\n+ paste Google Drive link (always required)
+Staff -> Form : Read PDF & continue
+Form -> Form : handleSubmit(): validateDriveLink\n(error shown under the field)
+
+alt a PDF was chosen
+  Form -> Extract : readFromFile(file, onProgress)
+  Extract -> Extract : pdfFileProblem() (PDF only, max 100 MB)
+else no PDF chosen
+  Form -> Extract : readFromDrive(driveLink, onProgress)
+  Extract -> Drive : GET files/{fileId}?alt=media (API key)\n(retry after 1 s and 3 s if busy)
+  alt 403 / 404
+    Drive --> Extract : refused
+    Extract --> Form : "This file is protected ... Choose the PDF\nfrom this computer instead."
+    Form -> Form : readFailed() -> Check & save\nwith manual entry
+  else 200 PDF
+    Drive --> Extract : PDF bytes ("Downloading x of y MB...")
+  end
+end
+
+Extract -> Pdfjs : getDocument(data)
+loop page n = 1 .. at most 40 (MAX_PAGES)
+  Extract -> Pdfjs : getPage(n).getTextContent()
+  Pdfjs --> Extract : text of page n ("Reading page n (up to 40)...")
+  Extract -> Reader : readPages(): stop one page after\nthe abstract ends
+end
+Extract -> Reader : readStudy(): readDetails(pages)
+Reader --> Extract : StudyRead {abstract, keywords,\ndetails, problem}
+Extract --> Form : StudyRead
+
+Form -> Form : applyDetails() -> fillFromPdf():\ntitle, authors, college, year, adviser\n(tagged "from PDF"; unclear -> empty + note)
+alt read.problem (scanned PDF / no abstract)
+  Form -> Form : readFailed(problem) -> Check & save,\nstaff type or paste the abstract
+else abstract found
+  Form -> Form : setAbstract, keywords printed in the PDF
+  Form -> KW : trainKeywordModel(library) +\nautoKeywords(model, study, removedKeys)
+  KW --> Form : up to 5 keywords tagged "auto" (max 8 in all)
+end
+
+Form -> Form : Check & save opens: scrollTo(top),\n1 s click guard (SAVE_GUARD_MS)
+Form -> Sim : buildOriginalityIndex(library)\noriginalityCheck(study)
+Sim --> Form : matches (duplicate >= 80%,\nvery similar 50-79%, related 30-49%)
+opt Possible duplicate
+  Form -> Staff : "Possible duplicate - this study may\nalready be registered" (Save disabled)
+  Staff -> Form : tick "I checked - register anyway"
+end
+Staff -> Form : may remove keywords (Undo 8 s), edit details
+Staff -> Form : Confirm & Save
+Form -> Form : handleSave(): guard, studies loaded,\nvalidate all fields (abstract >= 50 words)
+Form -> App : onSave(NewThesis)
+App -> Data : saveThesis(thesis)
+Data -> FS : addDoc(theses, {...thesis, status: "POSTED",\nregisteredBy: uid, registeredAt: serverTimestamp()})
+FS --> Data : new id (rules: isStaff())
+Data --> App : id
+App -> Staff : toast "Study posted!"
+Form -> Form : clearDraft(null)
+FS --> App : onSnapshot (subscribeToTheses):\nevery open screen updates
+@enduml

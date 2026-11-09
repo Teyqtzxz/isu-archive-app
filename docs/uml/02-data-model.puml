@@ -1,0 +1,140 @@
+@startuml 02-data-model
+' ISU Research Study E-Library - Data model / class diagram (final, main a7d5ed9)
+' Checked against: src/types.ts, src/data.ts, firestore.rules, src/draft.ts,
+' src/theme.ts, src/emailLink.ts, src/search.ts, src/smartSearch.ts,
+' src/similarity.ts, src/keywordModel.ts
+title ISU Research Study E-Library - Data Model (Cloud Firestore + browser)
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #23305B
+}
+hide empty methods
+skinparam nodesep 110
+
+package "Cloud Firestore (database)" <<Database>> {
+
+  class "users/{uid}" as User <<collection users>> {
+    .. document id ..
+    uid : string  (Firebase Auth user id)
+    .. fields ..
+    role : "STAFF" | "STUDENT"
+    department : string  (college full name, "" when unset)
+    email : string
+    displayName : string
+    createdAt : Timestamp  (serverTimestamp)
+  }
+
+  class "theses/{thesisId}" as Thesis <<collection theses>> {
+    .. document id ..
+    id : string  (auto id from addDoc)
+    .. fields ..
+    title : string
+    authors : string[]  (citation order, 1-10)
+    department : string  (holds the COLLEGE full name)
+    year : number  (year completed)
+    adviser : string  (1-3 names joined by " and ")
+    abstract : string
+    keywords : string[]  (0-10)
+    status : "POSTED"
+    driveLink : string  (Google Drive link of the PDF)
+    registeredBy : string  (uid of staff)
+    registeredAt : Timestamp | string | null  (serverTimestamp)
+    updatedBy? : string  (uid, only after an edit)
+    updatedAt? : Timestamp | string | null  (only after an edit)
+  }
+
+  User "1  STAFF" -- "0..*" Thesis : registers / last edits >\n(registeredBy, updatedBy = uid)
+}
+
+note left of User
+  <b>firestore.rules - users/{uid}</b>
+  read:   signedIn()  (verified @isu.edu.ph token)
+  create: own uid only AND role == 'STUDENT'
+  update: own uid only AND role unchanged  (role locked)
+  delete: never
+  Role STAFF and the college are set by the
+  Firebase administrator in the Firebase console
+  (the console bypasses the rules).
+  Created by getUserProfile() on the first
+  verified sign-in: role STUDENT, department "".
+end note
+
+note right of Thesis
+  <b>firestore.rules - theses/{thesisId}</b>
+  read:   signedIn()  (STAFF and STUDENT)
+  create, update, delete: isStaff()
+    (users/{uid}.role == 'STAFF')
+  data.ts: saveThesis() = addDoc, status POSTED,
+  registeredBy + registeredAt; updateThesis() adds
+  updatedBy + updatedAt; deleteThesis() = deleteDoc.
+  Read with subscribeToTheses() (real time):
+  old status values read as POSTED, missing authors
+  as [], old department names as their college
+  (collegeOf, never written back).
+end note
+
+package "Firebase Authentication (not in Firestore)" <<Cloud>> {
+  class "Auth user" as AuthUser {
+    uid : string
+    {field} email : string  (@isu.edu.ph)
+    emailVerified : boolean
+    displayName : string
+    {field} password : salted hash (Firebase only)
+    providers : Google, Email/Password
+  }
+}
+AuthUser "1" -left- "0..1" User : same uid >
+
+package "Browser only (never in the database)" <<Frame>> {
+
+  class "RegisterDraft" as Draft <<sessionStorage>> {
+    key "isu-draft:new" | "isu-draft:edit:{id}"
+    v : 1
+    uid : string
+    studyId : string | null
+    step : "details" | "save"
+    form : driveLink, title, department, year, adviser
+    authors : string[]
+    abstract : string
+    keywords : string[]
+    autoAdded, removedKeys : string[]
+    fromPdf : DetailField[]
+    pdfNotes : notes per detail
+  }
+
+  class "Staff view" as StaffView <<sessionStorage>> {
+    key "isu-staff-view"
+    tab or "edit:{id}" to reopen after a reload
+  }
+
+  class "Theme choice" as Theme <<localStorage>> {
+    key "isu-theme"
+    {field} "light" | "dark"  (no key = "system")
+  }
+
+  class "Forgot password email" as LinkEmail <<localStorage>> {
+    key "isu.resetLinkEmail"
+    email : string
+    {field} at : number  (ignored after 24 h)
+  }
+
+  class "Indexes built in memory" as Memory <<memory>> {
+    SearchIndex  (search.ts buildIndex, BM25F)
+    SmartSearchIndex  (smartSearch.ts: Trie + vocabulary)
+    SimilarityIndex / OriginalityIndex  (similarity.ts)
+    KeywordModel  (keywordModel.ts trainKeywordModel)
+    Combined summary  (summary.ts summarise)
+  }
+}
+
+Thesis ..> Memory : built from the\nloaded studies
+Draft ..> Thesis : becomes a study only\nafter Confirm & Save
+
+note bottom of Memory
+  Rebuilt from the theses loaded by subscribeToTheses();
+  nothing here is stored. The study PDF itself stays in
+  Google Drive (only driveLink is stored).
+end note
+@enduml
