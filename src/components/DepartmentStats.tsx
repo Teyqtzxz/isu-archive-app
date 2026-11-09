@@ -1,28 +1,29 @@
 import { useState } from "react";
 import type { Thesis } from "../types";
-import { DEPARTMENTS } from "../types";
+import { COLLEGES, shortCollege } from "../colleges";
 import { countByDepartment, topKeywords } from "../stats";
 import { Icon } from "./shared";
 
 /**
- * "Studies by department" bars and "Top keywords" chips. Shared by the staff
+ * "Studies by college" bars and "Top keywords" chips (errata #87: the 12
+ * colleges, short forms on the bars, full names in the tooltips). Shared by the staff
  * Statistics tab and the student dashboard; each passes its own click
  * handlers, so the component never decides where a click goes.
  */
 export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onSelectKeyword }: {
-  /** Every thesis the viewer can see — not one department's, or there is nothing to compare. */
+  /** Every thesis the viewer can see — not one college's, or there is nothing to compare. */
   theses: Thesis[];
-  /** The staff member's own department, marked "(mine)". */
+  /** The staff member's own college, marked "(mine)". */
   highlightDept?: string;
   onSelectDepartment: (department: string) => void;
   /** department is the one picked in the keyword box, "" for all of them. */
   onSelectKeyword: (keyword: string, department: string) => void;
 }) {
-  // "" = keywords across all departments.
+  // "" = keywords across all colleges.
   const [keywordDept, setKeywordDept] = useState("");
 
   const rows = countByDepartment(theses);
-  // Bars are relative to the biggest department; max 1 so an empty archive
+  // Bars are relative to the biggest college; max 1 so an empty archive
   // draws empty bars instead of dividing by zero.
   const max = Math.max(1, ...rows.map(r => r.count));
   const keywords = topKeywords(keywordDept ? theses.filter(t => t.department === keywordDept) : theses);
@@ -31,7 +32,7 @@ export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onS
     <div className="stats-layout">
       <section className="card">
         <div className="card-title-row">
-          <h2 className="card-title">Studies by department</h2>
+          <h2 className="card-title">Studies by college</h2>
           <span className="card-meta">{theses.length} total</span>
         </div>
         <div className="bar-list">
@@ -44,9 +45,10 @@ export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onS
                 disabled={r.department === "Other"}
                 onClick={() => onSelectDepartment(r.department)}
                 className={`bar-row${mine ? " bar-row--mine" : ""}`}
+                title={r.department}
                 aria-label={`${r.department}: ${r.count} ${r.count === 1 ? "study" : "studies"}`}
               >
-                <span className="bar-label">{r.department}{mine && <span className="bar-mine"> (mine)</span>}</span>
+                <span className="bar-label">{shortCollege(r.department)}{mine && <span className="bar-mine"> (mine)</span>}</span>
                 <span className="bar-track" aria-hidden="true">
                   <span className="bar-fill" style={{ width: `${(r.count / max) * 100}%` }} />
                 </span>
@@ -61,10 +63,10 @@ export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onS
         <div className="card-title-row">
           <h2 className="card-title">Top keywords</h2>
           <select value={keywordDept} onChange={e => setKeywordDept(e.target.value)}
-            aria-label="Keywords from department"
+            aria-label="Keywords from college"
             className={`select-pill${keywordDept ? " select-pill-active" : ""}`}>
-            <option value="">All departments</option>
-            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            <option value="">All colleges</option>
+            {COLLEGES.map(c => <option key={c.code} value={c.name}>{c.code} · {c.name}</option>)}
           </select>
         </div>
         {keywords.length === 0 ? (
@@ -72,7 +74,7 @@ export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onS
             <div className="empty-state-icon"><Icon name="search" size={22} /></div>
             <div className="empty-state-title">No keywords yet</div>
             <div className="empty-state-text">
-              {keywordDept ? `No ${keywordDept} study has keywords.` : "Keywords appear once studies are registered."}
+              {keywordDept ? `No ${shortCollege(keywordDept)} study has keywords.` : "Keywords appear once studies are registered."}
             </div>
           </div>
         ) : (

@@ -188,6 +188,7 @@ most.
 - [ ] STUDENT never sees the Register form or the staff tabs
 - [ ] STAFF sees Dashboard / Register / Search / Statistics / Settings + their department badge
 - [ ] Student default filter is "All Departments"; staff default is their department
+      (since errata #87: "All Colleges" / their college — see §3b)
 
 ## 3. Staff dashboard
 
@@ -314,6 +315,35 @@ most.
       the cards still swipe sideways with no part of the page scrolling sideways
 - [ ] An empty database shows an empty state, not a crash
 
+## 3b. Colleges instead of departments (errata #87)
+
+- [ ] **[auto]** `node src/colleges.check.ts` — every programme of `06` §9.1a,
+      short forms, BSA empty, every trap, several programmes (one college → filled,
+      two → empty), "… Track", extra words → empty, the 10 old department names,
+      unknown values kept, the staff own-college default
+- [ ] Every label says **College**, not Department (Register, filters, Study
+      Details, Studies by college, Top keywords box, staff chip and Settings);
+      "Research Department" (the office) stays
+- [ ] Register's College dropdown lists the 12 full names; Search's filter shows
+      `CODE · full name`, "(mine)" on the staff member's college
+- [ ] A study saved **before** #87 with an old name (e.g. "Agriculture") shows
+      the **CA** badge, appears under the CA filter and the CA bar, and opens in
+      Edit with College of Agriculture selected; saving writes the full name.
+      Nothing is written just by viewing it
+- [ ] Staff whose `users/{uid}.department` is still an old name ("Computer
+      Science") get "CCSICT Staff", their college's studies and the CCSICT
+      filter; a value that is not a college → "No college set", All colleges,
+      and Settings shows the value "(not one of the 12 colleges …)"
+- [ ] A study with a hand-typed value that is not a college (e.g. "Zoology")
+      shows it on the badge, is counted under **Other** (not clickable), is found
+      only under All colleges, and Edit asks for a college
+- [ ] Register from a PDF whose Program line is "Bachelor of Science in
+      Information Technology" → College of Computing Studies, Information and
+      Communication Technology; "BSA" → College empty
+- [ ] At 320 px, light and dark: no sideways scroll; the Top keywords box and
+      the college filter stay inside their card / leave the Year filter in
+      sight; badges, bars and chips show the short forms
+
 ## 4. Register thesis (PDF auto-fill)
 
 - [ ] **[auto]** `grep -rn "MOCK_ABSTRACT\|Math.random" src/` returns nothing
@@ -346,9 +376,9 @@ most.
       title is printed in capital letters…"; when the page's running header
       prints the same title in normal letters (identical letters), that one is
       used; degrees after the student's name ("…, RN") are dropped
-- [ ] **Never guessed:** a programme that is not one of the ten departments
-      (e.g. "Master of Development Communication") leaves Department on
-      "Select dept."; only "AY 2024-2025" printed leaves Year completed empty
+- [ ] **Never guessed:** a programme that is not in the programme table (`06`
+      §9.1a, errata #87; e.g. "Master of Development Communication", "BSA")
+      leaves College on "Select college"; only "AY 2024-2025" printed leaves Year completed empty
       with the grey note naming the academic year; "Thesis Advisers:" with
       **four** lines (or a line that is not a name, e.g. a degree on its own
       line) leaves Adviser empty with a note listing them
@@ -1092,6 +1122,8 @@ node src/stats.check.ts                                # expect: All passed.
 node src/draft.check.ts                                # expect: All passed.
 node src/emailLink.check.ts                            # expect: All passed.
 node src/pdfDetails.check.ts                           # expect: All passed.
+node src/colleges.check.ts                             # expect: All passed.
+grep -rn "DEPARTMENTS\b\|departmentOf" src/            # expect: no output (errata #87)
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)

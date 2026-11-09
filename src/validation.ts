@@ -44,7 +44,7 @@ export const MSG = {
   authorStored: (name: string, problem: string) => `Fix “${name}”: remove it and add it again. ${problem}`,
   nameChars: "Names can only have letters, spaces and . , ' - (no numbers or symbols).",
   nameLong: (max: number) => `That name is too long (max ${max} characters).`,
-  departmentRequired: "Please choose a department.",
+  departmentRequired: "Please choose a college.",
   yearFormat: "Please type a 4-digit year, e.g. 2019.",
   yearFuture: (thisYear: number) => `The year can't be later than ${thisYear}.`,
   adviserRequired: "Please fill in the adviser.",

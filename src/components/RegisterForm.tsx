@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { ExtractionState, NewThesis, Thesis } from "../types";
-import { DEPARTMENTS, registeredAtISO } from "../types";
+import { registeredAtISO } from "../types";
+import { COLLEGE_NAMES, isCollege } from "../colleges";
 import { preloadPdfReader, readFromDrive, readFromFile, type ReadProgress, type StudyRead } from "../extractPdf";
 import { progressText } from "../pdfText";
 import { fillFromPdf, type DetailField, type StudyDetails } from "../pdfDetails";
@@ -130,8 +131,10 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
     ? {
       form: {
         driveLink: study.driveLink.trim(), title: checkTitle(study.title).value,
-        // Not one of DEPARTMENTS (typed by hand long ago) → blank, so saving asks for one.
-        department: (DEPARTMENTS as readonly string[]).includes(study.department) ? study.department : "",
+        // An old department name was already read as its college (data.ts),
+        // so saving writes the college's full name (errata #87). Not one of
+        // the 12 (typed by hand long ago) → blank, so saving asks for one.
+        department: isCollege(study.department) ? study.department : "",
         year: yearInput(String(study.year ?? "")), adviser: checkAdviser(study.adviser).value,
       },
       authors: cleanAuthorList(study.authors).list, newAuthor: "",
@@ -429,7 +432,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
       case "adviser": return blank && !submit ? null : checkAdviser(value).error;
       case "abstract": return blank && !submit ? null : checkAbstract(value).error;
       case "author": return checkAuthor(value).error;
-      case "department": return submit && !(DEPARTMENTS as readonly string[]).includes(value) ? MSG.departmentRequired : null;
+      case "department": return submit && !isCollege(value) ? MSG.departmentRequired : null;
       case "year": return blank && !submit ? null : checkYear(value).error;
       default: return null;
     }
@@ -987,15 +990,15 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
               </p>
             </div>
 
-            {/* Dept + Year */}
+            {/* College (field `department`, errata #87) + Year */}
             <div className="form-grid-2">
               <div>
-                <label className="field-label" htmlFor={fieldId("department")}>Department <span className="field-req">*</span>{tag("department")}</label>
+                <label className="field-label" htmlFor={fieldId("department")}>College <span className="field-req">*</span>{tag("department")}</label>
                 <select value={form.department} {...a11y("department")}
                   onChange={e => { setForm(p => ({ ...p, department: e.target.value })); untag("department"); setFieldError("department", null); }}
                   className="input" style={{ color: form.department ? undefined : "var(--text-subtle)", appearance: "none" }}>
-                  <option value="">Select dept.</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  <option value="">Select college</option>
+                  {COLLEGE_NAMES.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
                 {fieldError("department")}
                 {pdfNotes.department && <p className="field-note">{pdfNotes.department}</p>}
@@ -1117,8 +1120,8 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
                             <dd>{s.authors.length > 0 ? s.authors.join("; ") : <span className="study-details-empty">Not recorded</span>}</dd>
                             <dt>{adviserLabel(s.adviser)}</dt>
                             <dd>{s.adviser}</dd>
-                            <dt>Department</dt>
-                            <dd>{s.department}</dd>
+                            <dt>College</dt>
+                            <dd>{s.department || <span className="study-details-empty">Not recorded</span>}</dd>
                             {s.keywords.length > 0 && <>
                               <dt>Keywords</dt>
                               <dd>{s.keywords.join(", ")}</dd>

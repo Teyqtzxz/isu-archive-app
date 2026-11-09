@@ -714,9 +714,58 @@ give stays empty.**
 |---|---|---|---|
 | Title | the labelled block under ABSTRACT ("Title :", wrapped lines joined) | the title page (ISU: the lines above "A Thesis"; UP Open University: between the author and "… Adviser:"). In capitals with a running header above it whose **letters are identical** → the header's normal letters | the approval sheet ("entitled “…”") |
 | Authors | the block ("Authors :", one name per line; a line that is not a name → the block's list is not used at all) | the title page ("By:" names up to the date; the UPOU author line) | the approval sheet ("submitted by … in partial") |
-| Department | the Program line (block, else the title page's degree line) when it names **exactly one** of the ten departments as whole words | — | — |
+| College (field `department`) | the Program line (block, else the title page's degree line), looked up in the **exact programme table** of `src/colleges.ts` (errata #87, §9.1a) | — | — |
 | Year completed | the title page date ("December 2024", "22 September 2025", "15/08/2025", also after a "Critic" block or "Date of Submission") | — | never from "AY 2024-2025": then empty, with the note "The PDF gives only the academic year (AY 2024-2025) …" |
 | Adviser | the block ("Adviser :", "Advisers :", "Adviser(s) :", "Co-Adviser :"; names on the same line, and on the lines just below the label when each is clearly an adviser — see below) | the title page ("Thesis / Special Problem / … Adviser:"); **two or three names** ("Thesis Advisers:") → all of them joined by "and" (errata #86); **four** lines, or a line that is not a name → empty, with a note listing them | the approval sheet (the line above "Thesis Adviser") |
+
+**9.1a The college from the Program line (errata #87).** `collegeOfProgram` in
+`src/colleges.ts` (examples: `node src/colleges.check.ts`) never matches single
+words; the line must be a programme of the table, so the wrong college cannot win
+on a shared word ("Education", "Mathematics", "Medicine", "Information and
+Communication Technology").
+
+1. **Normalize:** lower case; brackets dropped ("(BSCS)"); "&" = "and"; dots dropped
+   ("B.S." = "BS", "Ph.D." = "PhD"); one space; "Bachelor of Science (in)" = "BS",
+   "Bachelor of Arts (in)" / "BA" = "AB", "Master of Science" = "MS", "Master of
+   Arts" = "MA", "Doctor of Philosophy" = "PhD", "Bachelor in" / "Master in" =
+   "… of"; "Library Information Science" = "Library and Information Science";
+   short forms written out: BSCS, BSIT, BSIS, BSDSA, BSN, BEEd, BSEd, BPEd, BTLEd, BSCrim,
+   BSBA, BPA, BSMA. **BSA is ambiguous** (Agriculture or Accountancy) → empty;
+   "Bachelor of Science in Agriculture (BSA)" is still CA (brackets dropped).
+2. **"major in …"** is split off. It decides only for programmes the table names
+   by their major (BS major in Agronomy / Animal Science / Horticulture / Soil
+   Science → CA; MS or PhD major in Crop Science / Animal Science → CA); everywhere
+   else any major is allowed ("Bachelor of Secondary Education major in
+   Mathematics" → CED).
+3. **A specialization track** right after one programme ("BS Computer Science-Data
+   Mining Track", 1–4 words ending in "Track") is read like a major — the ISU BSCS
+   thesis prints its programme so (owner's choice, 2026-11-09).
+4. **Several programmes** joined by "and", ",", "/" or ";" (a later one may leave
+   out its degree: "BS Agriculture and Forestry") fill only when all belong to one
+   college; different colleges → empty.
+5. Anything else after a programme (", Isabela State University", "Program") →
+   empty. No match → empty. **CGS is never filled in automatically.**
+
+| College | Programmes |
+|---|---|
+| SVM | Doctor of Veterinary Medicine; BS Animal Husbandry |
+| CA | BS Agriculture (any major); BS major in Agronomy / Animal Science / Horticulture / Soil Science; BS Agribusiness; BS Forestry; BS Environmental Science; 3-Year Diploma in Agricultural Technology; MS and PhD major in Crop Science / Animal Science |
+| CAS | BS Biology, Mathematics, Chemistry, Psychology; AB/BA Communication, English, English Language Studies; MA Psychology, MA English; MS Mathematics Education, MS Chemical Education, MS Biology |
+| CBAPA | BS Business Administration; Bachelor in Public Administration; BS Management Accounting, Entrepreneurship, Accountancy, Hospitality Management, Tourism Management |
+| COE | BS Agricultural Engineering; BS Agricultural and Biosystems Engineering; BS Civil Engineering; MS Agricultural Engineering (any major) |
+| CED | Bachelor of Elementary / Secondary (any major) / Physical / Early Childhood Education; Bachelor of Technology and Livelihood Education (any major); MA in Education (any major); PhD in Educational Leadership and Management |
+| CCSICT | BS Information Technology, Information Systems, Computer Science; BS Data Science and Analytics (one programme: "and Analytics" is part of its name, never a second programme; short form BSDSA, "DSA" alone is not mapped; "BS Data Science" alone → empty); Bachelor of Library and Information Science; Master in Information Technology |
+| CCJE | BS Criminology; BS Law Enforcement Administration |
+| CON | BS Nursing |
+| IOF | BS Fisheries and Aquatic Sciences |
+| COM | Doctor of Medicine |
+| CGS | — (never automatic) |
+
+Traps in the checks: TLE major in ICT → CED (not CCSICT); TLE major in Agri-Fishery
+Arts → CED (not IOF/CA); BSEd major in Mathematics → CED (not CAS); MS Mathematics
+Education → CAS (not CED); Doctor of Veterinary Medicine → SVM (not COM); BS major
+in Animal Science → CA but BS Animal Husbandry → SVM; Agricultural Engineering → COE
+(not CA).
 
 **Names.** As typed names: `fixCapitals` for a name in capitals ("DELA CRUZ" →
 "Dela Cruz", "L." stays "L.", "JR." → "Jr.", "III" stays); mixed case is kept
@@ -804,7 +853,11 @@ layouts). Script: `readStudy()` vs `main`'s reader on each file.
   `main`.
 - **UPOU:** title, author and year on all 30 (ANTOLIN 2023 prints the university's two
   lines as one; read as well). Department only where the programme is one of the ten:
-  Nursing (7), Education (1); the other 22 are left on "Select dept.". Adviser on all
+  Nursing (7), Education (1); the other 22 are left on "Select dept.". **Since errata
+  #87 (re-run on all 31):** none of the 30 UPOU programmes is in the ISU table, so all
+  30 leave College empty — the 7 "Master of Arts in Nursing" and the 1 "Bachelor of
+  Education Studies" that filled a department before now go empty (expected: not ISU
+  programmes); the ISU BSCS thesis gives CCSICT (its "… Track" line, rule 3 of §9.1a). Adviser on all
   30: since errata #86 the two Geneston-Dino copies give both advisers joined by "and"
   ("Asst Prof. …, RN, MAN and Asst. Prof. …, RN, MAN"; before: empty
   with the note); the other 28 and the ISU thesis are unchanged (re-run on all 31). Titles: 9 in normal
@@ -864,7 +917,11 @@ download is most of it, and the progress line now shows it. A local file's own r
 departments, credentials, running headers, two advisers, never guess, the title in the
 abstract, readStudy, fillFromPdf); `pdfText.check.ts` (readPages, the progress line);
 `draft.check.ts` (old drafts, `fromPdf`, `pdfNotes`); `validation.check.ts` and
-`search.check.ts` (the new degrees and suffixes).
+`search.check.ts` (the new degrees and suffixes); since errata #87
+`colleges.check.ts` (every programme of §9.1a, the short forms, BSA, every trap,
+several programmes, tracks, extra words, the old department names, unknown values,
+the staff own-college default). Broken versions it catches: keyword matching instead
+of the table, BSA mapped, "major in" ignored, old value not translated.
 
 ---
 

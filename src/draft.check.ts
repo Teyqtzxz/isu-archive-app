@@ -36,7 +36,7 @@ const blank: DraftFields = {
 };
 const draft: RegisterDraft = {
   v: 1, uid: "uid-A", studyId: null,
-  form: { driveLink: "https://drive.google.com/file/d/abc/view", title: "Rice yield", department: "Agriculture", year: "2025", adviser: "Dr. Maria Santos" },
+  form: { driveLink: "https://drive.google.com/file/d/abc/view", title: "Rice yield", department: "College of Agriculture", year: "2025", adviser: "Dr. Maria Santos" },
   authors: ["Juan Dela Cruz"], newAuthor: "Ana Re", abstract: "This study…", keywords: ["rice"],
   step: "save", readState: "success", keptCurrent: false, readError: "",
   lastRead: { source: "file:study.pdf:1234:99", ok: true }, pdfName: "", baseUpdatedAt: "",
@@ -50,7 +50,7 @@ const edit = (o: Record<string, unknown>) => JSON.stringify({ ...draft, ...o });
 console.log("— Stored draft is read back —");
 const back = parseDraft(raw, want);
 check("round trip: title", back?.form.title, "Rice yield");
-check("round trip: department", back?.form.department, "Agriculture");
+check("round trip: college", back?.form.department, "College of Agriculture");
 check("round trip: authors", back?.authors.join("|"), "Juan Dela Cruz");
 check("round trip: typed, not yet added", back?.newAuthor, "Ana Re");
 check("round trip: abstract", back?.abstract, "This study…");
@@ -125,7 +125,14 @@ check("round trip: keywords added for a typed abstract (autoFor typed:)",
   parseDraft(edit({ readState: "needs_review", lastRead: { source: "drive:x", ok: false }, autoFor: "typed:drive:x" }), want)?.autoFor, "typed:drive:x");
 check("a new draft has no keyword box text", "newKw" in JSON.parse(raw), false);
 
-check("unknown department → blank", parseDraft(edit({ form: { ...draft.form, department: "CAS" } }), want)?.form.department, "");
+// Errata #87: a draft saved before the colleges holds an old department name.
+const dept = (d: string) => parseDraft(edit({ form: { ...draft.form, department: d } }), want)?.form.department;
+check("old department in a draft → its college (Agriculture → CA)", dept("Agriculture"), "College of Agriculture");
+check("old department in a draft → its college (Computer Science → CCSICT)", dept("Computer Science"),
+  "College of Computing Studies, Information and Communication Technology");
+check("old department in a draft → its college (Nursing → CON)", dept("Nursing"), "College of Nursing");
+check("a college's short form in a draft → its full name", dept("CAS"), "College of Arts and Sciences");
+check("unknown value in a draft → blank (saving asks for a college)", dept("Zoology"), "");
 
 console.log("— Changed or not (draft kept, \"Leave site?\") —");
 check("blank form = start", sameAsStart(blank, blank), true);

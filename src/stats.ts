@@ -1,7 +1,9 @@
-// Department statistics — pure counting over the live thesis list. No React,
+// College statistics — pure counting over the live thesis list. No React,
 // no Firestore: the dashboards already hold every thesis, so the numbers are
-// always in step with what Search finds.
-import { DEPARTMENTS, registeredAtISO, type Thesis } from "./types.ts";
+// always in step with what Search finds. (The field and these names still say
+// "department": errata #87 kept the Firestore field name.)
+import { registeredAtISO, type Thesis } from "./types.ts";
+import { COLLEGE_NAMES } from "./colleges.ts";
 import { isNameTitle, tokenize } from "./search.ts";
 import { adviserNames } from "./validation.ts";
 
@@ -16,20 +18,21 @@ export interface KeywordCount {
 }
 
 /**
- * One row per department, in DEPARTMENTS order, zeros included — an empty
- * department is a statistic too. A thesis whose department is not one of the
- * ten (an old or hand-edited record) is counted under "Other", which only
- * appears when there is one, so the rows always add up to the total.
+ * One row per college (its full name), in COLLEGE_NAMES order, zeros
+ * included — an empty college is a statistic too. Old department names have
+ * already been read as their college (data.ts). A thesis whose value is still
+ * not one of the 12 (hand-edited, or empty) is counted under "Other", which
+ * only appears when there is one, so the rows always add up to the total.
  */
 export function countByDepartment(theses: Pick<Thesis, "department">[]): DepartmentCount[] {
-  const counts = new Map<string, number>(DEPARTMENTS.map(d => [d, 0]));
+  const counts = new Map<string, number>(COLLEGE_NAMES.map(d => [d, 0]));
   let other = 0;
   for (const t of theses) {
     const n = counts.get(t.department);
     if (n === undefined) other++;
     else counts.set(t.department, n + 1);
   }
-  const rows = DEPARTMENTS.map(d => ({ department: d as string, count: counts.get(d) ?? 0 }));
+  const rows = COLLEGE_NAMES.map(d => ({ department: d, count: counts.get(d) ?? 0 }));
   if (other > 0) rows.push({ department: "Other", count: other });
   return rows;
 }

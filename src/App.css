@@ -422,6 +422,24 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  /* A hand-typed value that is not a college can be long (errata #87). */
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+/* Read by screen readers, not shown: the full college name behind a badge. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 .dept-badge--small { padding: 2px 8px; font-size: 11px; }
 
@@ -965,7 +983,8 @@ input[type="password"]::-ms-clear { display: none; }
 .bar-row {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 2.5rem;
+  /* Short forms on the bars (errata #87): "CCSICT (mine)" is the widest. */
+  grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.5rem;
   align-items: center;
   gap: 12px;
   padding: 8px;
@@ -986,7 +1005,7 @@ input[type="password"]::-ms-clear { display: none; }
 .bar-row--mine .bar-fill { opacity: 1; }
 .bar-count { font-size: 14px; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 479px) {
-  .bar-row { grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) 2rem; gap: 8px; }
+  .bar-row { grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 2rem; gap: 8px; }
   .bar-label { font-size: 12px; }
 }
 
@@ -1278,6 +1297,19 @@ input[type="password"]::-ms-clear { display: none; }
   cursor: pointer;
   appearance: none;
   font-family: inherit;
+  /* "CCSICT · College of Computing Studies, …" must not push the row wider
+     than a 320 px phone (errata #87): the chosen college is cut with "…". */
+  max-width: min(100%, 17rem);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Beside a card title ("Top keywords"): may shrink, never past the card. */
+.card-title-row .select-pill { flex: 0 1 auto; max-width: 60%; }
+@media (max-width: 479px) {
+  /* The Year filter stays in sight next to a chosen college. */
+  .filter-row-inner .select-pill { max-width: 11rem; }
 }
 .select-pill-active {
   border-color: var(--accent);
