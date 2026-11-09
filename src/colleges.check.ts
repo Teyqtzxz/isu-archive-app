@@ -2,7 +2,8 @@
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 // Programme lines are written as title pages print them; no study's text.
 import {
-  COLLEGES, COLLEGE_NAMES, OLD_DEPARTMENTS, PROGRAMS, collegeOf, collegeOfProgram, isCollege, ownCollegeFilter, shortCollege,
+  COLLEGES, COLLEGE_NAMES, OLD_DEPARTMENTS, PROGRAMS, collegeOf, collegeOfFullName, collegeOfProgram, isCollege, isGraduateSchool,
+  ownCollegeFilter, shortCollege,
 } from "./colleges.ts";
 import { countByDepartment } from "./stats.ts";
 
@@ -179,6 +180,35 @@ expect("", [
   "BS Agriculture and Forestry Data Mining Track",                    // a track only after one programme
   "BS Computer Science Track",                                        // no track name
 ]);
+
+console.log("\n— Full names as printed (errata #88) —");
+const CCSICT_NAME = full("CCSICT");
+check("collegeOf: “&” for “and”", collegeOf("College of Computing Studies, Information & Communication Technology"), CCSICT_NAME);
+check("collegeOf: no comma, capitals, extra spaces",
+  collegeOf("COLLEGE OF COMPUTING STUDIES   INFORMATION AND COMMUNICATION TECHNOLOGY"), CCSICT_NAME);
+check("collegeOf: “&” in CBAPA", collegeOf("College of Business, Accountancy & Public Administration"), full("CBAPA"));
+check("collegeOf: short forms and old values still work", [collegeOf("con"), collegeOf("Nursing")], [full("CON"), full("CON")]);
+check("collegeOf: a short form with a comma is not loosened (“C,ON” stays)", collegeOf("C,ON"), "C,ON");
+check("collegeOf: an old value with a comma is not loosened", collegeOf("Computer, Science"), "Computer, Science");
+const fullName = (code: string, lines: string[]) => {
+  for (const l of lines) check(`full name only: “${l}” → ${code || "(empty)"}`, collegeOfFullName(l), code ? full(code) : "");
+};
+fullName("CON", ["COLLEGE OF NURSING", "College of Nursing", "  college   of nursing "]);
+fullName("SVM", ["School of Veterinary Medicine"]);
+fullName("IOF", ["INSTITUTE OF FISHERIES"]);
+fullName("CCSICT", ["College of Computing Studies, Information and Communication Technology",
+  "COLLEGE OF COMPUTING STUDIES, INFORMATION & COMMUNICATION TECHNOLOGY"]);
+fullName("CGS", ["Central Graduate School"]); // one of the 12; pdfDetails never fills it (isGraduateSchool)
+fullName("", [
+  "CON", "COE", "CA", "CCSICT", "ccsict",                    // short forms: too short on a free line
+  "Nursing", "Computer Science", "Education", "Agriculture", // old field names: too common
+  "Faculty of Management and Development Studies", "Isabela State University", "Graduate School",
+  "Presented to the College of Nursing", "College of Nursing, Isabela State University", "Dean, College of Engineering",
+  "College of Computing Studies, Information and",           // half of a wrapped name
+  "",
+]);
+check("isGraduateSchool: the Central Graduate School only",
+  [isGraduateSchool(full("CGS")), isGraduateSchool(full("CED")), isGraduateSchool("Graduate School")], [true, false, false]);
 
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);

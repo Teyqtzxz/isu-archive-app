@@ -16,7 +16,7 @@
 //      programme, author, title, "Thesis Adviser:", adviser, faculty, date).
 //   3. The approval sheet (adviser above "Thesis Adviser"; the title in
 //      quotes after "entitled"; the names after "submitted by").
-import { collegeOfProgram } from "./colleges.ts";
+import { collegeOf, collegeOfFullName, collegeOfProgram, isCollege, isGraduateSchool } from "./colleges.ts";
 import { PARTICLES } from "./citation.ts";
 import {
   MAX_ADVISER, MAX_ADVISERS, MAX_AUTHORS, adviserNames, checkAdviser, checkAuthor, checkTitle, cleanSpaces, degreeOf, fixCapitals,
@@ -48,6 +48,8 @@ export const NOTE = {
   academicYearOnly: (ay: string) =>
     `The PDF gives only the academic year (${ay}), not the year the study was completed. Type the year completed.`,
   twoAdvisers: (names: string[]) => `The PDF lists ${names.length} advisers: ${names.join("; ")}. Type the one to record.`,
+  /** errata #88: the programme and a college line (or two college lines) name different colleges. */
+  differentColleges: (names: string[]) => `The PDF names ${names.length} colleges: ${names.join("; ")}. Choose the college.`,
   titleInCapitals: "The title is printed in capital letters and is kept as printed. Retype it in normal letters if you wish.",
   differs: (label: string, value: string) => `The PDF shows a different ${label}: “${value}”. Yours is kept.`,
 } as const;
@@ -169,23 +171,27 @@ function oneAdviserAsPrinted(printed: string): string {
 
 // ─── 1. The labelled block on the abstract page ──────────────────────────────
 
-const LABEL = /^(title|program(?:me)?|degree|course|authors?|researchers?|proponents?|academic\s+year|school\s+year|(?:co-?\s?)?advis[eo]r(?:s|\(s\))?)\s*:\s*(.*)$/i;
+const LABEL = /^(title|program(?:me)?|degree|course|authors?|researchers?|proponents?|academic\s+year|school\s+year|college|department|(?:co-?\s?)?advis[eo]r(?:s|\(s\))?)\s*:\s*(.*)$/i;
 /** People who are never the adviser (errata #86): a line starting with one
  *  ends the block, so "Panel Chair: Dr. X, PhD" or "Critic: …" under the
  *  advisers is never read as one. */
 const NOT_ADVISER = /^(?:thesis\s*\/?\s*|dissertation\s+)*(?:critics?|panel(?:ists?)?|chair(?:man|person)?|dean|members?|examiners?|readers?)\b/i;
-type Label = "title" | "program" | "authors" | "ay" | "adviser";
+type Label = "title" | "program" | "authors" | "ay" | "adviser" | "college";
 const labelOf = (word: string): Label => {
   const w = word.toLowerCase();
   if (w === "title") return "title";
   if (/^(program|programme|degree|course)$/.test(w)) return "program";
   if (/^(author|researcher|proponent)s?$/.test(w)) return "authors";
   if (/year/.test(w)) return "ay";
+  // Its own label (errata #88), so "College:" / "Department:" never reaches the Adviser box.
+  if (w === "college" || w === "department") return "college";
   return "adviser";
 };
 
 interface Block {
   title?: string; program?: string; authors?: string[]; ay?: string; adviser?: string;
+  /** The value after "College:" or "Department:" (errata #88), as printed. */
+  college?: string;
   /** More than MAX_ADVISERS names under "Adviser(s):" (errata #86): not
    *  filled, listed in the note — never a guess at which ones to keep. */
   advisers?: string[];
@@ -273,6 +279,7 @@ function readBlock(pages: string[]): Block | null {
     if (got.title?.length) block.title = cleanSpaces(got.title.join(" "));
     if (got.program?.length) block.program = cleanSpaces(got.program.join(" "));
     if (got.ay?.length) block.ay = cleanSpaces(got.ay.join(" "));
+    if (got.college?.length) block.college = cleanSpaces(got.college.join(" "));
     if (got.authors?.length && !unclearAuthors) {
       const list = authorList(got.authors.flatMap(l => l.split(/\s*;\s*|\s+and\s+|\s*&\s*/i)).filter(Boolean));
       if (list) block.authors = list;
@@ -408,6 +415,36 @@ function readApproval(pages: string[]): Approval | null {
   return null;
 }
 
+// ─── 4. College lines on the first pages (errata #88) ────────────────────────
+
+/** A college that may be filled in automatically: one of the 12, but never
+ *  the Central Graduate School (errata #87). "" otherwise. */
+const autoCollege = (value: string) => isCollege(value) && !isGraduateSchool(value) ? value : "";
+
+/**
+ * The colleges printed by their FULL name on a line of their own on pages
+ * 1–4 (title page, approval sheet), in order, each once. A name wrapped over
+ * two lines counts when the two lines joined are exactly one college. Short
+ * forms, field names and names inside a sentence are never read here (see
+ * collegeOfFullName); the Central Graduate School is left out.
+ */
+function readCollegeLines(pages: string[]): string[] {
+  const found: string[] = [];
+  for (const page of pages.slice(0, 4)) {
+    const ls = linesOf(page);
+    for (let i = 0; i < ls.length; i++) {
+      let c = collegeOfFullName(ls[i]);
+      if (!c && i + 1 < ls.length) {
+        c = collegeOfFullName(`${ls[i]} ${ls[i + 1]}`);
+        if (c) i++;
+      }
+      c = autoCollege(c);
+      if (c && !found.includes(c)) found.push(c);
+    }
+  }
+  return found;
+}
+
 // ─── All together ────────────────────────────────────────────────────────────
 
 /** The details the PDF clearly gives (see the top of this file). */
@@ -432,10 +469,23 @@ export function readDetails(pages: string[]): StudyDetails {
     if (a?.length) { out.authors = a; out.source.authors = src; break; }
   }
 
+  // College (errata #87, #88). 1. The programme line: the exact programme
+  // table, else the same line as a college (full name, short form or old
+  // field name: "Program: Computer Science"). 2. "College:" / "Department:"
+  // in the labelled block (full name or short form). 3. A college's full
+  // name on a line of its own on pages 1–4. All of them name one college →
+  // filled; different colleges → empty, with a note listing them (never a
+  // guess). The Central Graduate School is never filled and never counts.
   const program = block?.program ?? tp?.program;
-  // The exact programme table of colleges.ts (errata #87): one college or "".
-  const dept = program ? collegeOfProgram(program) : "";
-  if (dept) { out.department = dept; out.source.department = block?.program ? "block" : "title page"; }
+  const named: [string, DetailSource][] = [];
+  const fromProgram = program ? collegeOfProgram(program) || autoCollege(collegeOf(program)) : "";
+  if (fromProgram) named.push([fromProgram, block?.program ? "block" : "title page"]);
+  const labelled = block?.college ? autoCollege(collegeOf(block.college)) : "";
+  if (labelled) named.push([labelled, "block"]);
+  for (const c of readCollegeLines(pages)) named.push([c, "title page"]);
+  const colleges = [...new Set(named.map(([c]) => c))];
+  if (colleges.length === 1) { out.department = colleges[0]; out.source.department = named[0][1]; }
+  else if (colleges.length > 1) out.notes.department = NOTE.differentColleges(colleges);
 
   if (tp?.year) { out.year = tp.year; out.source.year = "title page"; }
   else if (block?.ay) out.notes.year = NOTE.academicYearOnly(block.ay);
