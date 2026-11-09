@@ -144,8 +144,10 @@ Research Department staff register, so a saved study is **posted** at once.
 src/
   types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in (Google;
-                        email + password, Create account, reset and
-                        verify links — docs/17), user profile,
+                        email + password, Create account, Forgot
+                        password = email sign-in link with the
+                        reset email as fallback (linkReset), reset
+                        and verify links — docs/17), user profile,
                         live theses (all read as POSTED), saveThesis
                         (adviser is typed freely: no option list),
                         updateThesis(id, fields) (keeps registeredAt/
@@ -238,6 +240,12 @@ src/
                         error code → words (authErrorMessage,
                         messageFor); examples in auth.check.ts
                         (node src/auth.check.ts); docs/17         ✅ EXISTS
+  emailLink.ts        ← pure: Forgot password's email sign-in
+                        link — which link opened the app, when to
+                        fall back to the reset email, the kept
+                        email, and the Save steps (Firebase passed
+                        in by data.ts); examples in
+                        emailLink.check.ts; docs/17 §9            ✅ EXISTS
   theme.ts            ← Light / Dark / System: parseChoice,
                         resolveTheme, toggledChoice (pure) +
                         read/save (localStorage, try/catch) and

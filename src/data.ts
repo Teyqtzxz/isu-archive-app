@@ -4,12 +4,18 @@ import {
   addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc,
 } from "firebase/firestore";
 import {
-  GoogleAuthProvider, applyActionCode, confirmPasswordReset, createUserWithEmailAndPassword,
-  linkWithCredential, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword,
-  signInWithPopup, signOut, updateProfile, verifyPasswordResetCode, type OAuthCredential, type User,
+  GoogleAuthProvider, applyActionCode, confirmPasswordReset, createUserWithEmailAndPassword, deleteUser,
+  getAdditionalUserInfo, inMemoryPersistence, indexedDBLocalPersistence, isSignInWithEmailLink,
+  linkWithCredential, sendEmailVerification, sendPasswordResetEmail, sendSignInLinkToEmail, setPersistence,
+  signInWithEmailAndPassword, signInWithEmailLink, signInWithPopup, signOut, updatePassword, updateProfile,
+  verifyPasswordResetCode, type OAuthCredential, type User,
 } from "firebase/auth";
 import { auth, db } from "./firebase";
 import { AUTH_MSG, authErrorCode, isIsuEmail } from "./auth";
+import { createAccountThenVerify, createSendFailureBox, type SendFailureBox } from "./verifySend";
+import {
+  createLinkReset, forgetEmail, readEmail, rememberEmail, sendResetLink, type KeyStore, type LinkReset,
+} from "./emailLink";
 import {
   DEPARTMENTS, registeredAtISO,
   type AccountRole, type NewThesis, type Thesis, type ThesisStatus,
@@ -127,26 +133,108 @@ export async function signInWithPassword(email: string, password: string): Promi
  * "Check your ISU inbox" by itself; the users/{uid} profile (STUDENT) is only
  * created after the email is verified, because the rules deny an unverified
  * token. The name is set first so that profile has it.
+ * The account exists once created: a failure after that never looks like a
+ * failed sign-up. A failed verification email is reported to
+ * verificationSendFailure, and "Check your ISU inbox" shows it with Resend.
  */
 export async function createPasswordAccount(email: string, password: string, fullName: string): Promise<void> {
   if (!isIsuEmail(email)) throw new Error(AUTH_MSG.notIsu);
-  const { user } = await createUserWithEmailAndPassword(auth, email, password);
-  // The account exists from here on: a failure below must not look like a
-  // failed sign-up. "Resend email" on the next screen covers a lost email.
-  await updateProfile(user, { displayName: fullName }).catch((err: unknown) => {
-    console.warn("[auth] could not save the name", authErrorCode(err));
-  });
-  await sendEmailVerification(user, continueHere()).catch((err: unknown) => {
-    console.warn("[auth] could not send the verification email", authErrorCode(err));
+  await createAccountThenVerify({
+    create: async () => (await createUserWithEmailAndPassword(auth, email, password)).user,
+    setName: user => updateProfile(user, { displayName: fullName }),
+    sendVerification: user => sendEmailVerification(user, continueHere()),
+    box: verificationSendFailure,
+    warn: (what, err) => console.warn(`[auth] ${what}`, authErrorCode(err)),
   });
 }
 
-/** Email a reset link. Also how a Google-only account adds its first password,
- *  and how the real owner takes back an account someone else created with
- *  their email. Firebase sends nothing (and says nothing) for an unknown email. */
+/** Memory only: the verification email after Create account could not be sent
+ *  (errata #84). VerifyEmailScreen subscribes to it. */
+export const verificationSendFailure: SendFailureBox = createSendFailureBox();
+
+/**
+ * Forgot password (errata #85). Also how a Google-only account adds its first
+ * password, and how the real owner takes back an account someone else created
+ * with their email. First an email SIGN-IN link, which always opens our
+ * "Create a new password" page (emailLink.ts says why); on any error but a
+ * typing or connection problem (the free plan's daily limit, Email link
+ * turned off) the old reset email, which opens Firebase's page. The screen
+ * after is the same either way. Only the error code is logged.
+ */
 export async function sendPasswordReset(email: string): Promise<void> {
   if (!isIsuEmail(email)) throw new Error(AUTH_MSG.notIsu);
-  await sendPasswordResetEmail(auth, email, continueHere());
+  await sendResetLink(email, {
+    sendLink: e => sendSignInLinkToEmail(auth, e, { ...continueHere(), handleCodeInApp: true }),
+    sendReset: e => sendPasswordResetEmail(auth, e, continueHere()),
+    remember: e => rememberEmail(localStore(), e, Date.now()),
+    forget: () => forgetEmail(localStore()),
+    warn: (what, code) => console.warn(`[auth] ${what}`, code),
+  });
+}
+
+/** localStorage, or null where the browser blocks it. Holds only the email
+ *  Forgot password was sent to (Firebase's advice), until the link is used. */
+function localStore(): KeyStore | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** The email Forgot password was sent to from this browser, if it is still fresh. */
+export function linkEmailOnThisBrowser(): string | null {
+  return readEmail(localStore(), Date.now());
+}
+
+/** Firebase's own test of a sign-in link (the parser in emailLink.ts only picks the screen). */
+export function isFirebaseSignInLink(href: string): boolean {
+  return isSignInWithEmailLink(auth, href);
+}
+
+/** Waits until Firebase knows whether a session is restored; that email, or null. */
+export async function signedInEmailWhenReady(): Promise<string | null> {
+  await auth.authStateReady();
+  return auth.currentUser ? auth.currentUser.email ?? "" : null;
+}
+
+/** Back to the normal saved session. Before ANY normal sign-in after a link
+ *  flow, or that sign-in would be forgotten on reload. */
+async function restoreSavedSession(): Promise<void> {
+  await setPersistence(auth, indexedDBLocalPersistence).catch((err: unknown) =>
+    console.warn("[auth] could not switch back to the saved session", authErrorCode(err)));
+}
+
+/** One flow per link, kept here so a remount (React's dev StrictMode) gets the
+ *  same one and the link is used once. */
+const linkResets = new Map<string, LinkReset>();
+
+/** The sign-in link's "Create a new password" steps (emailLink.ts createLinkReset). */
+export function linkReset(href: string): LinkReset {
+  let flow = linkResets.get(href);
+  if (!flow) {
+    flow = createLinkReset<User>({
+      signedInEmail: () => (auth.currentUser ? auth.currentUser.email ?? "" : null),
+      // Memory only: no other tab sees this session (an open e-library tab
+      // would route it and write users/{uid}), and closing the tab ends it.
+      useMemorySession: () => setPersistence(auth, inMemoryPersistence),
+      signIn: async email => {
+        const cred = await signInWithEmailLink(auth, email, href);
+        // Only an explicit "new" deletes; unknown never does.
+        return { user: cred.user, isNew: getAdditionalUserInfo(cred)?.isNewUser === true };
+      },
+      deleteUser: user => deleteUser(user),
+      setPassword: (user, password) => updatePassword(user, password),
+      endSession: async () => {
+        await signOut(auth).catch((err: unknown) => console.warn("[auth] sign-out failed", authErrorCode(err)));
+        await restoreSavedSession();
+      },
+      forgetEmail: () => forgetEmail(localStore()),
+      warn: (what, code) => console.warn(`[auth] ${what}`, code),
+    });
+    linkResets.set(href, flow);
+  }
+  return flow;
 }
 
 /** Checks a reset link before the form is shown; resolves to the account's email. */
@@ -166,6 +254,7 @@ export function applyVerifyLink(oobCode: string): Promise<void> {
 
 export async function resendVerification(): Promise<void> {
   if (auth.currentUser) await sendEmailVerification(auth.currentUser, continueHere());
+  verificationSendFailure.clear();
 }
 
 /**
@@ -184,6 +273,7 @@ export async function checkEmailVerified(): Promise<boolean> {
 }
 
 export async function signOutUser(): Promise<void> {
+  verificationSendFailure.clear();
   await signOut(auth);
 }
 

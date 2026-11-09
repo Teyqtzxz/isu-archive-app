@@ -136,6 +136,37 @@ account can be deleted in the console (Authentication → Users, and its
 - [ ] DevTools → Application → Local/Session Storage and Console: **no
       password** anywhere (only error codes such as `auth/invalid-credential`)
 
+### 1c. Forgot password by email sign-in link (`17` §9, errata #85)
+
+`17` §6 step 1 first: **Email link (passwordless sign-in) ON**. Each request
+uses 1 of the project's 5 sign-in emails a day. Never paste the link, its
+code or the address bar while it holds them.
+
+- [ ] **[auto]** `node src/emailLink.check.ts` ends with "All passed."
+- [ ] F12 console open → Forgot password → "Check your ISU inbox" with the
+      line *"The email may say "Sign in to …" or "Reset your password"…"*;
+      the email arrives (subject "Sign in to …")
+- [ ] The link opens **our** "Create a new password" (step ③) on the same
+      site; the address bar is clean; the console line is
+      `[email-link] mode=signIn params=…oobCode…` (names only)
+- [ ] Weak password → the checklist stops it; a good one → "Password changed"
+      → **Sign in** with it works; the role is unchanged and Authentication →
+      Users shows the **same UID** (no new row)
+- [ ] The same link again → *"This link can't be used…"* + Send a new link
+- [ ] Another browser (Edge, or a Chrome guest window) → "Confirm your ISU
+      email" asks for the ISU username first
+- [ ] Signed in on this browser, open a new link → "Sign out first" with
+      *"An account is signed in on this browser"*; Cancel → that dashboard;
+      Sign out and continue → the form
+- [ ] Cancel on the form → login screen; a reload stays signed out
+- [ ] A link for an ISU address with **no account** → the same *"This link
+      can't be used…"*; **no** new row in Authentication → Users
+- [ ] After the 5th link of the day: Forgot password still says "Check your
+      ISU inbox" and the **reset email** arrives (Firebase's plain page); the
+      console shows `[auth] sign-in link not sent, sending the reset email
+      instead auth/…` (note the code)
+- [ ] An old reset email's link (`mode=resetPassword`) still works as before
+
 ## 2. Roles and security
 
 Run all seven rows below in the Firestore **Rules Playground**. The
@@ -1015,7 +1046,7 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
 ```bash
 grep -rn "MOCK_ABSTRACT\|Math.random" src/            # expect: no output
 grep -rn "page.reload\|alert(" src/                   # expect: no output
-grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts src/levenshtein.ts src/trie.ts src/smartSearch.ts src/draft.ts   # expect: no output
+grep -rn "firebase/" src/search.ts src/summary.ts src/extractPdf.ts src/validation.ts src/similarity.ts src/keywordModel.ts src/levenshtein.ts src/trie.ts src/smartSearch.ts src/draft.ts src/emailLink.ts   # expect: no output
 node src/validation.check.ts                           # expect: All passed.
 node src/citation.check.ts                             # expect: All passed.
 node src/snippet.check.ts                              # expect: All passed.
@@ -1028,6 +1059,7 @@ node src/trie.check.ts                                 # expect: All passed.
 node src/smartSearch.check.ts                          # expect: All passed.
 node src/stats.check.ts                                # expect: All passed.
 node src/draft.check.ts                                # expect: All passed.
+node src/emailLink.check.ts                            # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
