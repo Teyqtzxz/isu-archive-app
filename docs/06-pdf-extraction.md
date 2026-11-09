@@ -716,7 +716,7 @@ give stays empty.**
 | Authors | the block ("Authors :", one name per line; a line that is not a name → the block's list is not used at all) | the title page ("By:" names up to the date; the UPOU author line) | the approval sheet ("submitted by … in partial") |
 | Department | the Program line (block, else the title page's degree line) when it names **exactly one** of the ten departments as whole words | — | — |
 | Year completed | the title page date ("December 2024", "22 September 2025", "15/08/2025", also after a "Critic" block or "Date of Submission") | — | never from "AY 2024-2025": then empty, with the note "The PDF gives only the academic year (AY 2024-2025) …" |
-| Adviser | the block ("Adviser :") | the title page ("Thesis / Special Problem / … Adviser:"); **two names** ("Thesis Advisers:") → empty, with a note listing both | the approval sheet (the line above "Thesis Adviser") |
+| Adviser | the block ("Adviser :", "Advisers :", "Adviser(s) :", "Co-Adviser :"; names on the same line, and on the lines just below the label when each is clearly an adviser — see below) | the title page ("Thesis / Special Problem / … Adviser:"); **two or three names** ("Thesis Advisers:") → all of them joined by "and" (errata #86); **four** lines, or a line that is not a name → empty, with a note listing them | the approval sheet (the line above "Thesis Adviser") |
 
 **Names.** As typed names: `fixCapitals` for a name in capitals ("DELA CRUZ" →
 "Dela Cruz", "L." stays "L.", "JR." → "Jr.", "III" stays); mixed case is kept
@@ -726,6 +726,30 @@ printed with its degree ("…, DIT"); "Dr." is never added or changed; a name pa
 capitals gets normal capitals ("Dr. JEAN A. SANTOS" → "Dr. Jean A. Santos"). Known weak
 spots, which the tag asks staff to check: "DL." → "Dl.", "MCDONALD" → "Mcdonald", "DE
 LOS SANTOS" → "De Los Santos"; "PENA" stays "Pena" (no ñ is invented).
+
+**Two or three advisers (errata #86).** The Adviser box holds one string: the names
+joined by " and " (`checkAdviser` accepts "and", ";" or "&" between 1–3 names, checks
+each with the one-name rules, keeps the same person once, and saves " and "). Titles
+stay as printed ("Asst Prof." without the dot stays so). A degree glued to the name
+before the comma degrees ("LUNA RN, MAN") is moved after it → "Luna, RN, MAN",
+not "Luna Rn, MAN" — only when degrees already follow the comma (so a last word
+such as "MA" on a line without degrees is never taken for one), and only while at
+least 2 name words stay after the title words, so a surname that is also degree
+letters stays: "DR. JOSE MA, PHD" → "Dr. Jose Ma, PhD", "Engr. Mark Pe, MS" unchanged.
+A value with a joiner at its start or end ("Prof. Lea Andaya and", "and Dr. Ana
+Reyes", "Dr. Ana Reyes;") or two in a row gets `MSG.adviserJoiner`; the joiner is
+never saved.
+In the labelled block, a line **below** "Adviser(s):" counts only when it is clearly
+an adviser: it starts with a title (Dr., Prof., Asst. Prof., Engr. …) or has
+", <degree>"; every word starts with a capital (or is a particle, "and", or a short
+"dP."); it passes the Adviser box. So the abstract's first sentence ("Dr. Jose Reyes
+Memorial Hospital nurses were …") is never taken. **Four or more** names in the block
+(label line and lines below together) → Adviser empty with the note listing them,
+as on the title page — never 3 of them kept silently, and the title page or approval
+sheet is not used instead. A line
+starting with Critic, Panel, Chair(person), Dean, Member, Examiner or Reader ends the
+advisers — "Panel Chair Dr. Ana B. Sy, PhD" is never an adviser. On the UP title page,
+"Thesis/Dissertation Critic" already ends the adviser lines.
 
 **Titles** are never re-cased by the app (it would break PhilSCA, R&D, LoG, EHR,
 MSMEs): a title printed only in capitals stays so, with the grey note "The title is
@@ -780,8 +804,10 @@ layouts). Script: `readStudy()` vs `main`'s reader on each file.
   `main`.
 - **UPOU:** title, author and year on all 30 (ANTOLIN 2023 prints the university's two
   lines as one; read as well). Department only where the programme is one of the ten:
-  Nursing (7), Education (1); the other 22 are left on "Select dept.". Adviser on 28;
-  empty on the two Geneston-Dino copies (two advisers, note). Titles: 9 in normal
+  Nursing (7), Education (1); the other 22 are left on "Select dept.". Adviser on all
+  30: since errata #86 the two Geneston-Dino copies give both advisers joined by "and"
+  ("Asst Prof. …, RN, MAN and Asst. Prof. …, RN, MAN"; before: empty
+  with the note); the other 28 and the ISU thesis are unchanged (re-run on all 31). Titles: 9 in normal
   letters from the running header (letters identical, checked one by one: ALFONSO,
   CAMACHO_HG, DANDO — "XenConservation" is how its own header and abstract spell it —
   FULLEROS, GESULGA, both Geneston-Dino, España, Caraan), 4 printed in normal letters,

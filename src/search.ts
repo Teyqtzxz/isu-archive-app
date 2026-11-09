@@ -5,6 +5,7 @@
 // field's term count is weighted and length-normalised on its own, the fields
 // are added up, and BM25's saturation is applied once to the sum (docs/05 §3).
 import type { Thesis } from "./types";
+import { adviserNames } from "./validation.ts";
 
 /** Lowercased words. Letters are Unicode letters (\p{L}, plus combining marks
  *  \p{M}), so "niño" and "Peñablanca" stay whole; digits and "_" are kept as
@@ -86,7 +87,9 @@ function fieldTokensOf(t: SearchDoc): Record<Field, string[]> {
     title: tokenize(t.title),
     keywords: tokenize(t.keywords.join(" ")),
     authors: t.authors.flatMap(nameTokens),
-    adviser: nameTokens(t.adviser),
+    // Two or three advisers are saved joined by " and " (errata #86): each
+    // name's words are searchable, the joining "and" is not.
+    adviser: adviserNames(t.adviser).flatMap(nameTokens),
     abstract: tokenize(t.abstract),
   };
 }

@@ -2,7 +2,7 @@
 // (Node 22.18+ runs TypeScript directly; nothing to install.)
 // Every line prints PASS or FAIL; the run ends with a non-zero exit on any FAIL.
 import {
-  ABSTRACT_MAX, DEGREES, MSG, addAuthor, addKeywords, checkAbstract, checkAdviser, checkAuthor, checkTitle,
+  ABSTRACT_MAX, DEGREES, MSG, addAuthor, addKeywords, adviserLabel, adviserNames, checkAbstract, checkAdviser, checkAuthor, checkTitle,
   checkYear, cleanAbstract, cleanAuthorList, cleanKeywordList, cleanQuery, countWords, fixCapitals, pdfFileProblem, validateDriveLink, yearInput,
   type Added, type Checked,
 } from "./validation.ts";
@@ -103,6 +103,45 @@ check("ALL CAPS + degree", checkAdviser("ASST. PROF. MARIA SANTOS, PHD"), saved(
 check("mixed case kept", checkAdviser("Dr. Maria dela Santos"), saved("Dr. Maria dela Santos"));
 check("over 100 characters", checkAdviser("Dr. " + "A".repeat(50) + " " + "B".repeat(50)).error, MSG.nameLong(100));
 check("spaces trimmed", checkAdviser("  Dr.  Maria   Santos "), saved("Dr. Maria Santos"));
+
+console.log("\n— Two or three advisers (errata #86) —");
+const PAIR = "Asst. Prof. Lea V. Luna, RN, MAN and Asst. Prof. Noel G. Bautista, RN, MAN";
+check("two advisers joined by “and”", checkAdviser(PAIR), saved(PAIR));
+check("the saved value checks again to itself", checkAdviser(checkAdviser(PAIR).value), saved(PAIR));
+check("“;” between names → saved with “and”", checkAdviser("Dr. Maria Santos; Engr. Jose Cruz"), saved("Dr. Maria Santos and Engr. Jose Cruz"));
+check("“&” between names → saved with “and”", checkAdviser("Dr. Maria Santos & Engr. Jose Cruz"), saved("Dr. Maria Santos and Engr. Jose Cruz"));
+check("“AND” in capitals, names cleaned each", checkAdviser("DR. MARIA SANTOS AND JOSE CRUZ, PH.D."), saved("Dr. Maria Santos and Jose Cruz, PhD"));
+check("“, and” after a degree", checkAdviser("Maria Santos, PhD, and Jose Cruz"), saved("Maria Santos, PhD and Jose Cruz"));
+check("three advisers", checkAdviser("Dr. Maria Santos and Engr. Jose Cruz and Ana B. Sy, MIT"),
+  saved("Dr. Maria Santos and Engr. Jose Cruz and Ana B. Sy, MIT"));
+check("a fourth adviser → message", checkAdviser("Dr. Maria Santos and Engr. Jose Cruz and Ana B. Sy and Luz T. Ramos"),
+  err("Dr. Maria Santos and Engr. Jose Cruz and Ana B. Sy and Luz T. Ramos", MSG.advisersMax));
+check("the same adviser twice → once", checkAdviser("Dr. Maria Santos and maria santos, PhD"), saved("Dr. Maria Santos"));
+check("father and son (Jr.) are two people", checkAdviser("Jose Rizal and Jose Rizal, Jr."), saved("Jose Rizal and Jose Rizal, Jr."));
+check("“and” inside a name never splits (Anderson, Sandoval, Alexandra)", checkAdviser("Dr. Alexandra Anderson Sandoval"),
+  saved("Dr. Alexandra Anderson Sandoval"));
+check("“Juan and Maria Santos” (a couple typed as one) → each adviser needs a first name and a surname",
+  checkAdviser("Juan and Maria Santos"), err("Juan and Maria Santos", MSG.adviserEachFull("Juan")));
+check("… the message says so", MSG.adviserEachFull("Juan").startsWith("Each adviser needs a first name and a surname"), true);
+check("a bad degree in the second name → the degree message", checkAdviser("Maria Santos and Jose Cruz, DVM"),
+  err("Maria Santos and Jose Cruz, DVM", MSG.adviserDegree));
+check("each name may be 100 characters (a long pair passes)", checkAdviser(`${PAIR} and Dr. Leonida A. Bugayong-Villanueva, PhD`).error, null);
+check("one name over 100 characters, in a pair → too long", checkAdviser("Dr. " + "A".repeat(50) + " " + "B".repeat(50) + " and Jose Cruz").error, MSG.nameLong(100));
+check("“;” alone → the joiner message", checkAdviser(";"), err(";", MSG.adviserJoiner));
+check("ending with “and” → the joiner message, the “and” is not saved", checkAdviser("Prof. Lea Andaya and"), err("Prof. Lea Andaya and", MSG.adviserJoiner));
+check("starting with “and” → the joiner message", checkAdviser("and Dr. Ana Reyes"), err("and Dr. Ana Reyes", MSG.adviserJoiner));
+check("ending with “;” → the joiner message", checkAdviser("Dr. Ana Reyes;"), err("Dr. Ana Reyes;", MSG.adviserJoiner));
+check("ending with “&” or “, and” → the joiner message", [checkAdviser("Dr. Ana Reyes &").error, checkAdviser("Dr. Ana Reyes, PhD, and").error],
+  [MSG.adviserJoiner, MSG.adviserJoiner]);
+check("two joiners in a row → the joiner message", [checkAdviser("Dr. Ana Reyes and and Ben Lim").error, checkAdviser("Dr. Ana Reyes ; ; Ben Lim").error],
+  [MSG.adviserJoiner, MSG.adviserJoiner]);
+check("names that contain “and” are not joiners (Andaya, Ferdinand, Rand)", checkAdviser("Dr. Ferdinand Andaya and Rand Lim"),
+  saved("Dr. Ferdinand Andaya and Rand Lim"));
+check("the hint says names may be joined by “and”", MSG.adviserFull.includes("“and”"), true);
+check("adviserNames: one name", adviserNames("Dr. Maria Santos, PhD"), ["Dr. Maria Santos, PhD"]);
+check("adviserNames: two", adviserNames(PAIR), ["Asst. Prof. Lea V. Luna, RN, MAN", "Asst. Prof. Noel G. Bautista, RN, MAN"]);
+check("adviserNames: “and” inside a word", adviserNames("Dr. Sandra Anderson"), ["Dr. Sandra Anderson"]);
+check("adviserLabel", [adviserLabel("Dr. Maria Santos"), adviserLabel(PAIR), adviserLabel("")], ["Adviser", "Advisers", "Adviser"]);
 
 console.log("\n— Title —");
 check("required", checkTitle("   "), err("", MSG.titleRequired));

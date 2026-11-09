@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Role, Thesis } from "../types";
 import { DEPARTMENTS, registeredAtISO } from "../types";
 import { tokenize, buildIndex, computeDocFreq, bm25Score, relevancePercent, isNameTitle } from "../search";
-import { SEARCH_MAX, cleanQuery } from "../validation";
+import { SEARCH_MAX, adviserLabel, cleanQuery } from "../validation";
 import { splitSentences, type RankedThesis } from "../summary";
 import { apaReference } from "../citation";
 import { abstractSnippet } from "../snippet";
@@ -11,6 +11,10 @@ import { ISUSeal, DeptBadge, Icon, SharedTerms, formatPosted, authorsPreviewPart
 import { ThemeToggle } from "./ThemeToggle";
 import { SmartSearchInput } from "./SmartSearchInput";
 import { searchPlan, type Correction, type SmartSearchIndex } from "../smartSearch";
+
+/** Words never marked in the adviser line: titles and degrees, and the "and"
+ *  joining two or three advisers (errata #86) — search does not index them. */
+const isAdviserSkip = (word: string) => isNameTitle(word) || word.toLowerCase() === "and";
 
 export function SearchScreen({
   theses, smartIndex, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
@@ -393,7 +397,7 @@ export function SearchScreen({
                   {/* No status badge: every study is POSTED. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, paddingLeft: 28 }}>
                     <DeptBadge dept={t.department} small />
-                    <span className="result-meta">{t.year}{t.adviser && <> · Adviser: {highlightKw(t.adviser, searched, isNameTitle)}</>}</span>
+                    <span className="result-meta">{t.year}{t.adviser && <> · {adviserLabel(t.adviser)}: {highlightKw(t.adviser, searched, isAdviserSkip)}</>}</span>
                   </div>
 
                   {snippet && (
@@ -456,7 +460,7 @@ export function SearchScreen({
                       <dd>{t.authors.length > 0
                         ? t.authors.join("; ")
                         : <span className="study-details-empty">Not recorded</span>}</dd>
-                      <dt>Adviser</dt>
+                      <dt>{adviserLabel(t.adviser)}</dt>
                       <dd>{t.adviser}</dd>
                       <dt>Department</dt>
                       <dd>{t.department}</dd>

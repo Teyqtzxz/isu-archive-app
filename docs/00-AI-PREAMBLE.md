@@ -197,8 +197,11 @@ src/
                         the approval sheet; Year completed only
                         from a date, never "AY 2024-2025";
                         department only when the programme names
-                        exactly one of DEPARTMENTS; two advisers →
-                        empty + note), adviserAsPrinted,
+                        exactly one of DEPARTMENTS; 2–3 advisers →
+                        joined by "and", 4+ (title page or
+                        block) → empty + note;
+                        Critic/Panel/Chair/Dean never an adviser,
+                        errata #86), adviserAsPrinted,
                         abstractWithoutTitle/Block, readStudy,
                         fillFromPdf (fills only empty or still
                         "from PDF" fields); made-up examples in
@@ -620,7 +623,15 @@ Acosta, J. R., & Mindanao, L. (2026). *Title as typed* [Unpublished research stu
   PhD`; also DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT, CPA and "Ph. D.",
   errata #82); Jr., Sr., II, III after a comma are part of the adviser's name
   (`Roberto Figueroa, Jr.`), not degrees, and stay searchable; the `Surname,
-  Given` form is for authors only. A name typed all in
+  Given` form is for authors only. Two or three advisers are one string
+  joined by " and " (errata #86): `checkAdviser` splits on the whole word
+  "and", ";" or "&" (`adviserNames`; never inside a word such as Anderson),
+  checks each name with the one-name rules, keeps the same person once, and
+  refuses a 4th (`MSG.advisersMax`); `Juan and Maria Santos` →
+  `MSG.adviserEachFull` (never split silently); a joiner at the start or
+  end, or two in a row → `MSG.adviserJoiner`. `MAX_ADVISER` (100) is per
+  name. Search, Top advisers and the "Adviser"/"Advisers" labels use
+  `adviserNames` / `adviserLabel`. A name typed all in
   lowercase or ALL CAPS is saved with capitals; mixed case is kept as typed.
 - **Year completed** (the label on Register and Edit since errata #82; the
   field is still `year`, and search, citations and charts still call it the

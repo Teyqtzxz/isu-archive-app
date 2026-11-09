@@ -85,6 +85,53 @@ check("the abstract starts with its first sentence", full.abstract.startsWith("T
 check("keywords as before", full.keywords, ["sensor network", "irrigation scheduling", "rice paddies"]);
 check("no problem", full.problem, null);
 
+console.log("\n— ISU layout: two or three advisers in the block (made up, errata #86) —");
+const blockAdviser = (lines: string[], body: string[] = BODY) => readDetails(isuPages(page(
+  "v", "ABSTRACT", ...block({ adviser: lines }), ...body, "Keywords :   sensor network")));
+const PAIR = "Rosa B. Alcantara, DIT and Engr. Pedro M. Reyes";
+check("same line, joined by “and”", blockAdviser(["Advisers   : Rosa B. Alcantara, DIT and Engr. Pedro M. Reyes"]).adviser, PAIR);
+check("same line, joined by “;” → saved with “and”", blockAdviser(["Adviser(s) : Rosa B. Alcantara, DIT; Engr. Pedro M. Reyes"]).adviser, PAIR);
+check("“Adviser(s):” with the names on the lines below", blockAdviser(["Adviser(s) :", "Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes"]).adviser, PAIR);
+check("one name on the label line, one below", blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes"]).adviser, PAIR);
+check("a “Co-Adviser:” label", blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Co-Adviser : Engr. Pedro M. Reyes"]).adviser, PAIR);
+check("names below in capitals, three of them",
+  blockAdviser(["ADVISERS:", "ROSA B. ALCANTARA, DIT", "ENGR. PEDRO M. REYES", "DR. ANA B. SY"]).adviser,
+  "Rosa B. Alcantara, DIT and Engr. Pedro M. Reyes and Dr. Ana B. Sy");
+const fourBelow = blockAdviser(["Adviser(s) :", "Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes", "Dr. Ana B. Sy", "Dr. Luz T. Ramos"]);
+check("four advisers in the block → Adviser empty, the note lists all four (never 3 of them silently)",
+  [fourBelow.adviser, fourBelow.source.adviser, fourBelow.notes.adviser],
+  ["", undefined, NOTE.twoAdvisers(["Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes", "Dr. Ana B. Sy", "Dr. Luz T. Ramos"])]);
+const fourSameLine = blockAdviser(["Advisers : Rosa B. Alcantara, DIT; Engr. Pedro M. Reyes", "Dr. Ana B. Sy", "Dr. Luz T. Ramos"]);
+check("… also when some share the label line (2 there + 2 below)", [fourSameLine.adviser, fourSameLine.notes.adviser?.startsWith("The PDF lists 4 advisers")], ["", true]);
+check("… and the abstract still leaves out all four lines", (await readStudy(5, async n => isuPages(page("v", "ABSTRACT",
+  ...block({ adviser: ["Adviser(s) :", "Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes", "Dr. Ana B. Sy", "Dr. Luz T. Ramos"] }), ...BODY,
+  "Keywords :   sensor network"))[n - 1])).abstract.startsWith("This study built"), true);
+check("a Critic below the adviser is never an adviser",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Critic : Dr. Ana B. Sy, PhD"]).adviser, "Rosa B. Alcantara, DIT");
+check("a Panel Chair with a degree is never an adviser",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Panel Chair : Dr. Ana B. Sy, PhD"]).adviser, "Rosa B. Alcantara, DIT");
+check("names under “Panel Members:” after the advisers are never advisers",
+  blockAdviser(["Adviser(s) :", "Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes", "Panel Members :", "Dr. Ana B. Sy, PhD"]).adviser, PAIR);
+check("“Panel Chair” without a colon, with a title and a degree, is never an adviser",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Panel Chair Dr. Ana B. Sy, PhD"]).adviser, "Rosa B. Alcantara, DIT");
+check("“THESIS CRITIC” in capitals, without a colon, is never an adviser",
+  blockAdviser(["Adviser(s) :", "ROSA B. ALCANTARA, DIT", "THESIS CRITIC DR. ANA B. SY"]).adviser, "Rosa B. Alcantara, DIT");
+check("a Dean line below the adviser is never an adviser",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT", "Dean Ana B. Sy, PhD"]).adviser, "Rosa B. Alcantara, DIT");
+const ABSTRACT_DR = ["Dr. Jose Reyes Memorial Hospital nurses were surveyed on how they schedule", ...BODY];
+check("the abstract's first sentence starting with “Dr.” is never an adviser",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT"], ABSTRACT_DR).adviser, "Rosa B. Alcantara, DIT");
+check("… nor a first line with “, PhD” in a sentence",
+  blockAdviser(["Adviser : Rosa B. Alcantara, DIT"], ["Dr. Ana Sy, PhD of the college wrote that the paddies", ...BODY]).adviser, "Rosa B. Alcantara, DIT");
+const belowStudy = await readStudy(5, async n => isuPages(page("v", "ABSTRACT",
+  ...block({ adviser: ["Adviser(s) :", "Rosa B. Alcantara, DIT", "Engr. Pedro M. Reyes"] }), ...BODY, "Keywords :   sensor network"))[n - 1]);
+check("names below the label: the abstract still leaves out the whole block",
+  [/Alcantara|Reyes/.test(belowStudy.abstract), belowStudy.abstract.startsWith("This study built")], [false, true]);
+const drStudy = await readStudy(5, async n => isuPages(page("v", "ABSTRACT",
+  ...block(), ...ABSTRACT_DR, "Keywords :   sensor network"))[n - 1]);
+check("… and an abstract starting with “Dr.” keeps its first line", drStudy.abstract.startsWith("Dr. Jose Reyes Memorial Hospital"), true);
+check("one adviser in the block: exactly as before", blockAdviser(["Adviser   : Rosa B. Alcantara, DIT"]).adviser, "Rosa B. Alcantara, DIT");
+
 console.log("\n— ISU layout: backups —");
 const noBlock = readDetails(isuPages(page("v", "ABSTRACT", ...BODY, "Keywords: sensor network")));
 check("no block → title page (title in capitals, kept as printed) and approval sheet", fields(noBlock), {
@@ -128,6 +175,13 @@ check("PH.D. → PhD (the Adviser box's own cleaning)", adviserAsPrinted("PRIMO 
 check("a value that fails the adviser rules is kept as printed (the form shows the message)",
   adviserAsPrinted("Rosa Alcantara, DVM"), "Rosa Alcantara, DVM");
 check("mixed case kept", adviserAsPrinted("Melinda dP. Reyes, Ph. D."), "Melinda dP. Reyes, PhD");
+check("a degree glued before the comma degrees → after the name (errata #86)", adviserAsPrinted("ASST PROF. LEA V. LUNA RN, MAN"), "Asst Prof. Lea V. Luna, RN, MAN");
+check("a last word like a degree with no degrees after a comma stays (could be a surname)", adviserAsPrinted("JOSE P. SANTOS MA"), "Jose P. Santos Ma");
+check("a surname that is also degree letters is not moved: “DR. JOSE MA, PHD”", adviserAsPrinted("DR. JOSE MA, PHD"), "Dr. Jose Ma, PhD");
+check("… nor “Engr. Mark Pe, MS”", adviserAsPrinted("Engr. Mark Pe, MS"), "Engr. Mark Pe, MS");
+check("… a glued degree still moves when 2 name words stay (“Asst Prof. Lea V. Luna RN, MAN”)",
+  adviserAsPrinted("ASST PROF. LEA VIDA LUNA RN, MAN"), "Asst Prof. Lea Vida Luna, RN, MAN");
+check("two advisers as printed → each cleaned, joined by “and”", adviserAsPrinted("DR. JEAN A. SANTOS & PRIMO G. LUNA, PH.D."), "Dr. Jean A. Santos and Primo G. Luna, PhD");
 check("a failing value in capitals: normal capitals, the rest as printed", adviserAsPrinted("LIZA M. REYES, DVM"), "Liza M. Reyes, DVM");
 
 console.log("\n— Departments —");
@@ -184,9 +238,26 @@ check("a header with “…” before the page number (complete title) is used, 
   readDetails([upPage({ head: ["Care Practices of Nurses in Rural Health", "Units of Isabela   …   i"] })]).title,
   "Care Practices of Nurses in Rural Health Units of Isabela");
 
+// Two or three advisers on the title page (errata #86): all of them, joined by "and".
 const two = readDetails([upPage({ label: "Thesis Advisers:", advisers: ["ASST PROF. LIZA M. REYES", "ASST. PROF. RAMON T. CRUZ"] })]);
-check("two advisers → Adviser empty", two.adviser, "");
-check("… and the note lists both", two.notes.adviser, NOTE.twoAdvisers(["Asst Prof. Liza M. Reyes", "Asst. Prof. Ramon T. Cruz"]));
+check("two advisers → both, joined by “and”, titles as printed", two.adviser, "Asst Prof. Liza M. Reyes and Asst. Prof. Ramon T. Cruz");
+check("… from the title page, no note", [two.source.adviser, two.notes.adviser], ["title page", undefined]);
+check("… the value passes the Adviser box unchanged", checkAdviser(two.adviser), { value: two.adviser, error: null });
+const glued = readDetails([upPage({ label: "Thesis Advisers:", advisers: ["ASST PROF. LEA V. LUNA RN, MAN", "ASST. PROF. NOEL G. BAUTISTA RN, MAN"] })]);
+check("a degree glued to the name (“LUNA RN, MAN”) → “Luna, RN, MAN”, not “Luna Rn, MAN”", glued.adviser,
+  "Asst Prof. Lea V. Luna, RN, MAN and Asst. Prof. Noel G. Bautista, RN, MAN");
+const three = readDetails([upPage({ label: "Thesis Advisers:", advisers: ["DR. LIZA M. REYES", "DR. RAMON T. CRUZ", "PRIMO G. LUNA, PH.D."] })]);
+check("three advisers → all three", three.adviser, "Dr. Liza M. Reyes and Dr. Ramon T. Cruz and Primo G. Luna, PhD");
+const four = readDetails([upPage({ label: "Thesis Advisers:", advisers: ["DR. LIZA M. REYES", "DR. RAMON T. CRUZ", "DR. PRIMO G. LUNA", "DR. ANA B. SY"] })]);
+check("four lines → empty, with the note (probably not all names)", [four.adviser, four.notes.adviser],
+  ["", NOTE.twoAdvisers(["Dr. Liza M. Reyes", "Dr. Ramon T. Cruz", "Dr. Primo G. Luna", "Dr. Ana B. Sy"])]);
+const wrapped = readDetails([upPage({ label: "Thesis Advisers:", advisers: ["DR. LIZA M. REYES,", "PH.D."] })]);
+check("a line that is not a name (a degree on its own line) → empty, with the note", [wrapped.adviser, wrapped.notes.adviser !== undefined], ["", true]);
+check("a Critic after the adviser is never an adviser (one adviser kept)",
+  readDetails([upPage({ after: ["Thesis/Dissertation Critic:", "Dr. Ramon T. Cruz", "Faculty of Management and Development Studies"] })]).adviser,
+  "Asst. Prof. Liza M. Reyes, MAN, RN");
+check("the same adviser printed twice → once",
+  readDetails([upPage({ label: "Thesis Advisers:", advisers: ["DR. LIZA M. REYES", "Liza M. Reyes, PhD"] })]).adviser, "Dr. Liza M. Reyes");
 check("a Critic block and “Date of Submission” before the date",
   readDetails([upPage({ after: ["Faculty of Management and Development Studies", "Thesis/Dissertation Critic:", "Dr. Ramon T. Cruz",
     "Faculty of Management and Development Studies", "Date of Submission"], date: "02 June 2020" })]).year, "2020");

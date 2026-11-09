@@ -3,6 +3,7 @@
 // always in step with what Search finds.
 import { DEPARTMENTS, registeredAtISO, type Thesis } from "./types.ts";
 import { isNameTitle, tokenize } from "./search.ts";
+import { adviserNames } from "./validation.ts";
 
 export interface DepartmentCount {
   department: string;
@@ -201,18 +202,23 @@ function neatness(spelling: string): number {
  * (titles left out, so "Dr. Zamora" sorts under Z). The same person typed
  * different ways counts once (adviserKey); people who only share a surname
  * stay apart. An empty adviser, or one that is only a title, is skipped.
+ * A study with two or three advisers ("A and B", errata #86) counts once for
+ * each of them (adviserNames).
  */
 export function topAdvisers(theses: Pick<Thesis, "adviser">[], limit = 8): AdviserCount[] {
   const people = new Map<string, { count: number; spellings: Map<string, number> }>();
   for (const t of theses) {
     if (typeof t.adviser !== "string") continue;
-    const spelling = t.adviser.trim().replace(/\s+/g, " ");
-    const key = adviserKey(spelling);
-    if (!key) continue;
-    let p = people.get(key);
-    if (!p) people.set(key, p = { count: 0, spellings: new Map() });
-    p.count++;
-    p.spellings.set(spelling, (p.spellings.get(spelling) ?? 0) + 1);
+    const counted = new Set<string>();
+    for (const spelling of adviserNames(t.adviser)) {
+      const key = adviserKey(spelling);
+      if (!key || counted.has(key)) continue;
+      counted.add(key);
+      let p = people.get(key);
+      if (!p) people.set(key, p = { count: 0, spellings: new Map() });
+      p.count++;
+      p.spellings.set(spelling, (p.spellings.get(spelling) ?? 0) + 1);
+    }
   }
   return [...people.entries()]
     .map(([key, p]) => {

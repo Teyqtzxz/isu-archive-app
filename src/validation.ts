@@ -11,7 +11,10 @@ import { PARTICLES, SUFFIX } from "./citation.ts";
 export const MAX_AUTHORS = 10;
 export const MAX_KEYWORDS = 10;
 export const MAX_NAME = 80;
+/** For EACH adviser name: a value may hold up to MAX_ADVISERS names. */
 export const MAX_ADVISER = 100;
+/** Advisers one study can record, joined by " and " (errata #86). */
+export const MAX_ADVISERS = 3;
 export const TITLE_MIN = 10;
 export const TITLE_MAX = 300;
 /** The title's character counter appears from here. */
@@ -45,7 +48,14 @@ export const MSG = {
   yearFormat: "Please type a 4-digit year, e.g. 2019.",
   yearFuture: (thisYear: number) => `The year can't be later than ${thisYear}.`,
   adviserRequired: "Please fill in the adviser.",
-  adviserFull: "Type the adviser's full name, e.g. Dr. Maria Santos",
+  adviserFull: "Type the adviser's full name, e.g. Dr. Maria Santos. For two or three advisers, join the names with “and”.",
+  /** One of two or three names is not a first name and a surname (errata #86):
+   *  "Juan and Maria Santos" is not split into two people silently. */
+  adviserEachFull: (part: string) =>
+    `Each adviser needs a first name and a surname: “${part}” is not a full name. Join two or three advisers with “and”, e.g. Dr. Maria Santos and Dr. Jose Cruz.`,
+  advisersMax: `Up to ${MAX_ADVISERS} advisers can be recorded, joined by “and”.`,
+  /** "Prof. Lea Andaya and", "and Dr. Ana Reyes", "Dr. Ana Reyes;" (errata #86). */
+  adviserJoiner: "Type an adviser's name before and after each “and”, “;” or “&”, e.g. Dr. Maria Santos and Dr. Jose Cruz, or remove it.",
   adviserDegree: "After a comma, only Jr., Sr., II, III or a degree can follow: PhD, EdD, MSc, MS, MA, MIT, MBA, RN, PE, CE, DIT, MAN, MAEd, MAT, MSIT, MSCS, MPA, DPA, LPT, CPA.",
   abstractRequired: "Please fill in: Abstract. Copy it from the PDF. Search uses it to find this study.",
   abstractShort: (words: number) =>
@@ -176,7 +186,7 @@ export const DEGREES = [
 ] as const;
 
 /** "Ph.D." / "Ph. D." / "phd" → "PhD"; null when not one of DEGREES. */
-function degreeOf(typed: string): string | null {
+export function degreeOf(typed: string): string | null {
   const key = typed.replace(/[.\s]/g, "").toLowerCase();
   return DEGREES.find(d => d.toLowerCase() === key) ?? null;
 }
@@ -190,15 +200,24 @@ function suffixOf(typed: string): string | null {
 }
 
 /**
- * The adviser: required, a first name and a surname, optionally after a title
- * (Dr., Engr., Prof., Asst. Prof., Assoc. Prof., Mr., Mrs., Ms., Atty.) and
- * before degrees ("Maria Santos, PhD"). A suffix may come first after a comma
- * ("Roberto Figueroa, Jr., PhD", errata #82). The "Surname, Given" comma form
- * is for authors only: here a comma can only be followed by a suffix or a degree.
+ * The names in an adviser value (errata #86): split on the whole word "and"
+ * (any case, spaces around it), on ";" and on "&"; a comma just before the
+ * joiner goes ("Maria Santos, PhD, and Jose Cruz"). "and" inside a word
+ * (Anderson, Sandoval, Alexandra) never splits. One name → [that name].
  */
-export function checkAdviser(typed: string): Checked {
-  const name = cleanSpaces(typed);
-  if (!name) return fail("", MSG.adviserRequired);
+export function adviserNames(value: string): string[] {
+  return cleanSpaces(value).split(/\s*,?\s*[;&]\s*|,?\s+and\s+/i).map(p => p.trim()).filter(Boolean);
+}
+
+/** A joiner at the start or end: "and Dr. Ana Reyes", "Prof. Lea Andaya and",
+ *  "Dr. Ana Reyes;". Whole word "and" only: "Andaya", "Ferdinand" are names. */
+const DANGLING_JOINER = /^(?:and\b|[;&])|(?:\band|[;&])$/i;
+
+/** "Adviser" or "Advisers", for a label in front of a saved value. */
+export const adviserLabel = (value: string) => adviserNames(value).length > 1 ? "Advisers" : "Adviser";
+
+/** One adviser: the rules below, for each name of the value. */
+function checkOneAdviser(name: string): Checked {
   if (name.length > MAX_ADVISER) return fail(name, MSG.nameLong(MAX_ADVISER));
   if (!NAME_CHARS.test(name) || !hasLetter(name)) return fail(name, MSG.nameChars);
   const [main, ...after] = name.split(",").map(p => p.trim());
@@ -208,6 +227,43 @@ export function checkAdviser(typed: string): Checked {
   if (degrees.some(d => !d)) return fail(name, MSG.adviserDegree);
   if (nameWordCount(main.replace(ADVISER_TITLE, "")) < 2) return fail(name, MSG.adviserFull);
   return ok([fixCapitals(main), ...suffixes, ...degrees].join(", "));
+}
+
+/** Who a checked adviser is: the name words and suffix, without the title
+ *  and degrees, any case. "Dr. Maria Santos, PhD" ≡ "maria santos". */
+const adviserPerson = (checked: string) =>
+  checked.split(",").map(p => p.trim()).filter(p => !degreeOf(p)).join(" ")
+    .replace(ADVISER_TITLE, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * The adviser: required, a first name and a surname, optionally after a title
+ * (Dr., Engr., Prof., Asst. Prof., Assoc. Prof., Mr., Mrs., Ms., Atty.) and
+ * before degrees ("Maria Santos, PhD"). A suffix may come first after a comma
+ * ("Roberto Figueroa, Jr., PhD", errata #82). The "Surname, Given" comma form
+ * is for authors only: here a comma can only be followed by a suffix or a degree.
+ *
+ * Two or three advisers (errata #86): the names joined by "and", ";" or "&"
+ * (adviserNames), each checked as above, saved joined by " and ". The same
+ * person twice is kept once; more than MAX_ADVISERS is a message. One name is
+ * checked and cleaned exactly as before.
+ */
+export function checkAdviser(typed: string): Checked {
+  const value = cleanSpaces(typed);
+  if (!value) return fail("", MSG.adviserRequired);
+  // A joiner with no name on one side: at the start or end of the value, or
+  // two in a row ("A and and B" leaves a part starting with "and").
+  if (DANGLING_JOINER.test(value) || /[;&]\s*[;&]/.test(value)) return fail(value, MSG.adviserJoiner);
+  const parts = adviserNames(value);
+  if (parts.some(p => DANGLING_JOINER.test(p))) return fail(value, MSG.adviserJoiner);
+  if (parts.length <= 1) return checkOneAdviser(parts[0] ?? value);
+  if (parts.length > MAX_ADVISERS) return fail(value, MSG.advisersMax);
+  const names: string[] = [];
+  for (const part of parts) {
+    const c = checkOneAdviser(part);
+    if (c.error) return fail(value, c.error === MSG.adviserFull ? MSG.adviserEachFull(part) : c.error);
+    if (!names.some(n => adviserPerson(n) === adviserPerson(c.value))) names.push(c.value);
+  }
+  return ok(names.join(" and "));
 }
 
 // ─── Title ───────────────────────────────────────────────────────────────────

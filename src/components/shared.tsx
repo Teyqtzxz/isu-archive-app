@@ -5,6 +5,7 @@ import { TOAST_RULES, toastAria, type ToastKind } from "../toast";
 import { registeredAtISO } from "../types";
 import { highlightParts } from "../snippet";
 import { AUTH_MSG, checkConfirm, passwordRules } from "../auth";
+import { adviserLabel } from "../validation";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -168,7 +169,7 @@ export function RecentStudyCard({ study, onOpen }: {
       <p className="carousel-title clamp-3">{study.title}</p>
       <div className="study-brief">
         {authors && <p className="study-brief-authors clamp-2">{authors}</p>}
-        <p className="study-brief-line clamp-2">Adviser: {study.adviser}</p>
+        <p className="study-brief-line clamp-2">{adviserLabel(study.adviser)}: {study.adviser}</p>
       </div>
       <div className="carousel-meta">
         <DeptBadge dept={study.department} small />

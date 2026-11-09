@@ -16,7 +16,10 @@
 //   3. The approval sheet (adviser above "Thesis Adviser"; the title in
 //      quotes after "entitled"; the names after "submitted by").
 import { DEPARTMENTS } from "./types.ts";
-import { MAX_AUTHORS, checkAdviser, checkAuthor, checkTitle, cleanSpaces, fixCapitals } from "./validation.ts";
+import { PARTICLES } from "./citation.ts";
+import {
+  MAX_ADVISER, MAX_ADVISERS, MAX_AUTHORS, adviserNames, checkAdviser, checkAuthor, checkTitle, cleanSpaces, degreeOf, fixCapitals,
+} from "./validation.ts";
 import { readPages, type ReadProgress } from "./pdfText.ts";
 
 /** The form fields the PDF can fill. */
@@ -122,9 +125,34 @@ const ADVISER_TITLE_WORD = /^(?:dr|dra|engr|prof|professor|asst|assistant|assoc|
  *  as printed ("LIZA REYES, DVM" → "Liza Reyes, DVM"), so the form shows the
  *  normal message. */
 export function adviserAsPrinted(printed: string): string {
+  // Two or three advisers (errata #86): each name cleaned on its own, joined
+  // by " and " as the Adviser box saves them.
+  const names = adviserNames(printed);
+  if (names.length > 1) {
+    const prepared = names.map(oneAdviserAsPrinted).join(" and ");
+    const c = checkAdviser(prepared);
+    return c.error ? prepared : c.value;
+  }
+  return oneAdviserAsPrinted(printed);
+}
+
+function oneAdviserAsPrinted(printed: string): string {
   const raw = cleanSpaces(printed);
-  const [main, ...rest] = raw.split(",");
-  const words = main.trim().split(" ");
+  const [main0, ...rest] = raw.split(",");
+  const words = main0.trim().split(" ");
+  // A degree glued to the name before the comma degrees ("LUNA RN, MAN",
+  // errata #86) goes after the name: "Luna, RN, MAN", not "Luna Rn, MAN".
+  // Only when degrees already follow the comma, and only while at least 2
+  // name words stay after the title words: a surname that is also degree
+  // letters ("DR. JOSE MA, PHD", "Engr. Mark Pe, MS") is never moved.
+  if (rest.length > 0 && rest.every(r => degreeOf(r.trim()))) {
+    let titles = 0;
+    while (titles < words.length && ADVISER_TITLE_WORD.test(words[titles])) titles++;
+    const glued: string[] = [];
+    while (words.length - titles > 2 && degreeOf(words[words.length - 1])) glued.unshift(words.pop()!);
+    if (glued.length > 0) rest.unshift(...glued);
+  }
+  const main = words.join(" ");
   let t = 0;
   while (t < words.length && ADVISER_TITLE_WORD.test(words[t])) t++;
   const name = words.slice(t).join(" ");
@@ -146,7 +174,11 @@ export function departmentOf(program: string): string {
 
 // ─── 1. The labelled block on the abstract page ──────────────────────────────
 
-const LABEL = /^(title|program(?:me)?|degree|course|authors?|researchers?|proponents?|academic\s+year|school\s+year|advis[eo]rs?)\s*:\s*(.*)$/i;
+const LABEL = /^(title|program(?:me)?|degree|course|authors?|researchers?|proponents?|academic\s+year|school\s+year|(?:co-?\s?)?advis[eo]r(?:s|\(s\))?)\s*:\s*(.*)$/i;
+/** People who are never the adviser (errata #86): a line starting with one
+ *  ends the block, so "Panel Chair: Dr. X, PhD" or "Critic: …" under the
+ *  advisers is never read as one. */
+const NOT_ADVISER = /^(?:thesis\s*\/?\s*|dissertation\s+)*(?:critics?|panel(?:ists?)?|chair(?:man|person)?|dean|members?|examiners?|readers?)\b/i;
 type Label = "title" | "program" | "authors" | "ay" | "adviser";
 const labelOf = (word: string): Label => {
   const w = word.toLowerCase();
@@ -157,11 +189,37 @@ const labelOf = (word: string): Label => {
   return "adviser";
 };
 
-interface Block { title?: string; program?: string; authors?: string[]; ay?: string; adviser?: string; /** The last line of the block, as printed. */ end: string }
+interface Block {
+  title?: string; program?: string; authors?: string[]; ay?: string; adviser?: string;
+  /** More than MAX_ADVISERS names under "Adviser(s):" (errata #86): not
+   *  filled, listed in the note — never a guess at which ones to keep. */
+  advisers?: string[];
+  /** The last line of the block, as printed. */
+  end: string;
+}
+/** Lines read below an adviser label at most: enough to see a 4th name. */
+const MAX_ADVISER_LINES = 6;
 
 /** A line that can carry on an author list: short, and a name (it may end in
  *  "Jr." or an initial, so a full stop is allowed). */
 const nameLine = (line: string) => line.length < 60 && authorName(line) !== null;
+
+/** A line under "Adviser(s):" that is one more adviser (errata #86): starts
+ *  with a title ("Dr.", "Asst. Prof.", "Engr.") or has ", <degree>", every
+ *  word starts with a capital (or is a particle, "and", or a short "dP."),
+ *  and it passes the Adviser box. The abstract's first sentence fails. */
+function adviserLine(line: string): boolean {
+  if (line.length > MAX_ADVISER || NOT_ADVISER.test(line)) return false;
+  const words = line.split(" ");
+  const titled = ADVISER_TITLE_WORD.test(words[0]);
+  const degreed = line.split(",").slice(1).some(p => degreeOf(p.trim()));
+  if (!titled && !degreed) return false;
+  const nameLike = words.every(w => {
+    const bare = w.replace(/[,;]+$/, "");
+    return /^\p{Lu}/u.test(bare) || PARTICLES.has(bare.toLowerCase()) || /^and$/i.test(bare) || /^\p{L}{1,2}\.$/u.test(bare);
+  });
+  return nameLike && !checkAdviser(adviserAsPrinted(line)).error;
+}
 
 /** "ABSTRACT" on its own line, then a label line. A title wraps onto lines
  *  without a label (taken only when another label follows within 2 lines); an
@@ -178,15 +236,25 @@ function readBlock(pages: string[]): Block | null {
     let unclearAuthors = false;
     let end = "";
     for (let i = h + 1; i < ls.length; i++) {
+      if (cur === "adviser" && NOT_ADVISER.test(ls[i])) break;
       const m = LABEL.exec(ls[i]);
       if (m) {
         cur = labelOf(m[1]);
-        got[cur] = m[2] ? [m[2]] : [];
+        // "Co-Adviser:" adds to "Adviser:" (errata #86); other labels start anew.
+        if (cur === "adviser" && got.adviser) { if (m[2]) got.adviser.push(m[2]); }
+        else got[cur] = m[2] ? [m[2]] : [];
         end = ls[i];
         continue;
       }
       if (cur === "title" && (got.title?.length ?? 0) < 3 && ls.slice(i + 1, i + 3).some(l => LABEL.test(l))) {
         got.title!.push(ls[i]);
+        end = ls[i];
+        continue;
+      }
+      // The advisers on the lines just below "Adviser(s):". All of them are
+      // read, so a 4th is seen (then the note, below), not silently dropped.
+      if (cur === "adviser" && got.adviser!.length < MAX_ADVISER_LINES && adviserLine(ls[i])) {
+        got.adviser!.push(ls[i]);
         end = ls[i];
         continue;
       }
@@ -214,7 +282,11 @@ function readBlock(pages: string[]): Block | null {
       const list = authorList(got.authors.flatMap(l => l.split(/\s*;\s*|\s+and\s+|\s*&\s*/i)).filter(Boolean));
       if (list) block.authors = list;
     }
-    if (got.adviser?.length) block.adviser = got.adviser[0];
+    if (got.adviser?.length) {
+      const names = got.adviser.flatMap(adviserNames);
+      if (names.length > MAX_ADVISERS) block.advisers = names;
+      else block.adviser = got.adviser.join(" and ");
+    }
     return block;
   }
   return null;
@@ -372,8 +444,20 @@ export function readDetails(pages: string[]): StudyDetails {
   if (tp?.year) { out.year = tp.year; out.source.year = "title page"; }
   else if (block?.ay) out.notes.year = NOTE.academicYearOnly(block.ay);
 
-  const advisersListed = block?.adviser ? undefined : tp?.advisers;
-  const adviserFrom: [string | undefined, DetailSource][] = [[block?.adviser, "block"], [tp?.adviser, "title page"], [ap?.adviser, "approval sheet"]];
+  // Two or three adviser lines on the title page (errata #86): all of them,
+  // joined by " and ", when each line is clearly one adviser. Otherwise (four
+  // lines, or a line that is not a name, such as a degree on its own line)
+  // the note, as before: never guess.
+  // Four or more in the labelled block: empty with the note, like the title
+  // page (the title page and approval sheet are not used instead).
+  let advisersListed = block?.advisers ?? (block?.adviser ? undefined : tp?.advisers);
+  let tpAdviser = tp?.adviser;
+  if (!block?.advisers && advisersListed && advisersListed.length <= MAX_ADVISERS
+    && advisersListed.every(l => adviserNames(l).length === 1 && !checkAdviser(adviserAsPrinted(l)).error)) {
+    tpAdviser = advisersListed.join(" and ");
+    advisersListed = undefined;
+  }
+  const adviserFrom: [string | undefined, DetailSource][] = [[block?.adviser, "block"], [tpAdviser, "title page"], [ap?.adviser, "approval sheet"]];
   if (advisersListed) {
     out.notes.adviser = NOTE.twoAdvisers(advisersListed.map(adviserAsPrinted));
   } else {

@@ -264,6 +264,9 @@ most.
       zeros shown, the year under the first month and under January; the note
       says it is when the study was posted, not its Academic Year. A study
       posted at 00:30 on the 1st (Philippine time) counts in the new month
+- [ ] **Top advisers, two on one study (errata #86):** a study saved with
+      "Dr. Ana Reyes and Engr. Ben Lim" adds one to **each** bar, never a bar
+      named "… and …"
 - [ ] **Top advisers:** at most 8, most studies first, ties A–Z. "Dr. Maria
       Santos", "maria santos" and "Maria Santos, PhD" are one bar (the
       spelling used most is shown; on a tie the neatly typed one, so "Dr.
@@ -346,8 +349,20 @@ most.
 - [ ] **Never guessed:** a programme that is not one of the ten departments
       (e.g. "Master of Development Communication") leaves Department on
       "Select dept."; only "AY 2024-2025" printed leaves Year completed empty
-      with the grey note naming the academic year; "Thesis Advisers:" with two
-      names leaves Adviser empty with a note listing both
+      with the grey note naming the academic year; "Thesis Advisers:" with
+      **four** lines (or a line that is not a name, e.g. a degree on its own
+      line) leaves Adviser empty with a note listing them
+- [ ] **Two or three advisers (errata #86):** "Thesis Advisers:" with 2 or 3
+      names (e.g. Geneston-Dino) fills Adviser with all of them joined by
+      "and", titles as printed, a degree glued to the name moved after it
+      ("LUNA RN, MAN" → "Luna, RN, MAN"), no note. A labelled block
+      with "Adviser(s):" and the names on the lines below, or a
+      "Co-Adviser:" line, fills both; **four** names in the block → Adviser
+      empty with the note listing all four. "DR. JOSE MA, PHD" stays "Dr.
+      Jose Ma, PhD" (a surname that is also degree letters is never moved).
+      A Critic, Panel, Chair or Dean line
+      is never read as an adviser; nor is the abstract's first sentence,
+      even when it starts with "Dr."
 - [ ] A value read from the PDF that breaks a rule shows the normal message at
       once (e.g. an adviser "…, DVM" → "After a comma, only Jr., Sr., II, III or
       a degree can follow: …")
@@ -395,8 +410,20 @@ most.
       `J. Dela Cruz` and `Dela Cruz, Juan` are added; `Juan 2` is refused
 - [ ] Author `juan dela cruz` or `JUAN DELA CRUZ III` becomes `Juan Dela Cruz`
       / `Juan Dela Cruz III`; `Juan dela Cruz` stays as typed
+- [ ] Adviser, two or three people (errata #86): `dr. maria santos AND Engr.
+      Jose Cruz, PH.D.` is saved as `Dr. Maria Santos and Engr. Jose Cruz,
+      PhD` (`;` or `&` between names work too and are saved as "and"); a
+      fourth name → "Up to 3 advisers can be recorded, joined by “and”.";
+      `Juan and Maria Santos` → "Each adviser needs a first name and a
+      surname: “Juan” is not a full name. …" (never split silently);
+      `Prof. Lea Andaya and`, `and Dr. Ana Reyes` or `Dr. Ana Reyes;` →
+      "Type an adviser's name before and after each “and”, “;” or “&” …"
+      (the joiner is never saved); the
+      same person twice is kept once; `Dr. Alexandra Anderson` stays one
+      name. Edit of an old one-adviser study: the Adviser box is unchanged
 - [ ] Adviser `Dr. Santos` → "Type the adviser's full name, e.g. Dr. Maria
-      Santos"; `Asst. Prof. Maria Santos, PhD` is accepted; `Santos, Maria` →
+      Santos. For two or three advisers, join the names with “and”.";
+      `Asst. Prof. Maria Santos, PhD` is accepted; `Santos, Maria` →
       "After a comma, only Jr., Sr., II, III or a degree can follow: …";
       `Rosa B. Alcantara, DIT`, `…, MAN, RN`, `…, Ph. D.` (saved as PhD) and
       `Roberto Figueroa, Jr.` are accepted (errata #82)
@@ -818,6 +845,10 @@ Session Storage to watch `isu-draft:new`, `isu-draft:edit:<id>` and
       first (others that only match "dr" in the abstract come far below)
 - [ ] Search `PhD` or `Engr`: studies are **not** found just because the
       adviser has that title or degree
+- [ ] A study with two advisers (errata #86): either surname finds it, the
+      result line and Study Details say "Advisers:" (one adviser: "Adviser:",
+      also on the Recently added cards), and the joining "and" is never
+      highlighted in the adviser line nor offered as an adviser word
 - [ ] Search a year, e.g. `2024`: every study whose Academic Year is 2024 is
       listed, even if no text says "2024". `202` does **not** list them by year
 - [ ] Search a word that is in one study's **title** and only in another
@@ -1060,6 +1091,7 @@ node src/smartSearch.check.ts                          # expect: All passed.
 node src/stats.check.ts                                # expect: All passed.
 node src/draft.check.ts                                # expect: All passed.
 node src/emailLink.check.ts                            # expect: All passed.
+node src/pdfDetails.check.ts                           # expect: All passed.
 grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx   # expect: no output
 grep -rn "drive.usercontent" src/                   # expect: no output
 grep -rn "REPLACE_ME" src/firebase.ts               # expect: no output (real config pasted)
