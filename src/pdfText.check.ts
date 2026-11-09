@@ -334,6 +334,135 @@ console.log("\n— readPages and the progress line (errata #82) —");
   const none = await readPages(5, async n => `Plain text of page ${n} with enough letters to not look scanned at all.`);
   check("no abstract → MSG_NOT_FOUND, pages still kept", [none.problem, none.pages.length], [MSG_NOT_FOUND, 5]);
 }
+console.log("\n— Running heads INSIDE the abstract, at a page break (errata #89) —");
+{
+  // Every page starts with the title on 2 lines of its own and the page number
+  // on a third (UP Open University layout).
+  const T1 = "Weather Alerts Among Rice Farmers";
+  const T2 = "in Echague, Isabela";
+  const head = (num: string) => `${T1}\n${T2}\n${num}\n`;
+  const roman = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv"];
+  const front = (n: number) => `${head(roman[n - 1] ?? String(n))}Front matter text for page ${n}.\n`;
+  const pdf = (at: Record<number, string>, numPages = 20) =>
+    fake(numPages, Object.fromEntries(Array.from({ length: numPages }, (_, i) => [i + 1, at[i + 1] ?? front(i + 1)])));
+  const B2a = "Farmers who read the alerts planted";
+  const B2b = "two weeks later and lost less of their harvest to early floods.";
+  const KW = "Keywords: rice farming, text alerts, floods\n";
+  const WANT_KW = ["rice farming", "text alerts", "floods"];
+  const got = (r: Awaited<ReturnType<typeof run>>) => typeof r === "object" ? [r.abstract, r.keywords] : r;
+  const split = (num: string) => ({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n`, 10: `${num}${B2b}\n${KW}` });
+
+  let r = await run(pdf(split(head("viii"))));
+  check("2-line title + “viii” at the top of the next page → removed, sentence joined; keywords the same",
+    got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(`${T1}\n${T2}\nxi\nv\n`)));
+  check("page number split over 2 lines (“xi” / “v”) → both removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(head("x i v"))));
+  check("lower-case roman with spaces (“x i v”) on its own line → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf(split(head("14"))));
+  check("arabic page number (“14”) → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n${head("vii")}`, 10: `${head("viii")}${B2b}\n${KW}` }));
+  check("running head at the BOTTOM of the page (a footer before the break) → removed too",
+    got(r), [WANT_ABSTRACT, WANT_KW]);
+
+  // Condition 1: spaces inside a number only for lower-case roman letters.
+  r = await run(pdf(split(head("X I V"))));
+  check("NOT removed: upper-case letters with spaces (“X I V”) are not a page number",
+    got(r), [`${BODY1} ${B2a} ${T1} ${T2} X I V ${B2b}`, WANT_KW]);
+  // A one-line running head with a spaced number, as “… Nurses x i v”.
+  const oneLine = (num: string) => `Weather Alerts Among Rice Farmers ${num}\n`;
+  r = await run(fake(20, {
+    3: oneLine("x i i"), 5: oneLine("x v"),
+    9: `ABSTRACT\n${BODY1}\n${B2a}\n`, 10: `${oneLine("x i v")}${B2b}\n${KW}`,
+  }));
+  check("one line “Title x i v”, the title seen with other numbers → removed", got(r), [WANT_ABSTRACT, WANT_KW]);
+
+  // Condition 2: only at a page break.
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${B2a}\n${head("viii")}${B2b}\n${KW}` }));
+  check("NOT removed: the same lines in the middle of a page (no page break there)",
+    got(r), [`${BODY1} ${B2a} ${T1} ${T2} viii ${B2b}`, WANT_KW]);
+  const text = [1, 2, 3].map(front).join("\n") + `ABSTRACT\n${BODY1}\n${B2a}\n${head("viii")}${B2b}\n${KW}`;
+  check("NOT removed: page breaks unknown (text given without them)",
+    extractAbstractAndKeywords(text).abstract, `${BODY1} ${B2a} ${T1} ${T2} viii ${B2b}`);
+
+  // Things that must stay.
+  const inSentence = `The web based ${T1} ${T2} was conceptualized to help farmers.`;
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\n${inSentence}\n${B2a}\n`, 10: `${head("viii")}${B2b}\n${KW}` }));
+  check("the title inside a sentence stays; only the running head goes",
+    got(r), [`${BODY1} ${inSentence} ${B2a} ${B2b}`, WANT_KW]);
+  r = await run(pdf(split("A Title Printed Only Once\nOn This Page\nviii\n")));
+  check("NOT removed: title lines seen only once, with a page number",
+    got(r), [`${BODY1} ${B2a} A Title Printed Only Once On This Page viii ${B2b}`, WANT_KW]);
+  // Condition 3: numbers inside the abstract (statistics) stay; only the head goes.
+  const stats = "p=0.02), attitude vs length of service (rho= -.144 * , p=0.04), (X 2 =22.534*p=0.03).";
+  r = await run(pdf({ 9: `${head("vii")}ABSTRACT\n${BODY1}\nknowledge vs compliance (X 2 =1230.954 a ,\n`, 10: `${head("viii")}${stats}\n2\n${B2a}\n${B2b}\n${KW}` }));
+  check("statistics and a lone “2” inside the text stay; only the running head is removed",
+    got(r), [`${BODY1} knowledge vs compliance (X 2 =1230.954 a , ${stats} 2 ${WANT_ABSTRACT.slice(BODY1.length + 1)}`, WANT_KW]);
+}
+
+console.log("\n— Hyphenated words that kept a space (errata #90) —");
+{
+  const LEAD = "This study looked at nurses in two public hospitals in Isabela in 2024.";
+  // The abstract of a made-up page with `text` in it; `other` = more pages read.
+  const abs = (text: string, other = "") =>
+    extractAbstractAndKeywords(`${other}\nABSTRACT\n${LEAD}\n${text}\nKeywords: rice, floods\n`).abstract.slice(LEAD.length + 1);
+  const joined: [string, string][] = [
+    ["climate- related risks", "climate-related risks"],                 // ANTOLIN
+    ["the nurse- patient ratio", "the nurse-patient ratio"],             // ASUNCION, TAN
+    ["self- improvement; tech- enhanced tools", "self-improvement; tech-enhanced tools"], // CALIMLIM
+    ["a cloud- native system", "a cloud-native system"],                 // CAMACHO_HG
+    ["measured in- situ", "measured in-situ"],                           // DANDO
+    ["the socio- demographic profile", "the socio-demographic profile"], // DELA PENA
+    ["a business-to- customer model", "a business-to-customer model"],  // NAVARRO
+    ["the NLI- HFTP scale", "the NLI-HFTP scale"],                       // TAN
+    ["the climate-\nrelated risks", "the climate-related risks"],        // hyphen at a line end
+    // Geneston-Dino: every hyphen spaced.
+    ["their self - efficacy", "their self-efficacy"],
+    ["Self - efficacy was high", "Self-efficacy was high"],
+    ["the socio - demographic profile", "the socio-demographic profile"],
+    ["A cross - sectional survey", "A cross-sectional survey"],
+    ["two - thirds of the sample", "two-thirds of the sample"],
+    ["the long - term impact", "the long-term impact"],
+    ["Chi - square tests", "Chi-square tests"],
+    ["Chi -\nsquare tests", "Chi-square tests"],                         // DELA PENA: "Chi -" at a line end
+    // Capitals before a number.
+    ["during the COVID- 19 pandemic", "during the COVID-19 pandemic"],
+    ["during the COVID - 19 pandemic", "during the COVID-19 pandemic"],
+    ["during the Covid- 19 pandemic", "during the Covid-19 pandemic"],
+    ["the PRCA- 24 scale", "the PRCA-24 scale"],
+  ];
+  for (const [text, want] of joined) check(`joined: “${text.replace("\n", "⏎")}”`, abs(text), want);
+
+  const kept: [string, string][] = [
+    ["pre- and post-test scores", "a suspended hyphen before “and”"],
+    ["telephone- or text-based follow-up", "a suspended hyphen before “or”"],
+    ["the medical–surgical ward", "an en dash"],
+    ["the 2021– 2025 plan", "an en dash with a space"],
+    ["the result — a weak link — held", "em dashes"],
+    ["a weak link (rho= -.144, p=0.04) was found", "a minus sign in statistics"],
+    ["the 2026-2030 agenda", "a range"],
+    ["system design - data flow was drawn", "a spaced dash: “design - data”"],
+    ["pressure injury prevention - This study", "a spaced dash before a capital"],
+    ["self - the rest", "a spaced hyphen before a small word"],
+    ["the evidence - based care", "a spaced compound not in the list (known limit)"],
+    ["respondents aged - 20 and up", "lower-case word before a number"],
+    ["specialized units s uch as dialysis", "a split word (never joined)"],
+  ];
+  for (const [text, why] of kept) check(`kept: ${why}`, abs(text), text);
+
+  check("drop-hyphen: “manage- ment” → “management” when “management” is elsewhere",
+    abs("hospital manage- ment was studied", "Hospital management in the region.\n"), "hospital management was studied");
+  check("drop-hyphen: not when “management” is nowhere else",
+    abs("hospital manage- ment was studied"), "hospital manage-ment was studied");
+  check("drop-hyphen: not when “manage-ment” is also elsewhere",
+    abs("hospital manage- ment was studied", "Hospital management and manage-ment.\n"), "hospital manage-ment was studied");
+
+  // Keywords: errata #78 already joins "self - efficacy"; #90 changes nothing there.
+  check("keywords unchanged by #90",
+    extractAbstractAndKeywords(`ABSTRACT\n${LEAD}\n${LEAD}\nKeywords: self - efficacy, climate- related, COVID- 19\n`).keywords,
+    ["self-efficacy", "climate- related", "COVID- 19"]);
+}
+
 check("progress: starting", progressText({ kind: "loading" }), "Starting the PDF reader…");
 check("progress: download with a size", progressText({ kind: "download", loaded: 3250000, total: 12152854 }), "Downloading 3.1 of 11.6 MB…");
 check("progress: download, size unknown", progressText({ kind: "download", loaded: 524288, total: null }), "Downloading 0.5 MB…");

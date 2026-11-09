@@ -684,10 +684,66 @@ Time per PDF 36–209 ms (round 1: 43–217). A first version of the header rule
 on long lines (201 ms of text rules on CLARO-AZUCENA's 40 pages); it now reads the
 page number from the end of the line and counts headers only when needed (15 ms).
 
-**Known limit:** a running header in the **middle** of an abstract that runs over two
-pages is kept (ASUNCION, CALIMLIM, TAN, VIZCARA: e.g. "… Care Nurses xiii The study
-showed …"). Staff can delete it in the abstract box; a later round could drop it with
-the same repeated-header test.
+**Running header in the middle of the abstract (errata #89, 2026-11-09).** Until #89 a
+running header where the abstract runs over two pages stayed in the abstract (e.g.
+"… by offering Perception on the Motivational Factors … Among Nurses xi v flexible
+learning options …"). `stripMiddleRunningHeads` now drops it, and the text on both
+sides is joined with one space. A block counts as a running head when it is either:
+
+- one line of title words + a page number, the same words with a page number on at
+  least two lines of the text read (the round-2 test above), or
+- the title on **1–3 lines of its own**, each seen on at least two lines of the text,
+  then the page number as a **whole line** ("viii", "14", "x i v"), or split over two
+  short lines ("xi" / "v" for xiv, "xii" / "i" for xiii), as UP Open University theses
+  print it (GARCES 2024, Geneston-Dino, [Espan_a]).
+
+A page number with spaces inside counts only for lower-case roman numbers with 2 or
+more single letters ("x i v", "… Nurses x i v"); "X I V" does not. A block is dropped
+only where a **page starts or ends**: `readPages` passes each page's first line
+(`pageStarts`). Called without page breaks, `extractAbstractAndKeywords` keeps it, and
+the same lines in the middle of a page are kept. A block with no abstract text after
+it is left to the end-of-abstract rule (sentence check). A title inside a sentence
+("the web-based Access Control Management System was conceptualized", VIZCARA,
+JACA) is never a whole line of its own, so it stays.
+
+31 sample PDFs before/after: 10 abstracts lose a running head and nothing else
+(ARCANGEL, ASUNCION, CALIMLIM, DELA PENA, GARCES, both Geneston-Dino copies, TAN,
+VIZCARA, [Espan_a]); no keyword list changed; the other 21, the private ISU thesis
+among them, are the same character for character.
+
+**Still kept (known limits):** words split by the PDF's text layer ("s uch",
+"mentors hip"), a word hyphenated across the page break, and an arabic page number
+with a space inside on one line ("1 2").
+
+**Hyphenated words that kept a space (errata #90, 2026-11-09).** A PDF breaks
+"climate-related" over two lines ("climate- related" once the lines are joined), and
+some text layers space every hyphen ("self - efficacy", Geneston-Dino). `joinHyphens`
+runs on the finished abstract only (keywords keep the #78 rules) and touches only the
+plain hyphen "-":
+
+- **"word- word"** (hyphen right after a letter) → "word-word". Not before "and", "or",
+  "nor": a suspended hyphen keeps its space ("pre- and post-test", "telephone- or").
+  The hyphen is dropped ("manage- ment" → "management") only when the joined word is
+  elsewhere in the pages read and the hyphenated one is not.
+- **"word - word"** (spaced) → "word-word" only when the first word is a common
+  compound first part (self, socio, cross, non, co, pre, post, re, anti, multi, semi,
+  inter, intra, sub, well, long, short, high, low, half, full, part, two–ten, chi) and
+  the second is not a small word (the, a, and, to, this, …). A spaced hyphen is often
+  a dash in these theses ("design - data" VIZCARA, "prevention - This" GARCES,
+  "systems - Use" JACA), so joining every spaced pair is wrong; counting spaced vs
+  unspaced hyphens per PDF does not tell the two kinds apart (Geneston 65/83, JACA
+  18/19).
+- **Capitals before a number**: "COVID- 19", "PRCA - 24" → "COVID-19" (2+ capitals,
+  or "Covid"). In the samples only in body text (ALFONSO, Geneston, TARUC).
+
+Kept: en and em dashes, "rho= -.144" (no letter before the hyphen), "2026-2030" (no
+space), split words ("s uch"). 31 sample PDFs against #89: 11 abstracts change, only
+in spaces and hyphens (ANTOLIN, ASUNCION, CALIMLIM, CAMACHO_HG, DANDO, DELA PENA, both
+Geneston-Dino copies, NAVARRO, TAN, and the private ISU thesis); no keyword list or
+study detail changed. **Known limits:** a spaced compound whose first part is not in
+the list stays spaced ("evidence - based"); "low- to middle-income" becomes
+"low-to middle-income" ("to" is not treated as suspended, as "face- to-face" and
+"business-to- customer" need joining).
 
 ---
 
