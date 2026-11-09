@@ -1,0 +1,128 @@
+@startuml 01-use-case
+' ISU Research Study E-Library - Use case diagram (final, main a7d5ed9)
+' Checked against: src/components/*.tsx, src/data.ts, src/App.tsx, firestore.rules
+title ISU Research Study E-Library - Use Cases (final)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #006439
+}
+skinparam actorStyle awesome
+
+actor "ISU user\n(signed-in @isu.edu.ph)" as ISUUser <<abstract>>
+actor "Student\n(role STUDENT)" as Student
+
+rectangle "ISU Research Study E-Library (web app in the browser)" {
+  package "Staff only" {
+    usecase "View staff dashboard\n(own-college counts, recent studies)" as UC_StaffDash
+    usecase "Register a study\n(Read PDF & continue ->\nCheck & save -> Confirm & Save)" as UC_Register
+    usecase "Read PDF and auto-fill details" as UC_ReadPdf
+    usecase "Add keywords automatically\n(staff may only remove / Undo)" as UC_Keywords
+    usecase "Originality check\n(Possible duplicate ->\nI checked - register anyway)" as UC_Orig
+    usecase "Restore unsaved draft\n(Discard draft)" as UC_Draft
+    usecase "Edit study" as UC_Edit
+    usecase "Delete study\n(Delete this study?)" as UC_Delete
+    usecase "Open in Drive" as UC_OpenDrive
+    usecase "View Statistics\n(charts + Keyword model card)" as UC_Stats
+    usecase "Settings\n(account, theme, Sign Out)" as UC_Settings
+  }
+  package "Account" {
+    usecase "Sign in\n(ISU username + system password)" as UC_SignIn
+    usecase "Continue with Google" as UC_Google
+    usecase "Create account" as UC_Create
+    usecase "Verify ISU email\n(Check your ISU inbox:\nI've verified / Resend email)" as UC_Verify
+    usecase "Forgot password\n(Create a new password page)" as UC_Forgot
+    usecase "Sign Out\n(Sign out? dialog)" as UC_SignOut
+    usecase "Switch theme\n(Light / Dark; System in Settings)" as UC_Theme
+  }
+  package "Find and read studies" {
+    usecase "Browse student dashboard\n(Recently added, college chips,\nE-Library at a glance)" as UC_StuDash
+    usecase "Search studies\n(BM25F, College + Year filters)" as UC_Search
+    usecase "Autocomplete /\nDid you mean" as UC_Smart
+    usecase "Open Study Details\n(APA 7 citation, Similar studies)" as UC_Details
+    usecase "Read full study\n(view-only Drive viewer)" as UC_Read
+    usecase "View Summary (N)\n(combined extractive summary)" as UC_Summary
+  }
+}
+
+actor "Staff\n(role STAFF)" as Staff
+actor "Firebase Authentication\n<<external system>>" as FAuth
+actor "Google Drive\n<<external system>>" as Drive
+
+actor "Firebase administrator\n(Firebase console only)" as Admin
+rectangle "Firebase console (outside the app)" {
+  usecase "Set users/{uid}.role = STAFF\nand users/{uid}.department (college)" as UC_Role
+}
+
+' Actor generalization: Student and Staff are both ISU users (Staff does NOT inherit from Student)
+Student --|> ISUUser
+ISUUser <|-- Staff
+
+' Shared use cases: linked once, through the parent actor
+ISUUser --> UC_SignIn
+ISUUser --> UC_Google
+ISUUser --> UC_Forgot
+ISUUser --> UC_SignOut
+ISUUser --> UC_Theme
+ISUUser --> UC_Search
+ISUUser --> UC_Details
+ISUUser --> UC_Summary
+
+' Student only
+Student --> UC_Create
+Student --> UC_StuDash
+Student --> UC_Read
+
+' Staff only (Staff on the right)
+UC_StaffDash <-- Staff
+UC_Register <-- Staff
+UC_Edit <-- Staff
+UC_Delete <-- Staff
+UC_OpenDrive <-- Staff
+UC_Stats <-- Staff
+UC_Settings <-- Staff
+
+Admin --> UC_Role
+
+' include / extend
+UC_Create ..> UC_Verify : <<include>>
+UC_Search <.. UC_Smart : <<extend>>
+UC_Details ..> UC_Search : <<extend>>\n(opened from a result)
+UC_Summary ..> UC_Search : <<extend>>\n(ticked results)
+UC_Register ..> UC_ReadPdf : <<include>>
+UC_Register ..> UC_Keywords : <<include>>
+UC_Register ..> UC_Orig : <<include>>
+UC_Register <.. UC_Draft : <<extend>>\n(after a reload)
+UC_Edit ..> UC_Orig : <<include>>
+UC_Edit <.. UC_Draft : <<extend>>
+UC_Edit <.. UC_ReadPdf : <<extend>>\n(PDF optional)
+
+' outside systems; norank = the link does not move them sideways
+UC_SignIn -[norank]-> FAuth
+UC_Google -[norank]-> FAuth
+UC_Create -[norank]-> FAuth
+UC_Verify -[norank]-> FAuth
+UC_Forgot -[norank]-> FAuth
+UC_ReadPdf -[norank]-> Drive : Drive API download\n(when no PDF is chosen)
+UC_Read -[norank]-> Drive
+UC_OpenDrive -[norank]-> Drive
+
+' layout only (invisible)
+UC_Forgot -[hidden]-> UC_StaffDash
+UC_SignOut -[hidden]-> UC_Register
+UC_Theme -[hidden]-> UC_Settings
+UC_Search -[hidden]-> FAuth
+UC_Search -[hidden]-> Drive
+Student -[hidden]right- Admin
+
+rectangle "Firebase console (outside the app)" {
+  note "No admin screen in the app. Every new account\nis created as STUDENT; firestore.rules lock the role." as NoteRole
+}
+UC_Role .. NoteRole
+package "Find and read studies" {
+  note "Students only. Staff start on the\nstaff dashboard (tabs: Dashboard, Register,\nSearch, Statistics, Settings)." as NoteStu
+}
+UC_StuDash .. NoteStu
+@enduml

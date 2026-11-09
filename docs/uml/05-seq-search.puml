@@ -1,0 +1,66 @@
+@startuml 05-seq-search
+' ISU Research Study E-Library - Sequence: Search (final, main a7d5ed9)
+' Checked against: src/components/SearchScreen.tsx (debounce, filtered, rank,
+' searchPlan, snippets, Study Details), src/components/SmartSearchInput.tsx
+' (autocomplete), src/smartSearch.ts (autocomplete, didYouMean, searchPlan),
+' src/search.ts (buildIndex, computeDocFreq, bm25Score, relevancePercent),
+' src/similarity.ts (similarStudies), src/citation.ts (apaReference),
+' src/App.tsx (buildSmartSearch)
+title Search studies (Student or Staff) - all in the browser
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+autonumber
+
+actor "User\n(Student or Staff)" as User
+participant "SmartSearchInput" as Box
+participant "SearchScreen" as SS
+participant "smartSearch.ts" as Smart
+participant "search.ts\n(BM25F)" as BM
+participant "similarity.ts" as Sim
+participant "citation.ts" as Cite
+participant "App.tsx" as App
+database "Cloud Firestore\ntheses" as FS
+
+FS --> App : subscribeToTheses() (onSnapshot, real time)
+App -> Smart : buildSmartSearch(theses)\n(Trie + vocabulary, once per data change)
+
+User -> Box : types in the search box (max 100 characters)
+Box -> Smart : autocomplete(index, value)
+Smart --> Box : up to 6 suggestions
+opt user picks a suggestion
+  User -> Box : click / Enter on a suggestion
+  Box -> Smart : applyCompletion(query, completion)
+end
+Box -> SS : query
+SS -> SS : results fade, "Searching..."
+SS -> SS : setTimeout 300 ms (debounce;\nclearTimeout on each new key)
+SS -> SS : cleanQuery(); under 2 characters = no query\n(list all, newest first)
+SS -> SS : filtered = theses by College and Year filters
+SS -> BM : buildIndex(filtered)
+SS -> Smart : searchPlan(index, query, countResults)
+Smart -> Smart : didYouMean() (Levenshtein,\nwords of 4+ letters that match nothing)
+Smart -> BM : countResults(query) / countResults(correction)
+Smart --> SS : plan: as-typed | suggest | auto-corrected
+
+loop each filtered study
+  SS -> BM : computeDocFreq(tokenize(q)), bm25Score(q, study)\n(title 3, keywords 2, authors 2, adviser 2, abstract 1)
+end
+SS -> BM : relevancePercent(score, maxScore)
+SS -> SS : abstractSnippet() per result,\nhighlight query words
+
+alt plan = suggest
+  SS -> User : results + "Did you mean: ...?" button
+  opt user clicks it
+    User -> SS : applyCorrection() (searches at once, no wait)
+  end
+else plan = auto-corrected
+  SS -> User : "Showing results for ..." + "Search instead for ..." link
+else as-typed
+  SS -> User : ranked results (or "No studies found" /\n"The e-library is empty")
+end
+
+User -> SS : tap a result's title
+SS -> Cite : apaReference(study)
+SS -> Sim : buildSimilarityIndex(theses), similarStudies(study)\n(up to 3, 15% or more)
+SS -> User : Study Details: Citation (APA 7), Author(s), Adviser(s),\nCollege, Date Posted, Keywords, Abstract, Similar studies;\nstudents: Read full study / staff: Open in Drive, Edit, Delete
+@enduml

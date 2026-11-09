@@ -1,0 +1,120 @@
+@startuml 06-activity-register
+' ISU Research Study E-Library - Activity: Register flow (final, main a7d5ed9)
+' Checked against: src/components/RegisterForm.tsx (choosePdf, handleSubmit,
+' readFailed, applyDetails, autoKeywords effect, abstractLeft, matches /
+' mustConfirm, handleSave, tooSoon), src/extractPdf.ts, src/pdfText.ts,
+' src/pdfDetails.ts (fillFromPdf), src/validation.ts, src/draft.ts
+title Register a study - activity (Staff)
+skinparam shadowing false
+
+|Staff|
+start
+:Open the Register tab;
+note right
+  A draft kept in sessionStorage
+  (isu-draft:new) is restored after a
+  reload: "We restored your unsaved
+  study" / Discard draft.
+end note
+|System|
+:preloadPdfReader() (pdf.js loads in the background);
+|Staff|
+:Paste the Google Drive link (always required);
+if (Choose PDF from this computer?) then (yes)
+  |System|
+  if (pdfFileProblem: not a PDF or empty?) then (yes)
+    :Refuse the file at once,\nmessage under the field;
+    stop
+  else (no)
+    :Keep the PDF (over 100 MB: kept with a warning);
+  endif
+else (no)
+endif
+|Staff|
+:Click "Read PDF & continue";
+|System|
+if (validateDriveLink OK?) then (no)
+  :Message under the Drive link field,\ncursor in that field;
+  stop
+else (yes)
+endif
+:Step "Reading" (progress line);
+if (A PDF was chosen?) then (yes)
+  :readFromFile(file);
+else (no PDF chosen)
+  :readFromDrive(): Drive API download\n(retry after 1 s and 3 s if Drive is busy);
+endif
+if (Download / open failed?) then (yes)
+  :Show why. Protected file (Drive 403 / 404):\n"This file is protected, so it can't be read from\nGoogle Drive. Choose the PDF from this computer\ninstead." Also: not a PDF, offline, Drive busy;
+  :readFailed() -> Check & save in manual entry;
+  |Staff|
+  :Type the details and paste the abstract\n(or go back and choose the PDF from the computer);
+  |System|
+  :On leaving the abstract box (50+ words):\nautomatic keywords added once,\nclick guard restarts ("typed");
+else (no)
+  :pdf.js reads page 1, 2, ... (at most 40 pages),\nstops one page after the abstract ends;
+  :readDetails(): title, authors, college,\nyear completed, adviser;
+  :fillFromPdf(): fill empty fields, tag "from PDF";
+  note right
+    Unclear values are left EMPTY with a grey note
+    (academic year only, 4+ advisers, two different
+    colleges, ambiguous programme such as BSA).
+    Never guessed.
+  end note
+  if (Scanned PDF or no abstract found?) then (yes)
+    :readFailed(MSG_SCANNED / MSG_NOT_FOUND)\n-> Check & save in manual entry;
+    |Staff|
+    :Type or paste the abstract;
+    |System|
+    :On leaving the abstract box (50+ words):\nautomatic keywords added once,\nclick guard restarts ("typed");
+  else (abstract found)
+    :Abstract + keywords printed in the PDF;
+    :autoKeywords(): up to 5 automatic keywords\n(marked AUTO), never more than 8 in all;
+  endif
+endif
+
+:Check & save opens at the top of the page,\n1 s click guard starts (SAVE_GUARD_MS);
+:originalityCheck() against every stored study;
+if (Similarity >= 80%?) then (Possible duplicate)
+  :"Possible duplicate - this study may already be\nregistered" - Save disabled;
+  |Staff|
+  :Check the match, tick\n"I checked - register anyway";
+  |System|
+elseif (50-79% / 30-49%?) then (yes)
+  :"Very similar study found" / "Related studies"\n(information only);
+else (below 30%)
+endif
+
+|Staff|
+:Check details, type empty fields,\nremove keywords if needed (Undo 8 s);
+:Click "Confirm & Save"\n(or "Save Manually" after a failed read);
+|System|
+if (Click within 1 s of the guard start?) then (yes)
+  if (Guard started by keywords added\nfrom a typed abstract?) then (yes)
+    :Show "Keywords were added. Check them,\nthen click Save." (next click is taken);
+  else (no)
+    :Ignore the click;
+  endif
+  stop
+else (no)
+endif
+if (Duplicate not ticked, or studies\nnot loaded yet?) then (yes)
+  :Save stays disabled;
+  stop
+else (no)
+endif
+if (All fields valid? Title, 1+ author, college,\nyear, 1-3 advisers, abstract 50+ words) then (no)
+  :Message under each wrong field;
+  stop
+else (yes)
+endif
+:saveThesis(): addDoc to theses\n(status POSTED, registeredBy, registeredAt);
+if (Firestore accepted? (rules: STAFF only)) then (yes)
+  :Toast "Study posted!", clearDraft();
+  :All open screens update (onSnapshot);
+  stop
+else (no)
+  :Show the reason, keep the form open;
+  stop
+endif
+@enduml

@@ -1,0 +1,61 @@
+@startuml 07-deployment
+' ISU Research Study E-Library - Deployment diagram (final, main a7d5ed9)
+' Checked against: firebase.json (hosting site isu-elibrary, public dist,
+' rewrites to /index.html), src/firebase.ts (getAuth, getFirestore),
+' src/extractPdf.ts (Drive API v3 files.get alt=media), src/data.ts,
+' firestore.rules, package.json (vite build)
+title ISU Research Study E-Library - Deployment (Firebase Spark plan)
+skinparam shadowing false
+
+node "User device\n(PC, laptop, tablet or phone)" as Device {
+  node "Web browser (Chrome / Edge)" as Browser {
+    artifact "React 19 single-page app\n(Vite build: index.html + /assets/*.js, *.css)" as SPA
+    component "Firebase JS SDK 12\n(firebase/auth, firebase/firestore)" as SDK
+    component "pdf.js (pdfjs-dist) + worker\n(loaded only by Register / Edit)" as PDFJS
+    component "In-browser logic:\nBM25F search, Trie + Levenshtein,\nTF-IDF similarity, keyword model,\nextractive summary, APA 7" as Logic
+    database "sessionStorage\n(draft, staff view)" as SS
+    database "localStorage\n(theme, Forgot password email)" as LS
+    SPA ..> SDK
+    SPA ..> PDFJS
+    SPA ..> Logic
+    SPA ..> SS
+    SPA ..> LS
+  }
+}
+
+cloud "Google Firebase (project on the free Spark plan)" as Firebase {
+  node "Firebase Hosting\nsite isu-elibrary\n(isu-elibrary.web.app)" as Hosting {
+    artifact "dist/ (static files)\nall paths -> /index.html" as Dist
+  }
+  node "Firebase Authentication" as Auth {
+    component "Google provider (pop-up)" as GP
+    component "Email/Password provider\n(+ email sign-in links)" as EP
+    component "Email sending\n(verification, sign-in link,\nreset email fallback)" as Mailer
+  }
+  database "Cloud Firestore" as Firestore {
+    folder "users" as CUsers
+    folder "theses" as CTheses
+    artifact "firestore.rules" as Rules
+  }
+}
+
+cloud "Google APIs" as Google {
+  node "Google Drive API v3" as DriveAPI
+  storage "Google Drive\n(study PDFs, shared ISU -> Viewer)" as DriveFiles
+  DriveAPI -- DriveFiles
+}
+
+Browser --> Hosting : HTTPS GET\n(page and JS / CSS assets)
+SDK --> "HTTPS\n(sign in, create account,\nsend links, updatePassword)" Auth
+SDK --> Firestore : HTTPS (Firestore SDK)\n(onSnapshot, addDoc,\nupdateDoc, deleteDoc, getDoc, setDoc)
+SPA --> DriveAPI : HTTPS fetch files.get?alt=media\n(API key restricted to the site addresses)\nonly when no PDF is chosen
+Browser --> DriveFiles : Read full study / Open in Drive\n(Google's view-only viewer, new tab)
+Rules ..> Auth : checks the ID token\n(email_verified, @isu.edu.ph)
+
+note bottom of Firebase
+  No server code, no Cloud Functions, no custom backend.
+  All processing (PDF reading, search, similarity,
+  keywords, summary) runs in the user's browser.
+  Firebase administrator works only in the Firebase console.
+end note
+@enduml
