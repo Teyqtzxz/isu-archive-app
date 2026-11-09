@@ -715,6 +715,36 @@ among them, are the same character for character.
 "mentors hip"), a word hyphenated across the page break, and an arabic page number
 with a space inside on one line ("1 2").
 
+**Hyphenated words that kept a space (errata #90, 2026-11-09).** A PDF breaks
+"climate-related" over two lines ("climate- related" once the lines are joined), and
+some text layers space every hyphen ("self - efficacy", Geneston-Dino). `joinHyphens`
+runs on the finished abstract only (keywords keep the #78 rules) and touches only the
+plain hyphen "-":
+
+- **"word- word"** (hyphen right after a letter) → "word-word". Not before "and", "or",
+  "nor": a suspended hyphen keeps its space ("pre- and post-test", "telephone- or").
+  The hyphen is dropped ("manage- ment" → "management") only when the joined word is
+  elsewhere in the pages read and the hyphenated one is not.
+- **"word - word"** (spaced) → "word-word" only when the first word is a common
+  compound first part (self, socio, cross, non, co, pre, post, re, anti, multi, semi,
+  inter, intra, sub, well, long, short, high, low, half, full, part, two–ten, chi) and
+  the second is not a small word (the, a, and, to, this, …). A spaced hyphen is often
+  a dash in these theses ("design - data" VIZCARA, "prevention - This" GARCES,
+  "systems - Use" JACA), so joining every spaced pair is wrong; counting spaced vs
+  unspaced hyphens per PDF does not tell the two kinds apart (Geneston 65/83, JACA
+  18/19).
+- **Capitals before a number**: "COVID- 19", "PRCA - 24" → "COVID-19" (2+ capitals,
+  or "Covid"). In the samples only in body text (ALFONSO, Geneston, TARUC).
+
+Kept: en and em dashes, "rho= -.144" (no letter before the hyphen), "2026-2030" (no
+space), split words ("s uch"). 31 sample PDFs against #89: 11 abstracts change, only
+in spaces and hyphens (ANTOLIN, ASUNCION, CALIMLIM, CAMACHO_HG, DANDO, DELA PENA, both
+Geneston-Dino copies, NAVARRO, TAN, and the private ISU thesis); no keyword list or
+study detail changed. **Known limits:** a spaced compound whose first part is not in
+the list stays spaced ("evidence - based"); "low- to middle-income" becomes
+"low-to middle-income" ("to" is not treated as suspended, as "face- to-face" and
+"business-to- customer" need joining).
+
 ---
 
 ## 9. Study details from the PDF, and speed (errata #82, 2026-11-09)

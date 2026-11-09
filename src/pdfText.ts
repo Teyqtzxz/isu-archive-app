@@ -193,6 +193,56 @@ function stripTrailingRunningHeads(body: string, isRunningHead: (line: string) =
   return /[.!?)\]"\u201d]\s*$/.test(rest) ? rest : body;
 }
 
+/** First parts of a compound written with a SPACED hyphen ("self - efficacy",
+ *  "Chi - square"). A spaced hyphen is often a dash ("design - data",
+ *  "prevention - This"), so only these are joined (errata #90). */
+const SPACED_COMPOUND_FIRST = new Set([
+  "self", "socio", "cross", "non", "co", "pre", "post", "re", "anti", "multi", "semi", "inter", "intra", "sub",
+  "well", "long", "short", "high", "low", "half", "full", "part",
+  "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "chi",
+]);
+/** Small words that never end a spaced compound ("self - the" is a dash). */
+const NOT_SECOND_PART = new Set([
+  "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "is", "are", "was", "were",
+  "it", "this", "that", "which", "as", "at", "by", "no", "not",
+]);
+/** A suspended hyphen keeps its space: "pre- and post-test", "telephone- or". */
+const SUSPENDED_NEXT = new Set(["and", "or", "nor"]);
+
+/** Hyphenated words in the abstract that kept a space (errata #90): the PDF
+ *  breaks "climate-related" over two lines ("climate- related"), or spaces
+ *  every hyphen ("self - efficacy"). Only the plain hyphen "-"; en and em
+ *  dashes, "rho= -.144" (no letter before) and "2026-2030" (no space) stay.
+ *  - "word- word" → "word-word", unless the next word is and / or / nor. The
+ *    hyphen is dropped ("manage- ment" → "management") only when the joined
+ *    word is elsewhere in `pagesText` and the hyphenated one is not.
+ *  - "word - word" → "word-word" only for SPACED_COMPOUND_FIRST, and not
+ *    before a NOT_SECOND_PART word.
+ *  - "COVID- 19", "PRCA - 24" → "COVID-19": capitals (2+ letters) or "Covid"
+ *    before a number.
+ *  Split words ("s uch") are never joined. */
+function joinHyphens(abstract: string, pagesText: string): string {
+  let words: Set<string> | null = null;
+  let hyphenated: Set<string> | null = null;
+  return abstract.replace(/(\p{L}+)( ?)- (\p{L}+|\d+)/gu, (all: string, left: string, space: string, right: string) => {
+    if (/^\d/.test(right)) {
+      return /^\p{Lu}{2,}$/u.test(left) || /^covid$/i.test(left) ? `${left}-${right}` : all;
+    }
+    if (space) {
+      return SPACED_COMPOUND_FIRST.has(left.toLowerCase()) && !NOT_SECOND_PART.has(right.toLowerCase())
+        ? `${left}-${right}` : all;
+    }
+    if (SUSPENDED_NEXT.has(right.toLowerCase())) return all;
+    if (!words || !hyphenated) {
+      const lower = pagesText.toLowerCase();
+      words = new Set(lower.match(/\p{L}+/gu) ?? []);
+      hyphenated = new Set(lower.match(/\p{L}+-\p{L}+/gu) ?? []);
+    }
+    const joined = `${left}${right}`.toLowerCase();
+    return words.has(joined) && !hyphenated.has(`${left}-${right}`.toLowerCase()) ? `${left}${right}` : `${left}-${right}`;
+  });
+}
+
 /** The keyword text so far ends in a separator, so the list must go on. */
 const KW_ENDS_OPEN = /(?:[,;&]|\band|\bor)\s*$/i;
 /** A heading the keyword list never runs into. */
@@ -292,10 +342,13 @@ export function extractAbstractAndKeywords(
     const firstLine = flat.slice(0, bodyAt).split("\n").length - 1;
     const inner = starts.size ? stripMiddleRunningHeads(m[2], firstLine, lines, starts, isRunningHead, timesSeen) : m[2];
     const body = stripTrailingRunningHeads(inner, isRunningHead);
-    abstract = `${sameLine}\n${sameLine.trim() ? body : stripHeaderBlock(body)}`
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(TRAILING_PAGE_MARKS, "$1");
+    abstract = joinHyphens(
+      `${sameLine}\n${sameLine.trim() ? body : stripHeaderBlock(body)}`
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(TRAILING_PAGE_MARKS, "$1"),
+      flat,
+    );
     break;
   }
 
