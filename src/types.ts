@@ -29,6 +29,9 @@ export interface Thesis {
   /** Author names in citation order. Records saved before this field existed
    *  read as [] (data.ts), so display code must handle an empty list. */
   authors: string[];
+  /** The college's full name (errata #87; the field kept its old name). Read
+   *  through collegeOf (data.ts), so an old department name arrives as its
+   *  college; any other value arrives as it is. */
   department: string;
   year: number;
   adviser: string;
@@ -74,15 +77,5 @@ export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string {
   return v.toDate().toISOString();
 }
 
-/**
- * The ten departments, as exact strings. They are used as filter values and as
- * badge labels, so the two can never drift: read them from here, never retype
- * them. Lives in types.ts (not data.ts) because data.ts turns into the
- * Firestore layer in step 04 and its sample data is removed; the filter values
- * must not go with it. users.department must also be one of these.
- */
-export const DEPARTMENTS = [
-  "Biology", "Agriculture", "Computer Science", "Forestry",
-  "Chemical Engineering", "Environmental Science", "Education",
-  "Business Administration", "Civil Engineering", "Nursing",
-] as const;
+// The ten departments that were here became the 12 colleges of colleges.ts
+// (errata #87): COLLEGES, COLLEGE_NAMES, collegeOf, shortCollege.

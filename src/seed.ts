@@ -87,7 +87,7 @@ export async function markAllPosted(): Promise<number> {
  * firestore.rules, and the rules forbid changing `role` — so once the rules are
  * published this call is denied, which is the protection working. Promote staff
  * in the Firebase console instead (docs/03 §8). Kept for the Rules Playground
- * and the emulator. `department` must be one of DEPARTMENTS, or "".
+ * and the emulator. `department` must be a college's full name (COLLEGE_NAMES), or "".
  */
 export async function setMyRole(
   uid: string,

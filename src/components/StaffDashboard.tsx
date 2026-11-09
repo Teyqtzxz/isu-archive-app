@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { NewThesis, StaffTab, Thesis } from "../types";
 import { countAdded } from "../stats";
+import { ownCollegeFilter, shortCollege } from "../colleges";
 import { ISUSeal, Icon, RecentStudyCard, initialsOf, type IconName } from "./shared";
 import { RegisterForm } from "./RegisterForm";
 import { DepartmentStats } from "./DepartmentStats";
@@ -14,7 +15,9 @@ export interface StaffAccount {
   uid: string;
   displayName: string;
   email: string;
-  /** One of DEPARTMENTS, or "" when the console record has none. */
+  /** users/{uid}.department through collegeOf (errata #87): a college's full
+   *  name, "" when the console record has none, or a hand-typed value that is
+   *  not a college (shown in Settings; the filters start on "All colleges"). */
   department: string;
 }
 
@@ -57,12 +60,14 @@ export function StaffDashboard({
   /** A toast when an Edit draft is dropped (the study was saved by someone since). */
   onDraftDiscarded: (message: string) => void;
 }) {
-  // Staff see their own department's theses on the dashboard. A client-side
-  // filter over the same live list (docs/04 §2.3); with no department set in
-  // the console they see everything rather than nothing.
-  const dept = account.department;
+  // Staff see their own college's theses on the dashboard. A client-side
+  // filter over the same live list (docs/04 §2.3); with no college set in
+  // the console — or a value that is not one of the 12 colleges — they see
+  // everything rather than nothing. An old department name in the profile
+  // has already been read as its college (data.ts, errata #87).
+  const dept = ownCollegeFilter(account.department);
   const mine = dept ? theses.filter(t => t.department === dept) : theses;
-  const deptLabel = dept ? `${dept} Staff` : "Research Staff";
+  const deptLabel = dept ? `${shortCollege(dept)} Staff` : "Research Staff";
   const name = account.displayName || account.email;
 
   // Local time, not UTC: see countAdded() in stats.ts.
@@ -87,7 +92,7 @@ export function StaffDashboard({
   ];
 
   const STAT_CARDS: { label: string; value: number; icon: IconName; tone: string }[] = [
-    { label: dept ? "Department Studies" : "Total Studies", value: stats.total, icon: "book", tone: "green" },
+    { label: dept ? "College Studies" : "Total Studies", value: stats.total, icon: "book", tone: "green" },
     { label: "Added this month", value: stats.thisMonth, icon: "clock", tone: "yellow" },
     { label: "Added this year", value: stats.thisYear, icon: "calendar", tone: "blue" },
   ];
@@ -166,9 +171,9 @@ export function StaffDashboard({
               <div className="welcome-text">
                 <div className="welcome-overline">Welcome back</div>
                 <div className="welcome-name">{name}</div>
-                <span className={`role-chip${dept ? "" : " role-chip--muted"}`}>
+                <span className={`role-chip${dept ? "" : " role-chip--muted"}`} title={dept || undefined}>
                   <Icon name="building" size={14} />
-                  {dept ? deptLabel : "No department set"}
+                  {dept ? deptLabel : "No college set"}
                 </span>
               </div>
               <div className="welcome-date">
@@ -198,8 +203,8 @@ export function StaffDashboard({
                 <div className="section-head section-head--wrap">
                   <h2 className="section-title">Recent studies</h2>
                   <span className="card-meta">{mine.length} total</span>
-                  {/* The whole library, not `mine`: "" = All Departments, so staff
-                      whose department has no studies yet can still reach the list. */}
+                  {/* The whole library, not `mine`: "" = All Colleges, so staff
+                      whose college has no studies yet can still reach the list. */}
                   {theses.length > 0 && (
                     <button type="button" onClick={() => onSearch("", "")} className="link-btn">
                       View all studies
@@ -210,7 +215,7 @@ export function StaffDashboard({
                 {mine.length === 0 ? (
                   <div className="card empty-state">
                     <div className="empty-state-icon"><Icon name="book" size={22} /></div>
-                    <div className="empty-state-title">{dept ? `No ${dept} studies yet` : "No studies in the e-library yet"}</div>
+                    <div className="empty-state-title">{dept ? `No ${shortCollege(dept)} studies yet` : "No studies in the e-library yet"}</div>
                     <div className="empty-state-text">Register one to get started.</div>
                   </div>
                 ) : (
@@ -251,7 +256,7 @@ export function StaffDashboard({
           </div>
         )}
 
-        {/* Every department, not just `mine`: the point is to compare them. */}
+        {/* Every college, not just `mine`: the point is to compare them. */}
         {!editing && activeTab === "statistics" && (
           <div className="animate-fade-in">
             <DepartmentStats
@@ -272,7 +277,9 @@ export function StaffDashboard({
             {([
               { label: "Name", value: name, icon: "user" },
               { label: "Email", value: account.email, icon: "mail" },
-              { label: "Department", value: dept || "Not set — ask the Firebase admin", icon: "building" },
+              { label: "College", value: dept
+                  || (account.department ? `${account.department} (not one of the 12 colleges — ask the Firebase admin)` : "Not set — ask the Firebase admin"),
+                icon: "building" },
               { label: "Role", value: "Research Department Staff", icon: "layers" },
             ] as { label: string; value: string; icon: IconName }[]).map(item => (
               <div key={item.label} className="settings-row">

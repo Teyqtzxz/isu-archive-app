@@ -4,7 +4,8 @@
 // when the tab closes — right for shared lab PCs. Never localStorage, never
 // Firestore. Pure parsing on top (examples in draft.check.ts:
 // node src/draft.check.ts), the try/catch storage wrappers below it.
-import { DEPARTMENTS, type StaffTab } from "./types.ts";
+import type { StaffTab } from "./types.ts";
+import { collegeOf, isCollege } from "./colleges.ts";
 import { MAX_AUTHORS, MAX_KEYWORDS } from "./validation.ts";
 import { DETAIL_FIELDS, type DetailField } from "./pdfDetails.ts";
 
@@ -77,7 +78,8 @@ const isList = (v: unknown, max: number): v is string[] =>
 /**
  * A stored draft, or null when it must be ignored: nothing stored, bad JSON,
  * the wrong shape, another version, another account or another study.
- * A department that is not one of DEPARTMENTS comes back as "".
+ * A department name from before errata #87 comes back as its college; any
+ * value that is not one of the 12 colleges comes back as "".
  */
 export function parseDraft(raw: string | null, want: { uid: string; studyId: string | null }): RegisterDraft | null {
   if (!raw || !want.uid) return null;
@@ -118,12 +120,12 @@ export function parseDraft(raw: string | null, want: { uid: string; studyId: str
   if (notes !== undefined && (typeof notes !== "object" || notes === null || Array.isArray(notes)
     || !Object.entries(notes).every(([k, v]) => isField(k) && isText(v)))) return null;
   const lastRead = lr ? { source: lr.source as string, ok: lr.ok as boolean } : null;
-  const department = f.department as string;
+  const department = collegeOf(f.department);
   return {
     v: DRAFT_VERSION, uid: want.uid, studyId: want.studyId,
     form: {
       driveLink: f.driveLink as string, title: f.title as string, year: f.year as string, adviser: f.adviser as string,
-      department: (DEPARTMENTS as readonly string[]).includes(department) ? department : "",
+      department: isCollege(department) ? department : "",
     },
     authors: o.authors, newAuthor: o.newAuthor as string,
     abstract: o.abstract as string, keywords: o.keywords,

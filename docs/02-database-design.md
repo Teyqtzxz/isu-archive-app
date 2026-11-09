@@ -101,12 +101,44 @@ export function isPending(t: { status: ThesisStatus }): boolean {
   return t.status === "NEEDS_REVIEW" || t.status === "DRAFT";
 }
 
-export const DEPARTMENTS = [
-  "Biology", "Agriculture", "Computer Science", "Forestry",
-  "Chemical Engineering", "Environmental Science", "Education",
-  "Business Administration", "Civil Engineering", "Nursing",
-] as const;
+// DEPARTMENTS was removed by errata #87: the 12 colleges live in src/colleges.ts.
 ```
+
+### The `department` field holds a college (errata #87)
+
+The field kept its name — no data migration, no rules change (`firestore.rules`
+does not check it) — but since errata #87 it holds the **full name of one of
+ISU Echague's 12 colleges**, and the UI calls it "College". `src/colleges.ts`
+is the one list (`COLLEGES`, `COLLEGE_NAMES`); never retype the names.
+
+| Short form | Full name (stored) |
+|---|---|
+| CA | College of Agriculture |
+| CAS | College of Arts and Sciences |
+| CBAPA | College of Business, Accountancy and Public Administration |
+| CCJE | College of Criminal Justice Education |
+| CCSICT | College of Computing Studies, Information and Communication Technology |
+| CED | College of Education |
+| COE | College of Engineering |
+| COM | College of Medicine and Allied Health Professions |
+| CON | College of Nursing |
+| CGS | Central Graduate School |
+| IOF | Institute of Fisheries |
+| SVM | School of Veterinary Medicine |
+
+**Aliases, translated when read, never written back** (`collegeOf`, used by
+`data.ts` for `theses/*` and `users/{uid}`, and by `draft.ts`): the full name,
+the short form, or one of the 10 old department names, in any case and with
+extra spaces, all read as the full name. Old names: Biology → CAS,
+Agriculture → CA, Computer Science → CCSICT, Forestry → CA, Chemical
+Engineering → COE, Environmental Science → CA, Education → CED, Business
+Administration → CBAPA, Civil Engineering → COE, Nursing → CON.
+
+Saving or editing a study writes the full name, so an old record is converted
+the first time staff save it. **Any other value** (typed by hand in the
+console) is kept as it is: shown on the badge and in Study Details, counted
+under "Other" in Studies by college, matched by no college filter (only "All
+colleges" shows it); the Edit form shows College blank and asks for one.
 
 ---
 
@@ -119,7 +151,7 @@ One document per signed-in user, keyed by Firebase Auth UID.
 | `email` | string | `staff.cas@isu.edu.ph` | full Google email |
 | `displayName` | string | `"Maria Santos"` | from Google profile |
 | `role` | string | `"STAFF"` | `"STAFF"` or `"STUDENT"` |
-| `department` | string | `"Computer Science"` | staff only. **Must be one of `DEPARTMENTS`** (or `""`) — the staff dashboard and the default search filter compare it to `Thesis.department`, so a college code like `"CAS"` matches nothing and every staff view comes up empty |
+| `department` | string | `"College of Computing Studies, Information and Communication Technology"` | staff only: their college (errata #87). Write the full name; the short form (`"CCSICT"`) and an old department name (`"Computer Science"`) also work, because `getUserProfile` reads it through `collegeOf`. `""` or any other value = no own college: the dashboard and the search filters start on All colleges, and Settings shows the value with "(not one of the 12 colleges …)" |
 | `createdAt` | timestamp | — | first-created date |
 
 On first login the app creates this document with `role: "STUDENT"`. An account
@@ -137,7 +169,7 @@ by the security rules once they are published, by design.
 | `authors` | array\<string\> | `["Juan Dela Cruz", "Maria Santos"]` | required on Register; older records read as `[]` |
 | `abstract` | string | long text | auto-extracted by pdf.js (step 06) |
 | `keywords` | array\<string\> | `["biodiversity", "Cagayan River"]` | auto-extracted, editable |
-| `department` | string | `"Biology"` | must be one of `DEPARTMENTS` |
+| `department` | string | `"College of Arts and Sciences"` | the college's full name (§2, errata #87). Old department names are read as their college; see "The `department` field holds a college" |
 | `year` | number | `2024` | academic year |
 | `adviser` | string | `"Dr. Maria Santos"` | |
 | `driveLink` | string | `https://drive.google.com/...` | the share link staff pasted |
@@ -165,8 +197,8 @@ Firestore**. The status is decided by which button the staff member pressed:
 | `DRAFT` | **reserved.** No button produces it yet; it exists in seed data so the badge, filter and `isPending()` stay exercised. Do not invent a "Save Draft" button unless the group decides to |
 
 `department` and `year` are used as filter values, so their strings must be
-identical everywhere. Always read departments from `DEPARTMENTS` rather than
-retyping them. (Status was a filter too until 2026-10-12.)
+identical everywhere. Always read colleges from `COLLEGE_NAMES` in
+`src/colleges.ts` rather than retyping them (errata #87; `DEPARTMENTS` is gone). (Status was a filter too until 2026-10-12.)
 
 Not stored, although earlier drafts listed them: `driveFileId` is worked out
 from `driveLink` when needed (`driveFileId()` in `extractPdf.ts`), and
@@ -373,7 +405,8 @@ Done as of the enum migration (`02` §5):
 Still to check once this step's remaining work is done:
 
 - [x] `src/seed.ts` compiles (after `src/firebase.ts` was added)
-- [x] `DEPARTMENTS` is exported from `src/types.ts` only. The old `ADVISERS`
+- [x] `DEPARTMENTS` is exported from `src/types.ts` only (since errata #87:
+      the 12 colleges from `src/colleges.ts`, `DEPARTMENTS` removed). The old `ADVISERS`
       option list was removed (errata #48): the adviser is typed as plain text
 
 **Cannot be verified until step 03** (no Firebase project yet): that the seed

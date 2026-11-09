@@ -28,13 +28,13 @@ identifiers, and do not put "thesis" or "archive" back into on-screen text.
 Students read the whole study **view-only** in Google's viewer ("Read full study"; staff see "Open in Drive"). Each PDF is shared as **Isabela State University → Viewer** with download/print/copy limited to **Editors** — that Drive setting is the real protection, and it also blocks the Drive API download, so staff register from a PDF on their computer.
 
 Staff register research studies by pasting a Google Drive link; the app reads
-the PDF in the browser and auto-fills the title, authors, department, year
+the PDF in the browser and auto-fills the title, authors, college, year
 completed, adviser, abstract and keywords on one "Check & save" screen (PDF first,
 errata #82: never guessed, never overwriting what staff typed), and saving
 **posts** the study at once (there is no review queue). Staff and students then
 search the e-library with BM25F ranking (title, keywords, authors, adviser,
 abstract and Academic Year, title weighted most), read a combined extractive summary of
-the results they tick, and see department statistics.
+the results they tick, and see statistics by college.
 
 | Role | Can do |
 |------|--------|
@@ -77,7 +77,7 @@ export interface Thesis {
   authors: string[];   // in citation order; required on Register
   abstract: string;
   keywords: string[];
-  department: string;
+  department: string;  // a college's FULL name (errata #87; field name kept)
   year: number;
   adviser: string;
   driveLink: string;
@@ -96,7 +96,7 @@ export type ExtractionState = "idle" | "extracting" | "success" | "needs_review"
 /** registeredAt as a sortable ISO string, whatever shape it arrived in. null → "" (sorts last). */
 export function registeredAtISO(t: Pick<Thesis, "registeredAt">): string;
 
-export const DEPARTMENTS = [ /* the ten strings below */ ] as const;
+// DEPARTMENTS was removed (errata #87): the colleges are in src/colleges.ts.
 
 /** Stored role on users/{uid}. Uppercase; separate from the lowercase routing `Role`. */
 export type AccountRole = "STAFF" | "STUDENT";
@@ -114,8 +114,12 @@ This is what `src/types.ts` exports today. **Never compare or
 subtract `registeredAt` directly** — it is a three-way union. Sort and compare
 through `registeredAtISO()`.
 
-`users.department` must be one of `DEPARTMENTS` (or `""`), never a college code
-like `"CAS"` — staff filters compare it against `Thesis.department`.
+`Thesis.department` and `users.department` hold a **college's full name**
+(errata #87, "Colleges" below). Both are read through `collegeOf`: an old
+department name ("Computer Science") or a short form ("CCSICT") arrives as the
+full name and is never written back; any other value arrives as it is (shown,
+counted under "Other", only under "All colleges"). Write full names; never retype
+them — use `COLLEGE_NAMES`.
 
 ### Status — one value, and four traps
 
@@ -142,7 +146,13 @@ Research Department staff register, so a saved study is **posted** at once.
 
 ```
 src/
-  types.ts            ← the types above, incl. DEPARTMENTS        ✅ EXISTS
+  types.ts            ← the types above                           ✅ EXISTS
+  colleges.ts         ← pure (errata #87): the 12 COLLEGES (short
+                        form + full name), collegeOf (old names →
+                        college, when read), shortCollege,
+                        ownCollegeFilter, collegeOfProgram (exact
+                        programme table, never single words; BSA
+                        → empty); examples in colleges.check.ts  ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in (Google;
                         email + password, Create account, Forgot
                         password = email sign-in link with the
@@ -196,8 +206,8 @@ src/
                         ISU / UP Open University title page, then
                         the approval sheet; Year completed only
                         from a date, never "AY 2024-2025";
-                        department only when the programme names
-                        exactly one of DEPARTMENTS; 2–3 advisers →
+                        college only from collegeOfProgram
+                        (colleges.ts, errata #87); 2–3 advisers →
                         joined by "and", 4+ (title page or
                         block) → empty + note;
                         Critic/Panel/Chair/Dean never an adviser,
@@ -426,8 +436,8 @@ Real, working — **do not rewrite**:
   typed is overwritten (a grey note shows what the PDF says instead). Every
   rule is checked on Save. A progress line shows the download and the page
   being read
-- Department statistics: studies per department and top keywords (staff
-  Statistics tab, student dashboard)
+- Statistics by college: studies per college (short forms on the bars) and
+  top keywords (staff Statistics tab, student dashboard)
 - Library charts (`LibraryCharts.tsx`, errata #76), staff Statistics tab
   only: studies by Academic Year, studies added per month (last 12, local
   time) and the top 8 advisers, over the whole e-library; read-only (no
@@ -723,7 +733,7 @@ grep -nE "#[0-9a-fA-F]{3,6}" src/App.css src/components/*.tsx
 | `--accent-fill` (+ `-hover`) | green buttons, `--on-fill` text | `--isu-green` | `#0F7A4A` |
 | `--accent-soft` | green tint behind `--accent` | `--isu-green-light` | `#183328` |
 | `--header-bg` · `--tab-active` | header, hero · active tab line | `--isu-green` · `--isu-yellow` | `#0B3D28` · `#5FD39A` |
-| `--title-text` · `--badge-text` on `--badge-bg` | study titles · department badge | `--isu-blue` on `--isu-blue-light` | `#A9BBF5` on `#1E2844` |
+| `--title-text` · `--badge-text` on `--badge-bg` | study titles · college badge | `--isu-blue` on `--isu-blue-light` | `#A9BBF5` on `#1E2844` |
 | `--warn-text` on `--warn-soft` | keyword chips, review bar | `--isu-yellow-ink` on `--isu-yellow-light` | `#F7D000` on `#2C2A12` |
 | `--highlight-bg` | query words in `<mark>` (normal text colour) | `--isu-yellow-light` | `rgba(247, 208, 0, 0.30)` |
 | `--danger` · `--error-text` | red text, icons · messages | `--isu-red` · `--isu-red-ink` | `#FF6B6B` |
@@ -763,15 +773,26 @@ The header reads `--header-h` and is `position: sticky` in normal flow, so
 content always starts below it and no page needs a matching top padding. Never
 hardcode a header height anywhere else. Full token list: `src/index.css`.
 
-## Departments (exact strings — used as filter values, must match everywhere)
+## Colleges (errata #87 — exact strings, used as filter values, must match everywhere)
 
-```typescript
-export const DEPARTMENTS = [
-  "Biology", "Agriculture", "Computer Science", "Forestry",
-  "Chemical Engineering", "Environmental Science", "Education",
-  "Business Administration", "Civil Engineering", "Nursing",
-] as const;
-```
+The 10 departments were replaced by ISU Echague's 12 colleges. Read them from
+`src/colleges.ts` (`COLLEGES`, `COLLEGE_NAMES`); never retype them. The full name
+is stored and shown in dropdowns and Study Details; the short form wherever
+space is tight (badges, bars, chips). The UI says "College"; the Firestore field
+is still `department` (no migration, no rules change).
+
+CA College of Agriculture · CAS College of Arts and Sciences · CBAPA College of
+Business, Accountancy and Public Administration · CCJE College of Criminal Justice
+Education · CCSICT College of Computing Studies, Information and Communication
+Technology · CED College of Education · COE College of Engineering · COM College
+of Medicine and Allied Health Professions · CON College of Nursing · CGS Central
+Graduate School · IOF Institute of Fisheries · SVM School of Veterinary Medicine.
+
+Old department names, translated when read (never written): Biology → CAS,
+Agriculture → CA, Computer Science → CCSICT, Forestry → CA, Chemical Engineering
+→ COE, Environmental Science → CA, Education → CED, Business Administration →
+CBAPA, Civil Engineering → COE, Nursing → CON. The PDF auto-fill uses the exact
+programme table in `06` §9.1a.
 
 ## Current task
 

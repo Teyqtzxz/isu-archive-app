@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { Thesis } from "../types";
-import { DEPARTMENTS, registeredAtISO } from "../types";
+import { registeredAtISO } from "../types";
+import { COLLEGES } from "../colleges";
 import { countByDepartment } from "../stats";
 import { SEARCH_MAX, cleanQuery } from "../validation";
 import { ISUSeal, Icon, RecentStudyCard, initialsOf } from "./shared";
@@ -91,7 +92,7 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
         <section className="hero-section">
           <h1 className="hero-h1">Discover ISU Research</h1>
           <p className="hero-sub">
-            Search posted studies from every department and year, ranked by relevance.
+            Search posted studies from every college and year, ranked by relevance.
           </p>
 
           <div className="hero-search">
@@ -116,8 +117,9 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
         </section>
 
         <div className="container" style={{ paddingTop: 24, paddingBottom: 40 }}>
-          {/* Browse chips. "Recent" opens every thesis newest first; a department
-              chip opens the search screen filtered to that department. They used to
+          {/* Browse chips. "Recent" opens every thesis newest first; a college
+              chip (short form, full name as tooltip; errata #87) opens the search
+              screen filtered to that college. Department chips used to
               run a text search for the department's name, which missed theses that
               never use those words and caught ones from other departments that do. */}
           <div className="chip-row">
@@ -125,10 +127,11 @@ export function StudentDashboard({ theses, smartIndex, account, onSearch, onBrow
               <button onClick={() => onSearch("")} className="chip">
                 Recent
               </button>
-              {DEPARTMENTS.map(d => (
-                <button key={d} onClick={() => onBrowseDepartment(d)} className="chip">
-                  {d}
-                  <span className="chip-count">{deptCounts.get(d) ?? 0}</span>
+              {COLLEGES.map(c => (
+                <button key={c.code} onClick={() => onBrowseDepartment(c.name)} className="chip"
+                  title={c.name} aria-label={`${c.name}: ${deptCounts.get(c.name) ?? 0} ${(deptCounts.get(c.name) ?? 0) === 1 ? "study" : "studies"}`}>
+                  {c.code}
+                  <span className="chip-count">{deptCounts.get(c.name) ?? 0}</span>
                 </button>
               ))}
             </div>

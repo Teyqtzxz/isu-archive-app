@@ -65,7 +65,7 @@ export default function App() {
   const draftDiscarded = useCallback((message: string) => showToast(message, "notice"), [showToast]);
   const [staffTab, setStaffTab] = useState<StaffTab>("dashboard");
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
-  // undefined = use the default (staff: own department, students: all).
+  // undefined = use the default (staff: own college, students: all).
   const [searchInitialDept, setSearchInitialDept] = useState<string | undefined>(undefined);
   const [summaryData, setSummaryData] = useState<{ theses: RankedThesis[]; query: string } | null>(null);
   const [citeJump, setCiteJump] = useState<{ thesisId: string; nonce: number; open?: boolean } | null>(null);
@@ -340,7 +340,7 @@ export default function App() {
   }
 
   // Dashboard "View details": the search screen, every study listed (no query,
-  // all departments, so this one is surely there), with this study's Study
+  // all colleges, so this one is surely there), with this study's Study
   // Details open and scrolled into view — the same jump the summary citations use.
   function openStudy(thesisId: string) {
     setSearchInitialQuery("");

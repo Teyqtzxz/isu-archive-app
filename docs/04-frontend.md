@@ -47,7 +47,8 @@ doing before the demo.
 - "Mark as Archived" appears on every pending row (`isPending`: NEEDS_REVIEW
   and DRAFT) in the staff dashboard.
 - The staff dashboard filters to the signed-in user's department; with no
-  department set it shows everything, and says so.
+  department set it shows everything, and says so. (Since errata #87: their
+  **college**, see §2.3.)
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **Part 1 is
@@ -151,7 +152,7 @@ Login
  ├─ STAFF   → Staff Dashboard (tabs: Dashboard / Register / Search / Statistics / Settings)
  │            ├─ Register tab      → Register screen
  │            ├─ Search tab        → Search screen
- │            └─ Statistics tab    → department bars + top keywords, the library
+ │            └─ Statistics tab    → college bars + top keywords, the library
  │                                   charts (by year, added per month, top
  │                                   advisers) and the Keyword model card
  └─ STUDENT → Student Dashboard (hero search) → Search screen
@@ -268,6 +269,20 @@ state, and pass it to `StaffDashboard` and `SearchScreen`. It is one of the exac
 `DEPARTMENTS` strings (`02` §3). Replace the hardcoded "CAS Department Staff"
 badge in `StaffDashboard` with it. Remove `SAMPLE_THESES` from `App.tsx`'s
 initial state — start with `[]`.
+
+**Colleges, not departments (errata #87).** The value is now one of the 12
+colleges (`src/colleges.ts`, `02` §2). `getUserProfile` reads
+`users/{uid}.department` through `collegeOf`, so an old value such as
+"Computer Science" still gives the staff member their college (CCSICT);
+`ownCollegeFilter` turns anything that is not one of the 12 into `""`, and the
+dashboard, Search and the "(mine)" marks then start on All colleges while
+Settings shows the stored value. Where the college is shown:
+
+| Place | Shown as |
+|---|---|
+| Register / Edit "College" dropdown, Study Details, Settings | full name |
+| Search filter, Top keywords box | `CODE · full name` (cut with "…" on phones) |
+| Study badge, active filter chip, Studies by college bars, student chips, "CODE Staff" chip, "No CODE studies yet" | short form; full name as tooltip (badge, bar, chip) and for screen readers |
 
 ---
 
@@ -390,6 +405,7 @@ Only if time allows. See `08-deployment.md` §4.
 - [ ] A newly saved thesis appears at the **top** of the list immediately, not
       the bottom (proves the `serverTimestamps: "estimate"` sort)
 - [ ] The staff badge shows the signed-in user's department, not "CAS"
+      (since errata #87: their college's short form, e.g. "CCSICT Staff")
 - [ ] At 375×667 with a 48px top inset the header logo and title are fully visible
 - [ ] At 768px the Sign Out button shows icon + "Sign Out"; below 768px it is
       the icon only, the size of the theme toggle (errata #70)

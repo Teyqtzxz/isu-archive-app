@@ -6,6 +6,7 @@ import { registeredAtISO } from "../types";
 import { highlightParts } from "../snippet";
 import { AUTH_MSG, checkConfirm, passwordRules } from "../auth";
 import { adviserLabel } from "../validation";
+import { shortCollege } from "../colleges";
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // One small stroke-icon set, so the UI does not mix emoji with vector icons.
@@ -147,10 +148,15 @@ export function withAccount(link: string, email: string): string {
   }
 }
 
+/** A study's college as a badge: the short form ("CCSICT"), the full name as
+ *  tooltip and for screen readers (errata #87). A value that is not one of
+ *  the 12 colleges is shown as it is (cut short with "…" if too long). */
 export function DeptBadge({ dept, small }: { dept: string; small?: boolean }) {
+  const short = shortCollege(dept);
   return (
-    <span className={`dept-badge${small ? " dept-badge--small" : ""}`}>
-      {dept}
+    <span className={`dept-badge${small ? " dept-badge--small" : ""}`} title={dept}>
+      <span aria-hidden={short !== dept}>{short}</span>
+      {short !== dept && <span className="sr-only">{dept}</span>}
     </span>
   );
 }

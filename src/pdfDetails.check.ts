@@ -4,11 +4,16 @@
 // the two kinds of title page and abstract page seen in real studies (an ISU
 // thesis and UP Open University theses); no real study's text is used.
 import {
-  NOTE, abstractWithoutTitle, adviserAsPrinted, departmentOf, fillFromPdf, readDetails, readStudy,
+  NOTE, abstractWithoutTitle, adviserAsPrinted, fillFromPdf, readDetails, readStudy,
   type DetailField, type Details, type StudyDetails,
 } from "./pdfDetails.ts";
 import { MSG_NOT_FOUND, MSG_SCANNED, type ReadProgress } from "./pdfText.ts";
 import { checkAdviser, checkAuthor, checkTitle, checkYear } from "./validation.ts";
+
+// The college each programme line gives (errata #87); the full list of
+// programmes, traps and old values is in colleges.check.ts.
+const CCSICT = "College of Computing Studies, Information and Communication Technology";
+const CA = "College of Agriculture";
 
 let failed = 0;
 function check(label: string, got: unknown, want: unknown) {
@@ -70,7 +75,7 @@ const isu = readDetails(isuPages());
 check("every field from the block (year from the title page)", fields(isu), {
   title: "Smart Paddy Watch: A Low-Cost Sensor Network for Irrigation Scheduling in Echague",
   authors: ["Maria Angela R. Dela Cruz", "Pedro L. Magbanua Jr."],
-  department: "Computer Science", year: "2023", adviser: "Rosa B. Alcantara, DIT",
+  department: CCSICT, year: "2023", adviser: "Rosa B. Alcantara, DIT",
 });
 check("sources", isu.source, { title: "block", authors: "block", department: "block", year: "title page", adviser: "block" });
 check("no notes when everything was found", isu.notes, {});
@@ -137,7 +142,7 @@ const noBlock = readDetails(isuPages(page("v", "ABSTRACT", ...BODY, "Keywords: s
 check("no block → title page (title in capitals, kept as printed) and approval sheet", fields(noBlock), {
   title: "SMART PADDY WATCH: A LOW-COST SENSOR NETWORK FOR IRRIGATION SCHEDULING IN ECHAGUE",
   authors: ["Maria Angela R. Dela Cruz", "Pedro L. Magbanua Jr."],
-  department: "Computer Science", year: "2023", adviser: "Rosa B. Alcantara, DIT",
+  department: CCSICT, year: "2023", adviser: "Rosa B. Alcantara, DIT",
 });
 check("… with the capitals note on the title", noBlock.notes, { title: NOTE.titleInCapitals });
 check("… sources", noBlock.source, { title: "title page", authors: "title page", department: "title page", year: "title page", adviser: "approval sheet" });
@@ -155,10 +160,25 @@ check("only the academic year printed → Year empty (never guessed)", ayOnly.ye
 check("… and the note shows the academic year", ayOnly.notes.year, NOTE.academicYearOnly("AY 2022-2023"));
 check("no date, no names from the title page (the list has no end)", readDetails([undated]).authors, []);
 
-check("Program in Information Technology → no department (not one of the ten)",
-  readDetails(isuPages(isuAbstract(block({ program: ["Program   : Bachelor of Science in Information Technology"] })), page("x"))).department, "");
-check("Program naming two departments → no department",
-  readDetails(isuPages(isuAbstract(block({ program: ["Program   : Bachelor of Science in Agriculture and Forestry"] })), page("x"))).department, "");
+console.log("\n— College from the Program line (errata #87) —");
+const collegeFromBlock = (line: string) =>
+  readDetails(isuPages(isuAbstract(block({ program: [`Program   : ${line}`] })), page("x"))).department;
+check("Program in Information Technology → CCSICT (one of the table now)",
+  collegeFromBlock("Bachelor of Science in Information Technology"), CCSICT);
+check("Program naming two programmes of one college → that college (Agriculture and Forestry → CA)",
+  collegeFromBlock("Bachelor of Science in Agriculture and Forestry"), CA);
+check("Program naming programmes of two colleges → no college",
+  collegeFromBlock("Bachelor of Science in Agriculture and Bachelor of Science in Nursing"), "");
+check("a specialization track after the programme is read like a major (the ISU layout)",
+  collegeFromBlock("Bachelor of Science in Computer Science-Data Mining Track"), CCSICT);
+check("BSA alone (Agriculture or Accountancy) → no college", collegeFromBlock("BSA"), "");
+check("extra words after a programme → no college (never a guess)",
+  collegeFromBlock("Bachelor of Science in Computer Science, Isabela State University"), "");
+check("the title page's degree line too (no block)", noBlock.department, CCSICT);
+check("MASTER OF ARTS IN NURSING (UP Open University) → no college", collegeFromBlock("MASTER OF ARTS IN NURSING"), "");
+check("“Agricultural” is not Agriculture", collegeFromBlock("Master of Agricultural Development"), "");
+check("Environment and Natural Resources is not Environmental Science",
+  collegeFromBlock("MASTER OF ENVIRONMENT AND NATURAL RESOURCES MANAGEMENT"), "");
 
 const badName = readDetails(isuPages(isuAbstract(block({ authors: ["Authors   : Maria Angela R. Dela Cruz", "Group 7 Proponents"] }))));
 check("one block name that is not a name → the block's list is not used; the title page's is",
@@ -184,13 +204,6 @@ check("… a glued degree still moves when 2 name words stay (“Asst Prof. Lea 
 check("two advisers as printed → each cleaned, joined by “and”", adviserAsPrinted("DR. JEAN A. SANTOS & PRIMO G. LUNA, PH.D."), "Dr. Jean A. Santos and Primo G. Luna, PhD");
 check("a failing value in capitals: normal capitals, the rest as printed", adviserAsPrinted("LIZA M. REYES, DVM"), "Liza M. Reyes, DVM");
 
-console.log("\n— Departments —");
-check("Computer Science-Data Mining Track", departmentOf("Bachelor of Science in Computer Science-Data Mining Track"), "Computer Science");
-check("MASTER OF ARTS IN NURSING", departmentOf("MASTER OF ARTS IN NURSING"), "Nursing");
-check("Civil Engineering, not Chemical", departmentOf("Bachelor of Science in Civil Engineering"), "Civil Engineering");
-check("Environmental Science", departmentOf("BS Environmental Science"), "Environmental Science");
-check("“Agricultural” is not Agriculture", departmentOf("Master of Agricultural Development"), "");
-check("Environment and Natural Resources is not Environmental Science", departmentOf("MASTER OF ENVIRONMENT AND NATURAL RESOURCES MANAGEMENT"), "");
 
 // ─── UP Open University layout (made up) ─────────────────────────────────────
 const UP_PERMISSION = ["Permission is given for the following people to have access to this thesis:", "Invention (I)   Yes   or   No", "Student’s signature:"];
@@ -215,7 +228,8 @@ console.log("\n— UP Open University layout —");
 const up = readDetails([upPage(), page("University Permission Page"), upAbstract]);
 check("every field from the title page", fields(up), {
   title: "Care Practices of Nurses in Rural Health Units of Isabela",
-  authors: ["Juana P. De Los Santos"], department: "Nursing", year: "2024", adviser: "Asst. Prof. Liza M. Reyes, MAN, RN",
+  // MA in Nursing is a UP Open University programme, not ISU's: no college.
+  authors: ["Juana P. De Los Santos"], department: "", year: "2024", adviser: "Asst. Prof. Liza M. Reyes, MAN, RN",
 });
 check("the title in normal letters comes from the running header (letters identical)", up.notes.title, undefined);
 check("the filled adviser passes the adviser rules (MAN is a degree now)", checkAdviser(up.adviser).error, null);
@@ -271,8 +285,10 @@ check("initials and particles in capitals", readDetails([upPage({ author: "MA. L
 check("mixed-case name kept as printed", readDetails([upPage({ author: "Juana dP. Santos" })]).authors, ["Juana dP. Santos"]);
 check("an author line that is not a name → no author and no title (the layout is not clear)",
   fields(readDetails([upPage({ author: "SPECIAL PROBLEM 300 REPORT 2024" })])).authors, []);
-check("programme not one of the ten → no department",
+check("programme not in the table → no college",
   readDetails([upPage({ program: "MASTER OF DEVELOPMENT COMMUNICATION" })]).department, "");
+check("an ISU programme on this layout → its college (BS Nursing → CON)",
+  readDetails([upPage({ program: "BACHELOR OF SCIENCE IN NURSING" })]).department, "College of Nursing");
 
 console.log("\n— Never guess —");
 check("pages with no known layout → nothing", fields(readDetails([page("Chapter 1", "Some text here."), page("More text.")])),
@@ -319,12 +335,12 @@ check("scanned → MSG_SCANNED and nothing filled", [t3.problem, fields(t3.detai
 console.log("\n— Filling the form: never overwrite —");
 const EMPTY: Details = { title: "", authors: [], department: "", year: "", adviser: "" };
 const found = (over: Partial<StudyDetails> = {}): StudyDetails => ({
-  title: "Water Use of Upland Rice Farms in Echague", authors: ["Ana B. Cruz"], department: "Agriculture", year: "2024",
+  title: "Water Use of Upland Rice Farms in Echague", authors: ["Ana B. Cruz"], department: CA, year: "2024",
   adviser: "Rosa B. Alcantara, DIT", source: {}, notes: {}, ...over,
 });
 const f1 = fillFromPdf(EMPTY, [], found());
 check("empty form → every field filled and tagged", [f1.details, f1.fromPdf], [
-  { title: "Water Use of Upland Rice Farms in Echague", authors: ["Ana B. Cruz"], department: "Agriculture", year: "2024", adviser: "Rosa B. Alcantara, DIT" },
+  { title: "Water Use of Upland Rice Farms in Echague", authors: ["Ana B. Cruz"], department: CA, year: "2024", adviser: "Rosa B. Alcantara, DIT" },
   ["title", "authors", "department", "year", "adviser"],
 ]);
 const typed: Details = { ...EMPTY, title: "My Own Typed Title for This Study", year: "2023" };
@@ -337,10 +353,10 @@ const prev: DetailField[] = ["title", "adviser"];
 const f3 = fillFromPdf({ ...EMPTY, title: "An Earlier PDF Title Here", adviser: "Ana Reyes" }, prev, found({ adviser: "" }));
 check("an earlier PDF's values are replaced", f3.details.title, "Water Use of Upland Rice Farms in Echague");
 check("an earlier PDF's value the new PDF does not give is emptied", f3.details.adviser, "");
-const study: Details = { title: "Saved Study Title in the Library", authors: [], department: "Biology", year: "2019", adviser: "Dr. Ana Reyes" };
+const study: Details = { title: "Saved Study Title in the Library", authors: [], department: "College of Arts and Sciences", year: "2019", adviser: "Dr. Ana Reyes" };
 const f4 = fillFromPdf(study, [], found());
 check("Edit: nothing a saved study holds is changed", [f4.details.title, f4.details.department, f4.details.year, f4.details.adviser],
-  ["Saved Study Title in the Library", "Biology", "2019", "Dr. Ana Reyes"]);
+  ["Saved Study Title in the Library", "College of Arts and Sciences", "2019", "Dr. Ana Reyes"]);
 check("Edit: an empty author list (old record) is filled and tagged", [f4.details.authors, f4.fromPdf], [["Ana B. Cruz"], ["authors"]]);
 check("the AY note comes along when Year can be filled",
   fillFromPdf(EMPTY, [], found({ year: "", notes: { year: NOTE.academicYearOnly("AY 2023-2024") } })).notes.year, NOTE.academicYearOnly("AY 2023-2024"));

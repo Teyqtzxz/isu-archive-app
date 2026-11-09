@@ -16,8 +16,9 @@ import { createAccountThenVerify, createSendFailureBox, type SendFailureBox } fr
 import {
   createLinkReset, forgetEmail, readEmail, rememberEmail, sendResetLink, type KeyStore, type LinkReset,
 } from "./emailLink";
+import { collegeOf } from "./colleges";
 import {
-  DEPARTMENTS, registeredAtISO,
+  registeredAtISO,
   type AccountRole, type NewThesis, type Thesis, type ThesisStatus,
 } from "./types";
 
@@ -29,7 +30,8 @@ export { isIsuEmail };
 
 export interface UserProfile {
   role: AccountRole;
-  /** One of DEPARTMENTS, or "" when unset. Used by step 04's staff filters. */
+  /** A college's full name (collegeOf), "" when unset, or a hand-typed value
+   *  that is not a college (shown; the filters then start on "All colleges"). */
   department: string;
 }
 
@@ -43,11 +45,12 @@ export async function getUserProfile(user: User): Promise<UserProfile> {
   const snap = await getDoc(ref);
   if (snap.exists()) {
     const data = snap.data();
-    // Trim: the value is typed by hand in the console, and " Computer Science"
-    // with a stray space would otherwise silently match no thesis.
-    const raw = String(data.department ?? "").trim();
-    const dept = (DEPARTMENTS as readonly string[]).includes(raw) ? raw : "";
-    return { role: data.role === "STAFF" ? "STAFF" : "STUDENT", department: dept };
+    // Typed by hand in the console: collegeOf trims it and ignores case, and
+    // turns a college's short form or a department name from before errata
+    // #87 ("Computer Science") into the college's full name, so the staff
+    // member's own-college default still works. Never written back. Any
+    // other value is kept as it is: shown in Settings, filter "All colleges".
+    return { role: data.role === "STAFF" ? "STAFF" : "STUDENT", department: collegeOf(data.department) };
   }
   await setDoc(ref, {
     role: "STUDENT",
@@ -297,11 +300,14 @@ export function subscribeToTheses(
           // Every record reads as POSTED, including ones saved as ARCHIVED,
           // NEEDS_REVIEW or DRAFT before the review step was removed.
           // Records saved before the authors field existed have none: read as [].
+          // A department name from before errata #87 reads as its college
+          // (never written back); any other value as it is.
           .map((d) => {
             const data = d.data({ serverTimestamps: "estimate" });
             return {
               id: d.id, ...data, status: "POSTED",
               authors: Array.isArray(data.authors) ? data.authors : [],
+              department: collegeOf(data.department),
             } as Thesis;
           })
           // Never compare registeredAt directly — it is a three-way union, and

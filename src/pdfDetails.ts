@@ -1,5 +1,6 @@
 // The study details read from a PDF for the Register / Edit form (errata
-// #82): title, authors, department, year completed and adviser. Pure — no
+// #82): title, authors, college (field `department`, errata #87), year
+// completed and adviser. Pure — no
 // pdf.js, no Firebase, no React — so `node src/pdfDetails.check.ts` can test
 // it. The page texts come from pdfText.ts readPages (one string per page, line
 // breaks kept).
@@ -15,7 +16,7 @@
 //      programme, author, title, "Thesis Adviser:", adviser, faculty, date).
 //   3. The approval sheet (adviser above "Thesis Adviser"; the title in
 //      quotes after "entitled"; the names after "submitted by").
-import { DEPARTMENTS } from "./types.ts";
+import { collegeOfProgram } from "./colleges.ts";
 import { PARTICLES } from "./citation.ts";
 import {
   MAX_ADVISER, MAX_ADVISERS, MAX_AUTHORS, adviserNames, checkAdviser, checkAuthor, checkTitle, cleanSpaces, degreeOf, fixCapitals,
@@ -52,7 +53,7 @@ export const NOTE = {
 } as const;
 
 const FIELD_LABEL: Record<DetailField, string> = {
-  title: "title", authors: "author list", department: "department", year: "year completed", adviser: "adviser",
+  title: "title", authors: "author list", department: "college", year: "year completed", adviser: "adviser",
 };
 
 // ─── Lines and small helpers ─────────────────────────────────────────────────
@@ -164,12 +165,6 @@ function oneAdviserAsPrinted(printed: string): string {
   const prepared = [fixedMain, ...rest.map(r => r.trim())].join(", ");
   const c = checkAdviser(prepared);
   return c.error ? prepared : c.value;
-}
-
-/** The one department a programme line names, or "" (none, or more than one). */
-export function departmentOf(program: string): string {
-  const hits = DEPARTMENTS.filter(d => new RegExp(String.raw`(?:^|[^\p{L}])${d.replace(/ /g, String.raw`\s+`)}(?:$|[^\p{L}])`, "iu").test(program));
-  return hits.length === 1 ? hits[0] : "";
 }
 
 // ─── 1. The labelled block on the abstract page ──────────────────────────────
@@ -438,7 +433,8 @@ export function readDetails(pages: string[]): StudyDetails {
   }
 
   const program = block?.program ?? tp?.program;
-  const dept = program ? departmentOf(program) : "";
+  // The exact programme table of colleges.ts (errata #87): one college or "".
+  const dept = program ? collegeOfProgram(program) : "";
   if (dept) { out.department = dept; out.source.department = block?.program ? "block" : "title page"; }
 
   if (tp?.year) { out.year = tp.year; out.source.year = "title page"; }
