@@ -714,7 +714,7 @@ give stays empty.**
 |---|---|---|---|
 | Title | the labelled block under ABSTRACT ("Title :", wrapped lines joined) | the title page (ISU: the lines above "A Thesis"; UP Open University: between the author and "… Adviser:"). In capitals with a running header above it whose **letters are identical** → the header's normal letters | the approval sheet ("entitled “…”") |
 | Authors | the block ("Authors :", one name per line; a line that is not a name → the block's list is not used at all) | the title page ("By:" names up to the date; the UPOU author line) | the approval sheet ("submitted by … in partial") |
-| College (field `department`) | the Program line (block, else the title page's degree line), looked up in the **exact programme table** of `src/colleges.ts` (errata #87, §9.1a) | — | — |
+| College (field `department`) | the Program line (block, else the title page's degree line), looked up in the **exact programme table** of `src/colleges.ts` (errata #87, §9.1a); else the same line as a college (errata #88) | "College:" / "Department:" in the block; a college's **full name** on a line of its own, pages 1–4 (errata #88, §9.1a) | different colleges → empty, with a note listing them |
 | Year completed | the title page date ("December 2024", "22 September 2025", "15/08/2025", also after a "Critic" block or "Date of Submission") | — | never from "AY 2024-2025": then empty, with the note "The PDF gives only the academic year (AY 2024-2025) …" |
 | Adviser | the block ("Adviser :", "Advisers :", "Adviser(s) :", "Co-Adviser :"; names on the same line, and on the lines just below the label when each is clearly an adviser — see below) | the title page ("Thesis / Special Problem / … Adviser:"); **two or three names** ("Thesis Advisers:") → all of them joined by "and" (errata #86); **four** lines, or a line that is not a name → empty, with a note listing them | the approval sheet (the line above "Thesis Adviser") |
 
@@ -745,6 +745,39 @@ Communication Technology").
    college; different colleges → empty.
 5. Anything else after a programme (", Isabela State University", "Program") →
    empty. No match → empty. **CGS is never filled in automatically.**
+
+**College lines (errata #88).** Many ISU title pages print the college instead of
+(or besides) a programme, and some blocks print only a field name. `readDetails`
+now collects every college the PDF names, never guessing:
+
+1. **The Program line** first (`collegeOfProgram`, unchanged). If it gives none, the
+   **same line** through `collegeOf`: a full name, a short form or an old field name
+   ("Program: Computer Science" → CCSICT, "Nursing" → CON, "COLLEGE OF NURSING" → CON).
+2. **"College:" or "Department:"** in the labelled block (its own label, so it never
+   reaches the Adviser box and no longer ends the block): the value through
+   `collegeOf` (full name or short form: "College: CCSICT" → CCSICT). A value that is
+   not a college ("Department: Department of Biology") is ignored, no note.
+3. **Free lines on pages 1–4** (title page, approval sheet): only a line that is
+   **exactly a college's full name** (`collegeOfFullName`: any case, "&" = "and",
+   commas and extra spaces ignored). A name wrapped over two lines ("COLLEGE OF
+   COMPUTING STUDIES, INFORMATION AND" / "COMMUNICATION TECHNOLOGY") counts when the
+   two lines joined are exactly one college. **Never** on a free line: short forms
+   (CA, CON, COE…) and field names (too short or too common), "Faculty of Management
+   and Development Studies", "Isabela State University", "Graduate School", a line
+   with a college's name inside more words ("Presented to the College of Nursing",
+   "Dean, College of Engineering").
+4. **One college named** (by any of 1–3, once or several times) → filled. **Different
+   colleges** → empty, with the note *"The PDF names 2 colleges: A; B. Choose the
+   college."* (full names, in the order found: programme, block label, free lines).
+5. **The Central Graduate School** is never filled and never counts: "Central
+   Graduate School" on a free line or after "College:" is skipped ("Central Graduate
+   School" + "College of Education" → CED, no note).
+6. Source tag "from PDF" as before: the source of the first line that named it
+   (block, else title page; a free line on the approval sheet is tagged title page).
+
+`collegeOf` itself now also ignores "&" vs "and" and commas **for full names only**
+(a printed "College of Computing Studies, Information & Communication Technology"
+reads as CCSICT; short forms and old names are matched as before).
 
 | College | Programmes |
 |---|---|
@@ -857,7 +890,12 @@ layouts). Script: `readStudy()` vs `main`'s reader on each file.
   #87 (re-run on all 31):** none of the 30 UPOU programmes is in the ISU table, so all
   30 leave College empty — the 7 "Master of Arts in Nursing" and the 1 "Bachelor of
   Education Studies" that filled a department before now go empty (expected: not ISU
-  programmes); the ISU BSCS thesis gives CCSICT (its "… Track" line, rule 3 of §9.1a). Adviser on all
+  programmes); the ISU BSCS thesis gives CCSICT (its "… Track" line, rule 3 of §9.1a).
+  **Since errata #88 (re-run on all 31): no College changes.** The 30 UPOU stay empty
+  (no line of theirs is an ISU college's full name; "Faculty of Management and
+  Development Studies" is never read); the ISU thesis still gives CCSICT from its
+  programme line, and its title pages also print the college's full name on a line
+  of its own — the same college, so no note. Adviser on all
   30: since errata #86 the two Geneston-Dino copies give both advisers joined by "and"
   ("Asst Prof. …, RN, MAN and Asst. Prof. …, RN, MAN"; before: empty
   with the note); the other 28 and the ISU thesis are unchanged (re-run on all 31). Titles: 9 in normal
@@ -921,7 +959,16 @@ abstract, readStudy, fillFromPdf); `pdfText.check.ts` (readPages, the progress l
 `colleges.check.ts` (every programme of §9.1a, the short forms, BSA, every trap,
 several programmes, tracks, extra words, the old department names, unknown values,
 the staff own-college default). Broken versions it catches: keyword matching instead
-of the table, BSA mapped, "major in" ignored, old value not translated.
+of the table, BSA mapped, "major in" ignored, old value not translated. Since errata
+#88 both files also check the college lines (made-up text): field names and the
+college on the Program line, "College:" / "Department:" (short form accepted there,
+never reaching the Adviser box, the block going on after it, a non-college value
+ignored), full names on free lines (capitals, "&", a two-line name), short forms and
+field names refused on free lines, the never-lines, page 5 not read, CGS skipped
+(with CED → CED), the conflict note (programme vs label, programme vs title page,
+two free lines). Broken versions caught: short form accepted on a free line,
+conflict filled with one of them, wrapped name not joined, CGS counted on a free
+line, "College:" read as an adviser label, "&" not loosened.
 
 ---
 

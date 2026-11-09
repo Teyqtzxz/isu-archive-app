@@ -56,17 +56,42 @@ const ALIASES = new Map<string, string>([
   ...COLLEGES.flatMap(c => [[key(c.name), c.name], [key(c.code), c.name]] as [string, string][]),
   ...Object.entries(OLD_DEPARTMENTS).map(([old, code]) => [key(old), name(code)] as [string, string]),
 ]);
+/** A full name in one spelling (errata #88): any case, "&" = "and", commas
+ *  and extra spaces ignored. Used for full names only, never short forms. */
+const fullKey = (s: string) => key(s.replace(/&/g, " and ").replace(/,/g, " "));
+const FULL_NAMES = new Map<string, string>(COLLEGES.map(c => [fullKey(c.name), c.name]));
 
 /**
  * The value read from a study, a staff profile or a draft, as a college:
  * the full name for a college's full name, short form or old department name
- * (any case, extra spaces ignored). Anything else — "" or a value typed by
- * hand — comes back unchanged (only trimmed), so it is still shown and never
- * lost; isCollege() tells the two apart.
+ * (any case, extra spaces ignored; for a full name also "&" = "and" and
+ * commas ignored, errata #88). Anything else — "" or a value typed by hand —
+ * comes back unchanged (only trimmed), so it is still shown and never lost;
+ * isCollege() tells the two apart.
  */
 export function collegeOf(raw: unknown): string {
   const s = typeof raw === "string" ? raw.trim() : "";
-  return ALIASES.get(key(s)) ?? s;
+  return ALIASES.get(key(s)) ?? FULL_NAMES.get(fullKey(s)) ?? s;
+}
+
+/**
+ * The college a whole line names by its FULL name only (errata #88: a free
+ * line of a title page or approval sheet): any case, "&" = "and", commas and
+ * extra spaces ignored; "" for anything else. Short forms ("CON", "COE") and
+ * old field names ("Nursing") are never accepted here: too short or too
+ * common on a free line. Nor is a line that only contains a college's name
+ * inside more words ("Presented to the College of Nursing").
+ */
+export function collegeOfFullName(line: string): string {
+  return FULL_NAMES.get(fullKey(line)) ?? "";
+}
+
+/** True for the Central Graduate School, which is never filled in
+ *  automatically (errata #87): no programme names it, and a printed
+ *  "Central Graduate School" line neither fills College nor counts against
+ *  another college (errata #88). */
+export function isGraduateSchool(value: string): boolean {
+  return value === name("CGS");
 }
 
 /** True for exactly one of the 12 full names. */

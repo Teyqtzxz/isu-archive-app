@@ -180,6 +180,84 @@ check("“Agricultural” is not Agriculture", collegeFromBlock("Master of Agric
 check("Environment and Natural Resources is not Environmental Science",
   collegeFromBlock("MASTER OF ENVIRONMENT AND NATURAL RESOURCES MANAGEMENT"), "");
 
+console.log("\n— College from a field name or a college line (errata #88) —");
+const CON = "College of Nursing";
+const COE = "College of Engineering";
+const CED = "College of Education";
+// 1. The Program line as a college when no programme of the table matches.
+check("Program: Computer Science (an old field name) → CCSICT", collegeFromBlock("Computer Science"), CCSICT);
+check("Program: Nursing → CON", collegeFromBlock("Nursing"), CON);
+check("Program: COLLEGE OF NURSING (the college itself) → CON", collegeFromBlock("COLLEGE OF NURSING"), CON);
+check("Program: the college with “&” → CCSICT",
+  collegeFromBlock("College of Computing Studies, Information & Communication Technology"), CCSICT);
+check("Program: Central Graduate School → no college (never automatic)", collegeFromBlock("Central Graduate School"), "");
+check("Program: Zoology → no college", collegeFromBlock("Zoology"), "");
+// 2. "College:" / "Department:" in the labelled block.
+const withBlock = (lines: string[]) => readDetails(isuPages(isuAbstract(lines), page("x")));
+const blockBSA = (...extra: string[]) => withBlock([...block({ program: ["Program   : BSA"] }), ...extra]);
+const labelCode = blockBSA("College   : CCSICT");
+check("College: CCSICT (short form after the label) → CCSICT, from the block",
+  [labelCode.department, labelCode.source.department, labelCode.notes.department], [CCSICT, "block", undefined]);
+check("… the adviser stays as printed on its own line", labelCode.adviser, "Rosa B. Alcantara, DIT");
+const labelDept = blockBSA("Department   : College of Engineering");
+check("Department: College of Engineering → COE", labelDept.department, COE);
+check("… never reaches the Adviser box", labelDept.adviser, "Rosa B. Alcantara, DIT");
+const labelFull = blockBSA("College: College of Engineering");
+check("College: College of Engineering → COE; adviser as printed", [labelFull.department, labelFull.adviser], [COE, "Rosa B. Alcantara, DIT"]);
+const midBlock = withBlock(block({ program: ["Program   : BSA", "College   : CON"] }));
+check("“College:” between Program and Authors: the block goes on (authors, adviser read)",
+  [midBlock.department, midBlock.authors, midBlock.adviser],
+  [CON, ["Maria Angela R. Dela Cruz", "Pedro L. Magbanua Jr."], "Rosa B. Alcantara, DIT"]);
+const notCollege = blockBSA("Department   : Department of Biology");
+check("Department: Department of Biology (not a college) → ignored, no note",
+  [notCollege.department, notCollege.notes.department, notCollege.adviser], ["", undefined, "Rosa B. Alcantara, DIT"]);
+check("College: Central Graduate School → no college, no note",
+  [blockBSA("College   : Central Graduate School").department, blockBSA("College   : CGS").notes.department], ["", undefined]);
+const sameTwice = withBlock([...block(), "College   : CCSICT"]);
+check("programme and “College:” name the same college → filled, from the block",
+  [sameTwice.department, sameTwice.source.department, sameTwice.notes.department], [CCSICT, "block", undefined]);
+// 4. Programme and college line disagree: empty, the note lists both.
+const clash = withBlock([...block({ program: ["Program   : Computer Science"] }), "College   : CON"]);
+check("Program Computer Science but College: CON → empty, with a note listing both",
+  [clash.department, clash.notes.department], ["", NOTE.differentColleges([CCSICT, CON])]);
+const clashTitle = readDetails(isuPages(isuAbstract(block({ program: ["Program   : Bachelor of Science in Nursing"] }))));
+check("Program BS Nursing, the title page prints CCSICT's full name → empty, with the note",
+  [clashTitle.department, clashTitle.notes.department], ["", NOTE.differentColleges([CON, CCSICT])]);
+check("… the CGS on a College: line never counts against the programme",
+  withBlock([...block(), "College   : Central Graduate School"]).department, CCSICT);
+// 3. Free lines on pages 1–4: only a college's full name, on a line of its own.
+const free = (...lines: string[]) => readDetails([page("A MADE-UP STUDY OF RICE FARMS", ...lines, "ISABELA STATE UNIVERSITY", "Echague, Isabela")]);
+const nursing = free("COLLEGE OF NURSING");
+check("title page “COLLEGE OF NURSING” → CON, from the title page",
+  [nursing.department, nursing.source.department], [CON, "title page"]);
+check("“School of Veterinary Medicine” → SVM", free("School of Veterinary Medicine").department, "School of Veterinary Medicine");
+check("“Institute of Fisheries” → IOF", free("Institute of Fisheries").department, "Institute of Fisheries");
+check("the full name with “&”", free("College of Computing Studies, Information & Communication Technology").department, CCSICT);
+const wrappedName = free("COLLEGE OF COMPUTING STUDIES, INFORMATION AND", "COMMUNICATION TECHNOLOGY");
+check("a name wrapped over two lines → joined: CCSICT", [wrappedName.department, wrappedName.notes.department], [CCSICT, undefined]);
+check("two lines that joined are not one college → nothing", free("COLLEGE OF NURSING AND", "MIDWIFERY").department, "");
+for (const l of ["CON", "COE", "CCSICT", "Nursing", "Computer Science"]) {
+  check(`short form / field name on a free line: “${l}” → nothing (accepted only after “College:”)`, free(l).department, "");
+}
+for (const l of ["Faculty of Management and Development Studies", "Isabela State University", "Graduate School",
+  "Presented to the College of Nursing", "College of Nursing, Isabela State University"]) {
+  check(`never: “${l}” → nothing`, free(l).department, "");
+}
+check("“Central Graduate School” alone → nothing", free("Central Graduate School").department, "");
+const cgsAndCed = free("Central Graduate School", "College of Education");
+check("“Central Graduate School” and “College of Education” → CED, no note",
+  [cgsAndCed.department, cgsAndCed.notes.department], [CED, undefined]);
+const twoFree = free("COLLEGE OF NURSING", "College of Education");
+check("two different colleges on free lines → empty, the note lists both",
+  [twoFree.department, twoFree.notes.department], ["", NOTE.differentColleges([CON, CED])]);
+check("the approval sheet (page 2) counts too, tagged as the title page",
+  [readDetails([page("Cover"), page("APPROVAL SHEET", "College of Engineering")]).department,
+    readDetails([page("Cover"), page("APPROVAL SHEET", "College of Engineering")]).source.department], [COE, "title page"]);
+check("a college line on page 5 is not read",
+  readDetails([page("Cover"), page("ii"), page("iii"), page("iv"), page("COLLEGE OF NURSING")]).department, "");
+check("the ISU title page's college line agrees with its programme: CCSICT from the block, no note",
+  [isu.department, isu.source.department, isu.notes.department], [CCSICT, "block", undefined]);
+
 const badName = readDetails(isuPages(isuAbstract(block({ authors: ["Authors   : Maria Angela R. Dela Cruz", "Group 7 Proponents"] }))));
 check("one block name that is not a name → the block's list is not used; the title page's is",
   [badName.authors, badName.source.authors], [["Maria Angela R. Dela Cruz", "Pedro L. Magbanua Jr."], "title page"]);

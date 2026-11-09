@@ -382,6 +382,16 @@ most.
       with the grey note naming the academic year; "Thesis Advisers:" with
       **four** lines (or a line that is not a name, e.g. a degree on its own
       line) leaves Adviser empty with a note listing them
+- [ ] **College from a college line (errata #88, `06` §9.1a):** a PDF whose
+      title page prints only the college ("COLLEGE OF NURSING", or a name
+      wrapped over two lines, or with "&") fills College with it, tagged from
+      PDF; "Program: Computer Science" or "College: CCSICT" in the abstract
+      block fills CCSICT and the Adviser box still shows only the adviser. A
+      programme of one college and a college line of another (e.g. BS Nursing
+      with "College of Computing Studies, …" on the title page) leaves College
+      on "Select college" with the grey note naming both. A title page with
+      only "CON", "Nursing", "Central Graduate School" or "Faculty of …"
+      leaves it empty, no note
 - [ ] **Two or three advisers (errata #86):** "Thesis Advisers:" with 2 or 3
       names (e.g. Geneston-Dino) fills Adviser with all of them joined by
       "and", titles as printed, a degree glued to the name moved after it
