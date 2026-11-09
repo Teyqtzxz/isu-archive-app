@@ -183,5 +183,17 @@ check(
 check("empty, spaces-only, title-only and missing advisers are skipped", topAdvisers(adv("", "   ", "Dr.", undefined, null, "Ana Reyes")), [{ adviser: "Ana Reyes", count: 1 }]);
 check("empty library: no advisers", topAdvisers([]), []);
 
+console.log("— Two or three advisers on one study (errata #86) —");
+check(
+  "“A and B” counts once for each, not as one adviser “A and B”",
+  topAdvisers(adv("Dr. Ana Reyes and Engr. Ben Lim", "Ana Reyes", "Engr. Ben Lim, MIT")),
+  [{ adviser: "Dr. Ana Reyes", count: 2 }, { adviser: "Engr. Ben Lim", count: 2 }],
+);
+check("three advisers: three people", topAdvisers(adv("Ana Reyes and Ben Lim and Carla Sy")).length, 3);
+check("the same person twice on one study counts once", topAdvisers(adv("Ana Reyes and Dr. Ana Reyes, PhD")), [{ adviser: "Ana Reyes", count: 1 }]);
+check("“and” inside a name does not split it", topAdvisers(adv("Dr. Alexandra Anderson")), [{ adviser: "Dr. Alexandra Anderson", count: 1 }]);
+check("one adviser per study: counted exactly as before", topAdvisers(adv("Dr. Maria Santos", "maria  santos", "Maria Santos, Ph.D.")),
+  [{ adviser: "Dr. Maria Santos", count: 3 }]);
+
 console.log(failed ? `\n${failed} FAILED` : "\nAll passed.");
 if (failed) process.exit(1);

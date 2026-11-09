@@ -6,7 +6,7 @@ import { progressText } from "../pdfText";
 import { fillFromPdf, type DetailField, type StudyDetails } from "../pdfDetails";
 import {
   ABSTRACT_COUNTER_FROM, ABSTRACT_MAX, ABSTRACT_MIN_WORDS, MAX_AUTHORS, MAX_KEYWORDS, MSG, TITLE_COUNTER_FROM, TITLE_MAX,
-  addAuthor, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
+  addAuthor, adviserLabel, checkAbstract, checkAdviser, checkAuthor, checkTitle, checkYear, cleanAbstract,
   cleanAuthorList, cleanKeywordList, cleanSpaces, countWords, pdfFileProblem, validateDriveLink, yearInput,
 } from "../validation";
 import { buildOriginalityIndex, originalityCheck, originalityReason, type SimilarityLevel } from "../similarity";
@@ -1115,7 +1115,7 @@ function RegisterFormBody({ study, theses, studiesReady, studiesError, viewerEma
                           <dl className="study-details">
                             <dt>Author{s.authors.length === 1 ? "" : "s"}</dt>
                             <dd>{s.authors.length > 0 ? s.authors.join("; ") : <span className="study-details-empty">Not recorded</span>}</dd>
-                            <dt>Adviser</dt>
+                            <dt>{adviserLabel(s.adviser)}</dt>
                             <dd>{s.adviser}</dd>
                             <dt>Department</dt>
                             <dd>{s.department}</dd>

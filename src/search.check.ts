@@ -115,6 +115,21 @@ check("errata #82: every degree in validation.ts DEGREES is left out", DEGREES.m
 check("errata #82: Jr., Sr., II and III stay searchable (part of a name)", ["Jr.", "Sr.", "II", "III"].map(w => tokenize(w)[0]).filter(isNameTitle), []);
 check("isNameTitle: a real name is not a title", ["Stone", "Pedro", "Maria"].some(isNameTitle), false);
 
+console.log("\n— Two or three advisers, joined by “and” (errata #86) —");
+// A separate little library, so the studies above (and their summaries) stay as they are.
+const PAIRED: SearchDoc[] = [
+  { title: "Tilapia Feeding Trial", authors: ["Rosa Lim"], adviser: "Asst. Prof. Lea V. Luna, RN, MAN and Dr. Noel G. Bautista",
+    year: 2025, keywords: ["tilapia"], abstract: "Fish were fed twice a day for eight weeks." },
+  { title: "Andean Potato Survey", authors: ["Ben Sy"], adviser: "Dr. Alexandra Anderson", year: 2024, keywords: [], abstract: "Potatoes." },
+];
+const pairedIdx = buildIndex(PAIRED);
+check("the adviser words of both names are indexed; “and”, titles and degrees are not",
+  pairedIdx.fieldTokens.adviser[0], ["lea", "v", "luna", "noel", "g", "bautista"]);
+check("“and” inside a name is kept whole (Alexandra Anderson)", pairedIdx.fieldTokens.adviser[1], ["alexandra", "anderson"]);
+check("the first adviser finds the study (adviser field)", bestFieldFor(pairedIdx, 0, "luna"), "adviser");
+check("the second adviser finds the study (adviser field)", bestFieldFor(pairedIdx, 0, "bautista"), "adviser");
+check("“and” is not an adviser word of the paired study", pairedIdx.fieldTokens.adviser[0].includes("and"), false);
+
 console.log("\n— Which field matched (termScores.field), read from the index —");
 const fieldOf = (query: string, id: string) => {
   const i = STUDIES.findIndex(t => t.id === id);
