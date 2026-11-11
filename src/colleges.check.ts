@@ -3,7 +3,7 @@
 // Programme lines are written as title pages print them; no study's text.
 import {
   COLLEGES, COLLEGE_NAMES, OLD_DEPARTMENTS, PROGRAMS, collegeOf, collegeOfFullName, collegeOfProgram, isCollege, isGraduateSchool,
-  ownCollegeFilter, shortCollege,
+  shortCollege,
 } from "./colleges.ts";
 import { countByDepartment } from "./stats.ts";
 
@@ -47,14 +47,6 @@ check("… and is not a college", isCollege(collegeOf("Zoology")), false);
 check("empty stays empty", collegeOf(""), "");
 check("missing (undefined) → empty", collegeOf(undefined), "");
 check("not text → empty", collegeOf(42), "");
-
-console.log("\n— A staff member's own college (default filter) —");
-check("old profile value “Computer Science” → CCSICT", ownCollegeFilter("Computer Science"), full("CCSICT"));
-check("old profile value “Nursing ” with a space → CON", ownCollegeFilter("Nursing "), full("CON"));
-check("new profile value (full name)", ownCollegeFilter("College of Education"), full("CED"));
-check("profile value as a short form", ownCollegeFilter("COE"), full("COE"));
-check("unknown profile value → All colleges", ownCollegeFilter("Research Office"), "");
-check("no profile value → All colleges", ownCollegeFilter(""), "");
 
 console.log("\n— Statistics: old values counted under their college, unknown under Other —");
 const rows = countByDepartment([

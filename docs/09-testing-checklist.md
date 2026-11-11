@@ -188,11 +188,21 @@ most.
 - [ ] STUDENT never sees the Register form or the staff tabs
 - [ ] STAFF sees Dashboard / Register / Search / Statistics / Settings + their department badge
 - [ ] Student default filter is "All Departments"; staff default is their department
-      (since errata #87: "All Colleges" / their college — see §3b)
+      (since errata #87: "All Colleges" / their college — see §3b; since
+      errata #91: "All Colleges" for staff too, and the badge says "Research Staff")
 
 ## 3. Staff dashboard
 
 - [ ] Stats count real data: Department Studies / Added this month / Added this year
+- [ ] **Since errata #91 — whole e-library:** the cards read **Total Studies /
+      Added this month / Added this year** and count **every** college (34
+      studies posted today → 34 / 34 / 34), the same total as the Statistics
+      bars; Recent studies shows the 6 newest of any college with "N total" =
+      the whole library; the chip and the account menu say "Research Staff";
+      Settings shows Name, Email, Role, Theme (no College row); the Search tab,
+      "Search e-library" and Back → Search open on **All Colleges**; no
+      "(mine)" anywhere. Items below that mention the "own department" are
+      history
 - [ ] **[auto]** `node src/stats.check.ts` ends with "All passed." "Added this
       month / this year" count in the viewer's **local** time, not UTC: a study
       posted 00:00–07:59 on the 1st (Philippine time) counts in the new month,
@@ -320,7 +330,8 @@ most.
 - [ ] **[auto]** `node src/colleges.check.ts` — every programme of `06` §9.1a,
       short forms, BSA empty, every trap, several programmes (one college → filled,
       two → empty), "… Track", extra words → empty, the 10 old department names,
-      unknown values kept, the staff own-college default
+      unknown values kept (the staff own-college default checks were removed
+      by errata #91)
 - [ ] Every label says **College**, not Department (Register, filters, Study
       Details, Studies by college, Top keywords box, staff chip and Settings);
       "Research Department" (the office) stays

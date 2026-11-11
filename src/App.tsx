@@ -421,7 +421,6 @@ export default function App() {
           role={role}
           viewerEmail={account.email}
           initialQuery={searchInitialQuery}
-          defaultDepartment={account.department}
           initialDepartment={searchInitialDept}
           jumpTo={citeJump}
           onCombinedSummary={handleCombinedSummary}

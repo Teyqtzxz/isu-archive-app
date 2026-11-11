@@ -10,11 +10,9 @@ import { Icon } from "./shared";
  * Statistics tab and the student dashboard; each passes its own click
  * handlers, so the component never decides where a click goes.
  */
-export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onSelectKeyword }: {
+export function DepartmentStats({ theses, onSelectDepartment, onSelectKeyword }: {
   /** Every thesis the viewer can see — not one college's, or there is nothing to compare. */
   theses: Thesis[];
-  /** The staff member's own college, marked "(mine)". */
-  highlightDept?: string;
   onSelectDepartment: (department: string) => void;
   /** department is the one picked in the keyword box, "" for all of them. */
   onSelectKeyword: (keyword: string, department: string) => void;
@@ -37,18 +35,17 @@ export function DepartmentStats({ theses, highlightDept, onSelectDepartment, onS
         </div>
         <div className="bar-list">
           {rows.map(r => {
-            const mine = !!highlightDept && r.department === highlightDept;
             return (
               <button
                 key={r.department}
                 // "Other" is not a search filter value, so it is not clickable.
                 disabled={r.department === "Other"}
                 onClick={() => onSelectDepartment(r.department)}
-                className={`bar-row${mine ? " bar-row--mine" : ""}`}
+                className="bar-row"
                 title={r.department}
                 aria-label={`${r.department}: ${r.count} ${r.count === 1 ? "study" : "studies"}`}
               >
-                <span className="bar-label">{shortCollege(r.department)}{mine && <span className="bar-mine"> (mine)</span>}</span>
+                <span className="bar-label">{shortCollege(r.department)}</span>
                 <span className="bar-track" aria-hidden="true">
                   <span className="bar-fill" style={{ width: `${(r.count / max) * 100}%` }} />
                 </span>

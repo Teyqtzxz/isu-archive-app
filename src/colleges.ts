@@ -99,17 +99,6 @@ export function isCollege(value: string): boolean {
   return COLLEGE_NAMES.includes(value);
 }
 
-/**
- * Where a staff member's filters start: their own college, read from
- * users/{uid}.department through collegeOf (so an old department name such as
- * "Computer Science" still works), or "" = All colleges when it is unset or
- * not one of the 12.
- */
-export function ownCollegeFilter(profileValue: unknown): string {
-  const c = collegeOf(profileValue);
-  return isCollege(c) ? c : "";
-}
-
 /** The short form of a college's full name; any other value as it is. */
 export function shortCollege(value: string): string {
   return COLLEGES.find(c => c.name === value)?.code ?? value;

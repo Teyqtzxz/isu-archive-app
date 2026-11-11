@@ -48,7 +48,8 @@ doing before the demo.
   and DRAFT) in the staff dashboard.
 - The staff dashboard filters to the signed-in user's department; with no
   department set it shows everything, and says so. (Since errata #87: their
-  **college**, see §2.3.)
+  **college**, see §2.3. Since errata #91: no filter — staff see every
+  college's studies and the chip says "Research Staff".)
 
 **Prompt to your AI:**
 > *"Follow `00-AI-PREAMBLE.md` first, then implement this file. **Part 1 is
@@ -261,7 +262,9 @@ show a user who cannot sign in.
 
 Students and staff both subscribe to the same collection. Staff additionally
 filter by their own department in the UI — a client-side filter, not a different
-query.
+query. **Since errata #91 this filter is gone:** the staff role is the Research
+Department / library, so the dashboard, Search and Statistics cover every
+college; the rest of this subsection is history.
 
 **Where the staff department comes from.** Extend `getRoleForUser` (step 03) to
 return `{ role, department }` from `users/{uid}`, keep `department` in `App.tsx`
@@ -276,7 +279,9 @@ colleges (`src/colleges.ts`, `02` §2). `getUserProfile` reads
 "Computer Science" still gives the staff member their college (CCSICT);
 `ownCollegeFilter` turns anything that is not one of the 12 into `""`, and the
 dashboard, Search and the "(mine)" marks then start on All colleges while
-Settings shows the stored value. Where the college is shown:
+Settings shows the stored value. (Since errata #91 none of this is used:
+`ownCollegeFilter`, the "CODE Staff" chip, "No CODE studies yet", "(mine)" and
+the Settings College row are gone.) Where the college is shown:
 
 | Place | Shown as |
 |---|---|
@@ -405,7 +410,8 @@ Only if time allows. See `08-deployment.md` §4.
 - [ ] A newly saved thesis appears at the **top** of the list immediately, not
       the bottom (proves the `serverTimestamps: "estimate"` sort)
 - [ ] The staff badge shows the signed-in user's department, not "CAS"
-      (since errata #87: their college's short form, e.g. "CCSICT Staff")
+      (since errata #87: their college's short form, e.g. "CCSICT Staff";
+      since errata #91: "Research Staff" for every staff account)
 - [ ] At 375×667 with a 48px top inset the header logo and title are fully visible
 - [ ] At 768px the Sign Out button shows icon + "Sign Out"; below 768px it is
       the icon only, the size of the theme toggle (errata #70)
