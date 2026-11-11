@@ -108,7 +108,7 @@ its own optional flow start **"Used email link"** (FIGMA-GUIDE §8.8).
 
 - [ ] tab "Dashboard" → 16 · Navigate · `StaffDashboard.tsx:142-152`; `App.tsx:400`
 - [ ] tab "Register" → 17 · Navigate · `StaffDashboard.tsx:142-152`
-- [ ] tab "Search" → 26 · Navigate, shortcut (real: the Search screen filtered to the staff member's own college; with no college the same as 26) · `StaffDashboard.tsx:145`; `App.tsx:405`; `SearchScreen.tsx:61-62`
+- [ ] tab "Search" → 26 · Navigate, shortcut (real: the Search screen on All Colleges, the same as 26; errata #91) · `StaffDashboard.tsx:145`; `App.tsx:405`; `SearchScreen.tsx:61`
 - [ ] tab "Statistics" → 24 · Navigate · `StaffDashboard.tsx:142-152`
 - [ ] tab "Settings" → 25 · Navigate · `StaffDashboard.tsx:142-152`
 - [ ] avatar "MD" → 30 · Open overlay (Manual position, under the avatar) · `StaffDashboard.tsx:115-123`

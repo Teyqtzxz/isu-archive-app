@@ -17,9 +17,10 @@ with every real title, name, abstract, email and number replaced by the
   **not** this mockup.
 
 > **⚠ OWNER TO CONFIRM (2 open answers, both handled below):**
-> - **Q3: STAFF test account's college.** This guide assumes **CCSICT**
->   ("CCSICT Staff"). If the account has **no** college, use the "No college"
->   texts marked **[no college]** in this file.
+> - **Q3: STAFF test account's college.** ~~This guide assumes **CCSICT**
+>   ("CCSICT Staff").~~ **Since errata #91 staff see every college**: use the
+>   texts marked **[no college]** in this file, with the chip "Research Staff"
+>   (not "No college set"), stat card "Total Studies" and no Settings College row.
 > - **Q4: an ISU address with no account yet.** If **yes**, frames 02 → 03 →
 >   04 come from a real Create account. If **no**, see the fallback in
 >   FIGMA-GUIDE.md §3 (frame 03 from a still-unverified test account, or
@@ -85,8 +86,8 @@ Frame names in Figma are exactly the **Name** column (for example
   saving goes back to it (`StaffDashboard.tsx:254`). It is green with a tick,
   has no ×, and stays 3 s (`toast.ts:23`).
 - **The staff Search tab** opens the same Search screen, titled "Search
-  E-Library" and filtered to the staff member's own college
-  (`SearchScreen.tsx:61-62, 225`). In the prototype it links to 26 (see
+  E-Library", on All Colleges (errata #91; before it, filtered to the staff
+  member's own college). In the prototype it links to 26 (see
   CLICK-MAP).
 - **Wording kept exactly as the code has it (code frozen):**
   - The Sign out? dialog says "…sign in with your ISU Google account again…"
@@ -105,12 +106,9 @@ Frame names in Figma are exactly the **Name** column (for example
 | STAFF | Maria Dela Cruz | maria.delacruz@isu.edu.ph | — | MD |
 
 - **New account for 02-04:** Juan Dela Cruz again (same made-up person).
-- **STAFF college (Q3 = CCSICT):** label **"CCSICT Staff"**. In Settings,
-  College = "College of Computing Studies, Information and Communication
-  Technology".
-  **[no college]:** chip "No college set", header label "Research Staff",
-  Settings College "Not set — ask the Firebase admin", stat card "Total
-  Studies".
+- **STAFF label (errata #91):** chip and account menu **"Research Staff"**,
+  stat card **"Total Studies"**; Settings rows Name, Email, Role, Theme (no
+  College row). The old CCSICT / "No college set" texts no longer exist.
 - "Juan Dela Cruz" is the app's own placeholder (`shared.tsx:298`,
   `LoginScreen.tsx:276`). None of these are real accounts.
 
@@ -176,9 +174,8 @@ Replace **every** real number with these, so all frames agree.
 | Studies by college bars (10, 24) | the same counts; meta "7 total" |
 | Top keywords (10, 24) | one chip per keyword of S1-S7, each with count **1** (show as many chips as the capture has room for) |
 | Recently added (10) | S7, S3, S5, S1, S2, S4 (newest first, 6 cards) |
-| Staff dashboard (16), CCSICT | stat cards: College Studies **1**, Added this month **0**, Added this year **1**; "Recent studies" **1 total**; one card: S1 |
-| Staff dashboard (16) [no college] | Total Studies **7**, Added this month **2**, Added this year **7**; "7 total"; cards: S7, S3, S5, S1, S2, S4 |
-| Frame 21 (after S8 is posted), CCSICT | College Studies **2**, Added this month **1**, Added this year **2**; "2 total"; cards S8, S1 ([no college]: 8 / 3 / 8; cards S8, S7, S3, S5, S1, S2) |
+| Staff dashboard (16), every college (errata #91) | Total Studies **7**, Added this month **2**, Added this year **7**; "7 total"; cards: S7, S3, S5, S1, S2, S4 |
+| Frame 21 (after S8 is posted) | Total Studies **8**, Added this month **3**, Added this year **8**; "8 total"; cards S8, S7, S3, S5, S1, S2 |
 | View all studies (26) | "7 studies, newest first": S7, S3, S5, S1, S2, S4, S6 (no relevance %) |
 | Statistics (24): Studies by year | 2023: 2, 2024: 2, 2025: 3 (meta "Academic Year") |
 | Statistics (24): Added per month | Jul 2026: 1, Aug: 1, Sep: 1, Oct: 2, Nov: 2 |

@@ -16,7 +16,7 @@ actor "Student\n(role STUDENT)" as Student
 
 rectangle "ISU Research Study E-Library (web app in the browser)" {
   package "Staff only" {
-    usecase "View staff dashboard\n(own-college counts, recent studies)" as UC_StaffDash
+    usecase "View staff dashboard\n(all-college counts, recent studies)" as UC_StaffDash
     usecase "Register a study\n(Read PDF & continue ->\nCheck & save -> Confirm & Save)" as UC_Register
     usecase "Read PDF and auto-fill details" as UC_ReadPdf
     usecase "Add keywords automatically\n(staff may only remove / Undo)" as UC_Keywords

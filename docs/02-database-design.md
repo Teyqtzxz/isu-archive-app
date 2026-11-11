@@ -151,7 +151,7 @@ One document per signed-in user, keyed by Firebase Auth UID.
 | `email` | string | `staff.cas@isu.edu.ph` | full Google email |
 | `displayName` | string | `"Maria Santos"` | from Google profile |
 | `role` | string | `"STAFF"` | `"STAFF"` or `"STUDENT"` |
-| `department` | string | `"College of Computing Studies, Information and Communication Technology"` | staff only: their college (errata #87). Write the full name; the short form (`"CCSICT"`) and an old department name (`"Computer Science"`) also work, because `getUserProfile` reads it through `collegeOf`. `""` or any other value = no own college: the dashboard and the search filters start on All colleges, and Settings shows the value with "(not one of the 12 colleges …)" |
+| `department` | string | `"College of Computing Studies, Information and Communication Technology"` | staff only: their college (errata #87). Write the full name; the short form (`"CCSICT"`) and an old department name (`"Computer Science"`) also work, because `getUserProfile` reads it through `collegeOf`. `""` or any other value = no own college: the dashboard and the search filters start on All colleges, and Settings shows the value with "(not one of the 12 colleges …)". **Since errata #91 the app no longer uses it** (staff see every college); it is still read and may stay in the console |
 | `createdAt` | timestamp | — | first-created date |
 
 On first login the app creates this document with `role: "STUDENT"`. An account

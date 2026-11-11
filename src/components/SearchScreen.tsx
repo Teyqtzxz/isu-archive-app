@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Role, Thesis } from "../types";
 import { registeredAtISO } from "../types";
-import { COLLEGES, ownCollegeFilter, shortCollege } from "../colleges";
+import { COLLEGES, shortCollege } from "../colleges";
 import { tokenize, buildIndex, computeDocFreq, bm25Score, relevancePercent, isNameTitle } from "../search";
 import { SEARCH_MAX, adviserLabel, cleanQuery } from "../validation";
 import { splitSentences, type RankedThesis } from "../summary";
@@ -18,7 +18,7 @@ import { searchPlan, type Correction, type SmartSearchIndex } from "../smartSear
 const isAdviserSkip = (word: string) => isNameTitle(word) || word.toLowerCase() === "and";
 
 export function SearchScreen({
-  theses, smartIndex, role, viewerEmail, initialQuery, defaultDepartment = "", initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
+  theses, smartIndex, role, viewerEmail, initialQuery, initialDepartment, jumpTo, onCombinedSummary, onEdit, onDelete, onBack, onSignOut,
 }: {
   theses: Thesis[]; role: Role;
   /** Autocomplete and "Did you mean" words (built once in App.tsx, docs/16). */
@@ -26,11 +26,8 @@ export function SearchScreen({
   /** The signed-in e-library account; Drive links open with it (authuser). */
   viewerEmail: string;
   initialQuery?: string;
-  /** Staff start filtered to their own college (docs/05 §4): users/{uid}.department,
-   *  an old department name read as its college; anything that is not one of
-   *  the 12 starts on "All colleges". Students start on "All". */
-  defaultDepartment?: string;
-  /** Open already filtered to this college (a college chip was tapped). Overrides the default. */
+  /** Open already filtered to this college (a college chip was tapped). Without
+   *  it, students and staff alike start on "All colleges" (errata #91). */
   initialDepartment?: string;
   /** Set when a summary citation chip or a dashboard "View details" was tapped; `nonce` makes a
    *  repeat tap on the same study fire again. `open` also expands that study's Study Details. */
@@ -58,8 +55,7 @@ export function SearchScreen({
   const cleaned = cleanQuery(debouncedQuery);
   const searchQuery = cleaned.length >= 2 ? cleaned : "";
 
-  const ownCollege = role === "staff" ? ownCollegeFilter(defaultDepartment) : "";
-  const [deptFilter, setDeptFilter] = useState(initialDepartment ?? ownCollege);
+  const [deptFilter, setDeptFilter] = useState(initialDepartment ?? "");
   const [yearFilter, setYearFilter] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -257,7 +253,7 @@ export function SearchScreen({
               aria-label="Filter by college"
               className={`select-pill${deptFilter ? " select-pill-active" : ""}`}>
               <option value="">All Colleges</option>
-              {COLLEGES.map(c => <option key={c.code} value={c.name}>{c.code} · {c.name}{c.name === ownCollege ? " (mine)" : ""}</option>)}
+              {COLLEGES.map(c => <option key={c.code} value={c.name}>{c.code} · {c.name}</option>)}
             </select>
             <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
               aria-label="Filter by year"

@@ -22,6 +22,7 @@
   relevance % badge stays.
 - Department options come from `DEPARTMENTS` (all ten, even with no theses);
   staff start on their own department (prop from `App.tsx`), students on All.
+  (Since errata #91: staff start on All Colleges too; the prop is gone.)
 - Active filters show as removable chips; "Clear filters" resets all three.
 - "The archive is empty" and "No theses found" are separate states.
 
@@ -324,6 +325,7 @@ now-unused output.
 - **Department ▼ · Year ▼ · Status ▼** — Status is staff-only; students never see it
 - All three combine with the query using **AND** semantics, and with each other
 - Staff default: their own department. Student default: "All Departments"
+  (since errata #91: "All Colleges" for staff and students alike)
 - Active filters render as chips with an X
 - "Clear filters" returns to the full list
 
@@ -463,6 +465,7 @@ actually have something to match against.
 - [ ] Department / Year filters combine with the query and with each other
 - [ ] Active filters appear as removable chips; "Clear filters" resets everything
 - [ ] Staff see their own department preselected; students see "All Departments"
+      (since errata #91: both see "All Colleges")
 - [ ] Nobody sees a Status filter (removed 2026-10-12)
 - [ ] **[auto]** `node src/search.check.ts` ends with "All passed." It checks
       that a title hit beats an abstract hit, that authors and the adviser are

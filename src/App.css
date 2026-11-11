@@ -316,7 +316,6 @@
   font-size: 12px;
   font-weight: 600;
 }
-.role-chip--muted { background: var(--fill-muted); color: var(--text-secondary); }
 
 /* ─── Buttons ──────────────────────────────────────────────── */
 .btn {
@@ -983,7 +982,7 @@ input[type="password"]::-ms-clear { display: none; }
 .bar-row {
   width: 100%;
   display: grid;
-  /* Short forms on the bars (errata #87): "CCSICT (mine)" is the widest. */
+  /* Short forms on the bars (errata #87): "CCSICT" is the widest. */
   grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.5rem;
   align-items: center;
   gap: 12px;
@@ -999,10 +998,8 @@ input[type="password"]::-ms-clear { display: none; }
 .bar-row:hover:not(:disabled) { background: var(--surface-hover); }
 .bar-row:disabled { cursor: default; }
 .bar-label { font-size: 13px; font-weight: 500; color: var(--text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-mine { color: var(--accent); font-weight: 600; }
 .bar-track { height: 10px; border-radius: var(--radius-full); background: var(--fill-muted); overflow: hidden; }
 .bar-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--bar-fill); opacity: 0.55; transition: width 0.3s; }
-.bar-row--mine .bar-fill { opacity: 1; }
 .bar-count { font-size: 14px; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 479px) {
   .bar-row { grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 2rem; gap: 8px; }

@@ -150,7 +150,7 @@ src/
   colleges.ts         ← pure (errata #87): the 12 COLLEGES (short
                         form + full name), collegeOf (old names →
                         college, when read), shortCollege,
-                        ownCollegeFilter, collegeOfProgram (exact
+                        collegeOfProgram (exact
                         programme table, never single words; BSA
                         → empty); examples in colleges.check.ts  ✅ EXISTS
   data.ts             ← the ONLY Firestore module: sign-in (Google;
