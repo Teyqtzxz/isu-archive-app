@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISU E-Library Wireframes</title>
+<!--
+  Low-fidelity wireframes of the ISU Research Study E-Library (deliverable 3).
+  One sheet per frame of the clickable Figma prototype (same numbers and names).
+  Open this file in a browser to see every sheet; add ?f=13 to see one sheet.
+  render.mjs (next to this file) turns every sheet into a PNG and builds the PDF.
+  Labels come from the code on main (761e35c, errata #91); data is made up.
+-->
+<style>
+  :root{--ink:#1e1e1e;--mid:#5a5a5a;--mut:#8a8a8a;--line:#9a9a9a;--soft:#cfcfcf;--fill:#e6e6e6;--page:#f3f3f3;--card:#fff;--dark:#3c3c3c;--hdr:#bdbdbd}
+  *{box-sizing:border-box}
+  body{margin:0;background:#dcdcdc;font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:14px;line-height:1.35}
+  .sheet{background:#fff;margin:0 auto 40px;padding:20px 24px 22px;width:max-content}
+  .sheet-hd{display:flex;align-items:baseline;gap:14px;margin-bottom:12px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+  .sheet-hd .no{font-size:26px;font-weight:800}
+  .sheet-hd .nm{font-size:20px;font-weight:700}
+  .sheet-hd .meta{margin-left:auto;font-size:12px;color:var(--mid)}
+  .sheet.narrowsheet .sheet-hd{flex-wrap:wrap}
+  .sheet.narrowsheet .sheet-hd .meta{margin-left:0;flex-basis:100%}
+  .frame{position:relative;background:var(--page);border:2px solid var(--ink);overflow:hidden;filter:grayscale(1)}
+  .notes{margin-top:12px;font-size:12.5px;color:var(--ink);display:grid;grid-template-columns:110px 1fr;gap:4px 12px;max-width:100%}
+  .notes b{font-weight:700}
+  .notes .k{color:var(--mid);font-weight:700;text-transform:uppercase;font-size:11px;padding-top:2px}
+  /* generic */
+  .row{display:flex;align-items:center;gap:10px}
+  .col{display:flex;flex-direction:column;gap:10px}
+  .grow{flex:1}
+  .seal{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--ink);background:var(--fill);font-weight:800;flex:none}
+  .ico{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;font-size:13px;line-height:1;flex:none}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border-radius:8px;font-weight:700;font-size:14px;white-space:nowrap}
+  .btn.p{background:var(--dark);color:#fff}
+  .btn.s{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn.l{height:auto;padding:0;text-decoration:underline;font-weight:700}
+  .btn.d{background:#fff;border:2px dashed var(--ink);color:var(--ink)}
+  .btn.D{background:#000;color:#fff;border:2px solid #000}
+  .btn.dis{background:var(--soft);color:#fff}
+  .btn.sm{height:30px;padding:0 10px;font-size:12.5px;border-radius:7px}
+  .btn.full{display:flex;width:100%}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:12px}
+  .lbl{font-weight:700;font-size:13px;margin-bottom:5px}
+  .req{font-weight:800}
+  .tag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.04em;border:1px solid var(--line);background:var(--fill);border-radius:4px;padding:1px 4px;vertical-align:middle}
+  .tag.auto{border-style:dashed;background:#fff}
+  .box{display:flex;align-items:center;gap:8px;min-height:40px;border:1.5px solid var(--line);border-radius:8px;background:#fff;padding:8px 11px;font-size:14px}
+  .box .ph{color:var(--mut)}
+  .box .suf{margin-left:auto;color:var(--mut);white-space:nowrap}
+  .hint{font-size:12px;color:var(--mid);margin-top:5px}
+  .fld{margin-bottom:14px}
+  .mut{color:var(--mut)} .mid{color:var(--mid)}
+  .bars{display:flex;flex-direction:column;gap:7px}
+  .bars i{display:block;height:9px;border-radius:5px;background:var(--soft)}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:999px;padding:4px 11px;background:#fff;font-size:13px;white-space:nowrap}
+  .chip .n{display:inline-block;min-width:20px;text-align:center;border-radius:999px;background:var(--fill);font-size:11.5px;font-weight:700;padding:1px 5px}
+  .chip.y{background:var(--fill);border-color:var(--line)}
+  .chip.dash{border-style:dashed}
+  .pill{display:inline-block;border:1px solid var(--soft);background:var(--page);border-radius:999px;padding:2px 8px;font-size:11.5px;color:var(--mid);white-space:nowrap}
+  .badge-c{display:inline-block;border:1.5px solid var(--ink);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:800}
+  .cb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:2px solid var(--ink);border-radius:4px;background:#fff;font-size:12px;font-weight:900;flex:none}
+  .cb.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .hl{background:var(--fill);border-bottom:2px solid var(--ink)}
+  .x{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--mid);font-size:10px;margin-left:2px}
+  .hr{height:1px;background:var(--soft);margin:14px 0}
+  .cap{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--mid);text-transform:uppercase}
+  .img{background:linear-gradient(to top right,transparent calc(50% - 1px),var(--line) 50%,transparent calc(50% + 1px)),linear-gradient(to bottom right,transparent calc(50% - 1px),var(--line) 50%,transparent calc(50% + 1px)),var(--fill);border:1.5px solid var(--line)}
+  /* auth pages */
+  .stripe{height:6px;background:linear-gradient(90deg,var(--dark) 0 60%,var(--mut) 60% 80%,var(--soft) 80%)}
+  .corner{position:absolute;top:18px;right:18px;width:36px;height:36px;border:1.5px solid var(--line);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center}
+  .authwrap{display:flex;flex-direction:column;align-items:center;padding:48px 16px 40px}
+  .authcard{width:420px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:28px 30px}
+  .authcard h1{font-size:23px;margin:10px 0 4px;text-align:center}
+  .authcard h2{font-size:18px;margin:8px 0 6px;text-align:center}
+  .ctr{text-align:center}
+  .foot{margin-top:18px;font-size:12px;color:var(--mut);text-align:center}
+  .info{display:flex;gap:9px;background:var(--fill);border-radius:9px;padding:10px 12px;font-size:12.5px;color:var(--mid);margin-bottom:16px}
+  .badge{width:56px;height:56px;border-radius:50%;border:2px solid var(--ink);background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:24px;margin:6px auto 4px;font-weight:900}
+  .badge.ok{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .check{display:flex;flex-direction:column;gap:5px;margin:4px 0 16px;font-size:12.5px}
+  .check span{display:flex;align-items:center;gap:7px;font-weight:700}
+  .check span:before{content:"✓";display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--dark);color:#fff;font-size:10px}
+  .asteps{display:flex;align-items:flex-start;justify-content:center;gap:4px;margin:6px 0 14px}
+  .astep{display:flex;flex-direction:column;align-items:center;gap:4px;width:84px;font-size:11.5px;color:var(--mut)}
+  .astep i{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:#fff;font-style:normal;font-weight:800;font-size:12px}
+  .astep.cur{color:var(--ink);font-weight:700} .astep.cur i{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .astep.done{color:var(--ink)} .astep.done i{background:var(--fill);border-color:var(--ink)}
+  .aline{width:26px;height:2px;background:var(--soft);margin-top:12px}
+  /* app header */
+  .hdr{background:var(--hdr);color:var(--ink);padding:0 28px}
+  .hdr .top{height:64px;display:flex;align-items:center;gap:12px}
+  .hdr .t1{font-weight:800;font-size:17px}
+  .hdr .t2{font-size:12px;color:#333}
+  .hbtn{height:34px;min-width:34px;border:1.5px solid #555;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 9px;font-size:13px;font-weight:700;background:rgba(255,255,255,.35)}
+  .av{width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid var(--ink);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .tabs{display:flex;gap:26px;height:44px;align-items:stretch}
+  .tab{display:flex;align-items:center;gap:6px;font-size:14px;color:#3a3a3a;border-bottom:4px solid transparent}
+  .tab.on{font-weight:800;color:#000;border-bottom-color:#000}
+  .wrap{width:1200px;margin:0 auto}
+  .narrow{width:720px;margin:0 auto}
+  /* student */
+  .hero{background:#cdcdcd;padding:46px 0 44px;text-align:center}
+  .hero h1{margin:0 0 6px;font-size:34px}
+  .hero p{margin:0 0 20px;color:#333}
+  .heroin{width:640px;margin:0 auto;display:flex;gap:10px}
+  .heroin .box{flex:1;background:rgba(255,255,255,.55);border-color:#555}
+  .sec{font-size:18px;font-weight:800;margin:26px 0 12px;display:flex;align-items:baseline}
+  .sec .lnk{margin-left:auto;font-size:13.5px;text-decoration:underline}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .sc{padding:16px;display:flex;flex-direction:column;gap:6px;font-size:13px}
+  .sc .tt{font-weight:800;font-size:15px;line-height:1.3}
+  .kws{display:flex;flex-wrap:wrap;gap:5px}
+  .barrow{display:grid;grid-template-columns:62px 1fr 26px;align-items:center;gap:10px;font-size:12.5px;padding:3px 0}
+  .track{height:10px;border-radius:6px;background:var(--fill);overflow:hidden}
+  .track b{display:block;height:100%;background:var(--mut)}
+  /* search */
+  .shdr .top{gap:10px}
+  .sbox{height:46px;border:1.5px solid #555;border-radius:9px;background:rgba(255,255,255,.5);display:flex;align-items:center;gap:10px;padding:0 14px;margin-bottom:14px;font-size:15px}
+  .fbar{background:#fff;border-bottom:1.5px solid var(--soft);padding:10px 0}
+  .dd{display:inline-flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;background:#fff;font-weight:700}
+  .rc{padding:16px 18px;margin-bottom:12px}
+  .rc.on{border:3px solid var(--ink)}
+  .rc .t{font-weight:800;font-size:15.5px}
+  .pct{margin-left:auto;border:1.5px solid var(--ink);border-radius:999px;padding:2px 10px;font-weight:800;font-size:13px;background:var(--fill)}
+  .det{background:var(--page);border-top:1.5px solid var(--soft);margin:14px -18px -16px;padding:16px 18px;border-radius:0 0 11px 11px}
+  .dr{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:5px 0;font-size:13px}
+  .dr .k{color:var(--mid);font-weight:700}
+  /* register */
+  .rsteps{display:flex;align-items:center;gap:8px;margin:18px 0}
+  .rs{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut)}
+  .rs i{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2px solid var(--soft);font-style:normal;font-weight:800;font-size:12px}
+  .rs.cur{color:var(--ink);font-weight:800} .rs.cur i{border-color:var(--ink)}
+  .rs.done{color:var(--ink);font-weight:700} .rs.done i{background:var(--dark);border-color:var(--dark);color:#fff}
+  .rl{flex:1;height:2px;background:var(--soft)} .rl.done{background:var(--dark)}
+  .rcard{padding:22px;border-top:5px solid var(--dark);margin-bottom:16px}
+  .ok-bar{display:flex;align-items:center;gap:10px;background:var(--fill);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+  .ok-bar .c{width:22px;height:22px;border-radius:50%;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .dup{border:3px solid #000;border-radius:12px;padding:14px;margin-bottom:16px;background:repeating-linear-gradient(45deg,#fff 0 8px,#f1f1f1 8px 16px)}
+  .area{border:1.5px solid var(--line);border-radius:8px;background:#fff;padding:12px;font-size:13px;line-height:1.5}
+  .dis{opacity:.45}
+  /* staff */
+  .stat{padding:18px;display:flex;gap:14px;align-items:center}
+  .stat .sq{width:44px;height:44px;border-radius:10px;background:var(--fill);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .stat .big{font-size:28px;font-weight:800;line-height:1}
+  .vbars{display:flex;align-items:flex-end;gap:12px;height:150px;border-bottom:1.5px solid var(--line);padding:0 6px}
+  .vb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;font-size:11.5px;font-weight:700;height:100%}
+  .vb b{display:block;width:70%;background:var(--mut);border-radius:4px 4px 0 0}
+  .vlab{display:flex;gap:12px;padding:5px 6px 0;font-size:11px;color:var(--mid)} .vlab span{flex:1;text-align:center}
+  table.t{border-collapse:collapse;width:100%;font-size:13px} table.t td,table.t th{border-bottom:1px solid var(--soft);padding:7px 8px;text-align:left}
+  /* overlays */
+  .dim{position:absolute;inset:0;background:rgba(0,0,0,.42)}
+  .dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid var(--ink);border-radius:14px}
+  .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;background:#222;color:#fff;border-radius:10px;padding:12px 18px;display:flex;gap:10px;align-items:center;font-weight:700}
+  .toast .c{width:22px;height:22px;border-radius:50%;background:#fff;color:#222;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .ann{position:absolute;border:2px dashed #000;border-radius:8px}
+  .ann span{position:absolute;top:-12px;left:-12px;background:#000;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:2px 7px;white-space:nowrap}
+  /* phone */
+  .ph .hdr{padding:0 14px}
+  .ph .hdr .top{height:60px;gap:8px}
+  .ph .hdr .t1{font-size:13.5px;line-height:1.2}
+  .ph .hdr .t2{font-size:10.5px}
+  .ph .wrap{width:auto;padding:0 16px}
+  .hscroll{display:flex;gap:10px;overflow:hidden}
+  @media print{body{background:#fff}.sheet{margin:0;break-after:page}}
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script>
+/* ---------- made-up data (docs/mockup/README.md §2, prompt Part B) ---------- */
+const S = {
+  s1:{c:'CCSICT',full:'College of Computing Studies, Information and Communication Technology',y:2025,t:'A Mobile Application for Monitoring Rice Field Water Levels Using Low-Cost Sensors',a:['Carlo M. Bautista','Andrea L. Villanueva'],adv:'Dr. Ramon T. Agustin',k:['mobile application','water level monitoring','rice farming','IoT sensors'],p:'Oct 3, 2026'},
+  s2:{c:'CA',y:2024,t:'Growth Performance of Lowland Rice Varieties Under Alternate Wetting and Drying Irrigation',a:['Maria Teresa D. Galang'],adv:'Prof. Elena S. Domingo',k:['alternate wetting and drying','lowland rice','irrigation','yield'],p:'Sep 15, 2026'},
+  s3:{c:'CED',y:2025,t:'Effects of Gamified Quizzes on the Reading Comprehension of Grade 7 Learners',a:['Joanna P. Ramos','Kevin A. Tolentino','Lea C. Mercado'],adv:'Dr. Cecilia R. Navarro',k:['gamification','reading comprehension','grade 7 learners','formative assessment'],p:'Nov 2, 2026'},
+  s4:{c:'CON',y:2023,t:'Knowledge and Practices of Mothers on the Home Care of Children with Dengue Fever',a:['Patricia G. Soriano'],adv:'Dr. Liza M. Fernandez',k:['dengue','home care','maternal knowledge','community health'],p:'Aug 20, 2026'},
+  s5:{c:'CBAPA',y:2024,t:'Digital Payment Adoption Among Micro Retailers in a Rural Municipality',a:['Mark Anthony R. Pascual','Shiela B. Ocampo'],adv:'Dr. Victor J. Lazaro',k:['digital payments','micro retailers','technology adoption','rural economy'],p:'Oct 21, 2026'},
+  s6:{c:'COE',y:2023,t:'Design and Evaluation of a Solar-Powered Dryer for Corn Kernels',a:['Jerome D. Castillo'],adv:'Engr. Noel P. Santiago and Engr. Rina F. Aquino',advs:true,k:['solar dryer','corn drying','renewable energy','post-harvest'],p:'Jul 8, 2026'},
+  s7:{c:'IOF',y:2025,t:'Growth of Nile Tilapia Fed with Fermented Azolla Meal',a:['Daniel V. Mendoza'],adv:'Dr. Grace A. Cabrera',k:['Nile tilapia','azolla','fish feed','aquaculture'],p:'Nov 5, 2026'},
+  s8:{c:'CCSICT',y:2026,t:'A Mobile Application for Monitoring Water Levels in Rice Fields Using Ultrasonic Sensors',a:['Nicole F. Reyes','Paolo J. Dizon'],adv:'Dr. Ramon T. Agustin',k:['water level monitoring','mobile application','rice farming','IoT sensors','irrigation','smart farming'],p:'Nov 10, 2026'}
+};
+const COLLEGES = [['CA',1],['CAS',0],['CBAPA',1],['CCJE',0],['CCSICT',1],['CED',1],['COE',1],['COM',0],['CON',1],['CGS',0],['IOF',1],['SVM',0]];
+const TOPKW = ['alternate wetting and drying','aquaculture','azolla','community health','corn drying','dengue','digital payments','fish feed','formative assessment','gamification'];
+const CITE1 = 'Bautista, C. M., &amp; Villanueva, A. L. (2025). <i>A Mobile Application for Monitoring Rice Field Water Levels Using Low-Cost Sensors</i> [Unpublished research study]. Isabela State University – Echague Campus.';
+const CITE2 = 'Galang, M. T. D. (2024). <i>Growth Performance of Lowland Rice Varieties Under Alternate Wetting and Drying Irrigation</i> [Unpublished research study]. Isabela State University – Echague Campus.';
+const FOOT = '© 2026 Isabela State University · Echague Campus · Research Department';
+const DRIVE_HINT = 'Share it as Isabela State University → Viewer, with download limited to Editors (docs/08 §7b). Students read it in Google\'s viewer; they cannot download it.';
+
+/* ---------- small pieces ---------- */
+const authorLine = a => a.length === 1 ? 'Author: ' + a[0] : a.length === 2 ? 'Authors: ' + a.join(', ') : 'Authors: ' + a[0] + ', ' + a[1] + ' +' + (a.length - 2) + ' more';
+const advLine = s => (s.advs ? 'Advisers: ' : 'Adviser: ') + s.adv;
+const seal = (n = 40) => `<span class="seal" style="width:${n}px;height:${n}px;font-size:${Math.round(n / 3.2)}px">ISU</span>`;
+const ico = c => `<span class="ico">${c}</span>`;
+const btn = (l, k = 'p', st = '') => `<span class="btn ${k}" style="${st}">${l}</span>`;
+const box = (v, o = {}) => `<div class="box" style="${o.h ? 'min-height:' + o.h + 'px;' : ''}${o.st || ''}">${o.icon ? ico(o.icon) : ''}${o.ph ? `<span class="ph">${o.ph}</span>` : v}${o.suffix ? `<span class="suf">${o.suffix}</span>` : ''}${o.eye ? '<span class="suf">👁</span>' : ''}</div>`;
+const field = (label, inner, o = {}) => `<div class="fld" style="${o.st || ''}"><div class="lbl">${label}${o.req ? ' <b class="req">*</b>' : ''}${o.pdf ? ' <span class="tag">FROM PDF</span>' : ''}</div>${inner}${o.note ? `<div class="hint">${o.note}</div>` : ''}</div>`;
+const bars = (ws, st = '') => `<div class="bars" style="${st}">${ws.map(w => `<i style="width:${w}%"></i>`).join('')}</div>`;
+const chip = (t, n, k = '') => `<span class="chip ${k}">${t}${n !== undefined ? `<span class="n">${n}</span>` : ''}</span>`;
+const pills = (ks, n = 4) => `<div class="kws">${ks.slice(0, n).map(k => `<span class="pill">${k}</span>`).join('')}</div>`;
+const hl = t => `<span class="hl">${t}</span>`;
+const ann = (x, y, w, h, label) => `<div class="ann" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><span>${label}</span></div>`;
+
+/* ---------- account (auth) pages ---------- */
+const authTop = h => `<div class="ctr">${seal(72)}</div><h1>${h}</h1><div class="ctr" style="font-weight:800;font-size:14px">Isabela State University</div><div class="ctr mid" style="font-size:13px">Echague Campus</div><div class="hr"></div>`;
+const linkTop = () => `<div class="ctr">${seal(56)}</div><div class="ctr mid" style="font-weight:700;font-size:12.5px;margin-top:6px">Isabela State University · Echague Campus</div><div class="hr"></div>`;
+const authPage = (card, o = {}) => `<div class="stripe"></div><span class="corner">☾</span><div class="authwrap"><div class="authcard">${card}${o.footer !== false ? '<div class="hint ctr" style="margin-top:16px">Use your @isu.edu.ph account. Personal accounts are not accepted.</div>' : ''}</div>${o.footer !== false ? `<div class="foot">${FOOT}</div>` : ''}</div>`;
+const CHECK = `<div class="check"><span>At least 8 characters</span><span>An uppercase letter</span><span>A lowercase letter</span><span>A number</span><span>A symbol</span><span>Passwords match</span></div>`;
+const asteps = st => { const L = ['Email', 'Check inbox', 'New password']; return `<div class="asteps">${L.map((l, i) => `${i ? '<span class="aline"></span>' : ''}<div class="astep ${st[i]}"><i>${st[i] === 'done' ? '✓' : i + 1}</i>${l}</div>`).join('')}</div>`; };
+const userBox = v => box(v ? v : '', { ph: v ? '' : 'juan.delacruz', suffix: '@isu.edu.ph' });
+const pwBox = (dots = true) => box(dots ? '••••••••••' : '', { eye: true });
+
+/* ---------- signed-in headers ---------- */
+const appHdr = (title, av, o = {}) => `<div class="hdr"><div class="top">${seal(40)}<div><div class="t1">${title}</div><div class="t2">Isabela State University · Echague Campus</div></div><span class="grow"></span><span class="hbtn">☾</span><span class="hbtn">${o.phone ? '⇥' : '⇥ Sign Out'}</span>${av ? `<span class="av">${av}</span>` : ''}</div>${o.tabs ? tabs(o.tabs, o.phone) : ''}</div>`;
+const tabs = (on, phone) => `<div class="tabs" style="${phone ? 'gap:18px;overflow:hidden' : ''}">${[['▦', 'Dashboard'], ['+', 'Register'], ['⌕', 'Search'], ['▥', 'Statistics'], ['⚙', 'Settings']].map(([i, t]) => `<span class="tab ${t === on ? 'on' : ''}">${ico(i)}${t}</span>`).join('')}</div>`;
+const staffHdr = (on, phone) => appHdr(phone ? 'Research Study E-Library · Staff' : 'Research Study E-Library · Staff', 'MD', { tabs: on, phone });
+const searchHdr = (title, q, o = {}) => `<div class="hdr shdr"><div class="top"><span class="hbtn">←</span>${seal(30)}<span class="t1">${title}</span><span class="chip" style="background:rgba(255,255,255,.4);border-color:#555;font-size:12px">7 studies</span><span class="grow"></span><span class="hbtn">☾</span><span class="hbtn">${o.phone ? '⇥' : '⇥ Sign Out'}</span></div><div class="sbox">${ico('⌕')}${q ? `<b>${q}</b><span class="grow"></span><span class="x">✕</span>` : '<span class="mid">Search by title, keyword or abstract…</span>'}</div></div><div class="fbar"><div class="wrap row"><span class="dd">All Colleges ▾</span><span class="dd">All Years ▾</span></div></div>`;
+
+/* ---------- study pieces ---------- */
+const studyCard = (s, o = {}) => `<div class="card sc" style="${o.st || ''}"><div class="tt">${s.t}</div><div>${authorLine(s.a)}</div><div class="mid">${advLine(s)}</div><div class="row" style="gap:8px"><span class="badge-c">${s.c}</span><span class="mid">${s.y}</span></div>${pills(s.k, 3)}<div class="mut" style="font-size:12px">Posted ${s.p}</div><span class="btn s sm full" style="margin-top:4px">View details →</span></div>`;
+const resultCard = (n, s, o = {}) => `<div class="card rc ${o.on ? 'on' : ''}"><div class="row" style="align-items:flex-start"><span class="cb ${o.on ? 'on' : ''}">${o.on ? '✓' : ''}</span><div class="grow"><div class="t"><span class="mut" style="font-weight:400">${n}.</span> ${s.t}</div><div style="font-size:13px;margin-top:2px">${authorLine(s.a)}</div></div>${o.pct ? `<span class="pct">${o.pct}</span>` : ''}</div><div style="padding-left:28px;margin-top:8px"><div class="row" style="gap:8px;font-size:13px"><span class="badge-c">${s.c}</span><span class="mid">${s.y} · ${advLine(s)}</span></div>${o.snip ? `<div style="margin:8px 0;font-size:13px">${o.snip}</div>` : '<div style="height:8px"></div>'}${pills(s.k, 4)}</div>${o.det || ''}</div>`;
+const similar = `<div class="hr"></div><div class="cap">Similar studies</div><div style="margin-top:8px;font-weight:800;text-decoration:underline">${S.s2.t}</div><div class="mid" style="font-size:12.5px">2024 · 16% similar</div><div class="row" style="gap:6px;margin-top:6px;font-size:12.5px;flex-wrap:wrap">Shared key terms: ${['rice', 'water', 'lowland', 'field', 'farmer'].map(k => chip(k, undefined, 'y')).join('')}</div>`;
+const details = (role, phone) => {
+  const right = role === 'staff'
+    ? `<div class="row" style="gap:8px">${btn('↗ Open in Drive', 's sm')}${btn('✎ Edit', 's sm')}${btn('🗑 Delete', 'd sm')}</div>`
+    : `<div style="text-align:right">${btn('↗ Read full study', 's sm')}<div class="hint">View only: download and printing are turned off.</div></div>`;
+  const rows = [['Citation', CITE1], ['Authors', 'Carlo M. Bautista; Andrea L. Villanueva'], ['Adviser', 'Dr. Ramon T. Agustin'], ['College', S.s1.full], ['Date Posted', 'October 3, 2026'], ['Keywords', S.s1.k.join(', ')]];
+  return `<div class="det"><div class="row" style="align-items:flex-start;${phone ? 'flex-direction:column' : ''}"><span class="cap">Study details</span><span class="grow"></span>${right}</div><div style="margin-top:10px">${rows.map(([k, v]) => phone ? `<div style="padding:5px 0;font-size:13px"><div class="mid" style="font-weight:700">${k}</div>${v}</div>` : `<div class="dr"><span class="k">${k}</span><span>${v}</span></div>`).join('')}</div><div class="cap" style="margin-top:12px">Abstract</div>${bars([100, 98, 100, 96, 100, 70], 'margin-top:8px')}${similar}</div>`;
+};
+
+/* ---------- student dashboard body ---------- */
+const glance = (staff) => `<div class="row" style="align-items:stretch;gap:16px"><div class="card" style="flex:1.5;padding:18px"><div class="row"><b style="font-size:15px">Studies by college</b><span class="grow"></span><span class="mid" style="font-size:12.5px">7 total</span></div><div style="margin-top:10px">${COLLEGES.map(([c, n]) => `<div class="barrow"><span>${c}</span><span class="track"><b style="width:${n ? 100 : 0}%"></b></span><b>${n}</b></div>`).join('')}</div></div><div class="card" style="flex:1;padding:18px"><div class="row"><b style="font-size:15px">Top keywords</b><span class="grow"></span><span class="dd" style="padding:3px 10px;font-size:12px">All colleges ▾</span></div><div class="kws" style="gap:8px;margin-top:14px">${TOPKW.map(k => chip(k, 1)).join('')}</div></div></div>`;
+const studentDash = (o = {}) => `${appHdr('ISU Research Study E-Library', 'JD')}<div class="hero"><h1>Discover ISU Research</h1><p>Search posted studies from every college and year, ranked by relevance.</p><div class="heroin">${box(o.q ? `<b>${o.q}</b>` : '', { ph: o.q ? '' : 'Search by topic, keyword or title…', icon: '⌕' })}${btn('Search', 's', 'background:#fff')}</div>${o.ac || ''}</div><div class="wrap"><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:22px">${chip('Recent')}${COLLEGES.map(([c, n]) => chip(c, n)).join('')}</div><div class="sec">E-Library at a glance</div>${glance()}<div class="sec">Recently added<span class="lnk">View all →</span></div><div class="grid3">${['s7', 's3', 's5', 's1', 's2', 's4'].map(k => studyCard(S[k])).join('')}</div><div class="ctr mid" style="margin:30px 0 34px;font-size:13px">Need help? Contact the Research Department at <b style="text-decoration:underline">research@isu.edu.ph</b></div></div>`;
+const autocomplete = `<div class="card" style="width:640px;margin:6px auto 0;text-align:left;padding:6px 0;box-shadow:0 6px 18px rgba(0,0,0,.18);position:relative;z-index:2"><div class="row" style="padding:9px 16px"><b>rice</b><span class="grow"></span><span class="mut" style="font-size:12px">Title · 2 studies</span></div><div class="row" style="padding:9px 16px;background:var(--page)"><b>rice farming</b><span class="grow"></span><span class="mut" style="font-size:12px">Keyword · 1 study</span></div></div>`;
+
+/* ---------- staff dashboard body ---------- */
+const staffDash = (o = {}) => {
+  const n = o.after ? ['8', '3', '8'] : ['7', '2', '7'];
+  const cards = o.after ? [S.s8, S.s7, S.s3, S.s5, S.s1, S.s2] : [S.s7, S.s3, S.s5, S.s1, S.s2, S.s4];
+  return `${staffHdr('Dashboard')}<div class="wrap" style="padding-top:22px"><div class="card row" style="padding:18px 22px"><div><div class="mid" style="font-size:12.5px">Welcome back</div><div style="font-size:20px;font-weight:800">Maria Dela Cruz</div><span class="chip" style="margin-top:6px;background:var(--dark);color:#fff;border-color:var(--dark);font-size:12px">⌂ Research Staff</span></div><span class="grow"></span><div style="text-align:right"><div class="cap">Today</div><b>Tue, Nov 10, 2026</b></div></div><div class="grid3" style="margin-top:16px">${[['📖', 'Total Studies'], ['◷', 'Added this month'], ['▦', 'Added this year']].map(([i, l], k) => `<div class="card stat"><span class="sq">${i}</span><div><div class="big">${n[k]}</div><div class="mid" style="font-size:13px">${l}</div></div></div>`).join('')}</div><div class="row" style="align-items:flex-start;gap:20px;margin-top:6px"><div class="grow"><div class="sec">Recent studies <span class="mid" style="font-size:13px;font-weight:400;margin-left:8px">${o.after ? '8' : '7'} total</span><span class="lnk">View all studies →</span></div><div class="grid3">${cards.map(s => studyCard(s)).join('')}</div></div><div style="width:300px;padding-top:60px" class="col">${btn('+ Register study', 'p full')}${btn('⌕ Search e-library', 's full')}</div></div><div style="height:40px"></div></div>${o.toast ? `<div class="toast" style="top:${1024 - 24 - 46}px;bottom:auto"><span class="c">✓</span>Study posted!</div>` : ''}`;
+};
+
+/* ---------- register / edit ---------- */
+const rsteps = (labels, cur) => `<div class="rsteps">${labels.map((l, i) => `${i ? `<span class="rl ${i < cur ? 'done' : ''}"></span>` : ''}<span class="rs ${i + 1 < cur ? 'done' : i + 1 === cur ? 'cur' : ''}"><i>${i + 1 < cur ? '✓' : i + 1}</i>${l}</span>`).join('')}</div>`;
+const driveField = (dis) => field('Google Drive Link', `<div class="row">${box('https://drive.google.com/file/d/SAMPLE-FILE-ID/view', { st: 'flex:1' })}${btn('▤ Paste', 's')}</div>`, { req: true, note: DRIVE_HINT });
+const step1Card = (o = {}) => `<div class="card rcard ${o.dis ? 'dis' : ''}"><div style="font-size:17px;font-weight:800">${o.edit ? 'Edit study' : 'Register a study'}</div><div class="mid" style="font-size:13px;margin:6px 0 16px">${o.edit ? 'Continue to change the details. Choosing the PDF is optional: only do it to read the abstract and keywords again (details you have are never replaced).' : 'Choose the study\'s PDF and paste its Drive link. The title, authors, year, adviser, abstract and keywords are read from the PDF; you check them on the next step.'}</div>${o.edit ? field('Study PDF (optional)', btn('▤ Choose PDF from this computer', 's'), { note: 'No PDF chosen: the current details, abstract and keywords are kept (you can still edit them on the next step).' }) : field('Study PDF', `<div class="row">${btn('▤ Choose a different PDF', 's')}${chip('sample-study.pdf <span class="x">✕</span>', undefined, 'y')}</div>`, { note: 'The details, abstract and keywords will be read from this PDF.' })}${driveField()}</div>`;
+const checkSave = (o = {}) => {
+  const ed = o.edit, s = ed ? S.s1 : S.s8, pdf = !ed;
+  const kw = ed ? S.s1.k.map(k => chip(k + ' <span class="x">✕</span>', undefined, 'y')).join('') : S.s8.k.map(k => chip(k + ' <span class="x">✕</span>', undefined, 'y')).join('') + ['ultrasonic sensors', 'rice fields'].map(k => chip(k + ' <span class="tag auto">AUTO</span> <span class="x">✕</span>', undefined, 'y dash')).join('');
+  const dup = ed ? '' : `<div class="dup"><div style="font-weight:800;display:flex;gap:8px;align-items:center">⚠ Possible duplicate — this study may already be registered</div><div class="card" style="padding:12px;margin-top:10px"><b>${S.s1.t}</b><div class="mid" style="font-size:12.5px">2025 · Abstract 97% similar</div><div class="row" style="gap:6px;margin-top:6px;font-size:12.5px;flex-wrap:wrap">Shared key terms: ${['application', 'farmer', 'field', 'paddy', 'water'].map(k => chip(k, undefined, 'y')).join('')}</div><div class="row" style="margin-top:10px">${btn(o.open ? 'Hide details' : 'Show details', 's sm')}${btn('↗ Open in Drive', 's sm')}</div>${o.open ? `<div class="hr"></div>${[['Authors', 'Carlo M. Bautista; Andrea L. Villanueva'], ['Adviser', 'Dr. Ramon T. Agustin'], ['College', S.s1.full], ['Keywords', S.s1.k.join(', ')]].map(([k, v]) => `<div class="dr"><span class="k">${k}</span><span>${v}</span></div>`).join('')}<div class="cap" style="margin-top:8px">Abstract</div>${bars([100, 97, 100, 95, 60], 'margin-top:8px')}` : ''}</div><div class="card row" style="padding:10px 12px;margin-top:10px"><span class="cb ${o.ticked ? 'on' : ''}">${o.ticked ? '✓' : ''}</span><b>I checked — register anyway</b></div></div>`;
+  const save = ed ? btn('✓ Save changes', 'p', 'width:50%') : btn('✓ Confirm &amp; Save', o.ticked ? 'p' : 'dis', o.phone ? 'width:100%' : 'width:50%');
+  return `<div class="ok-bar"><span class="c">✓</span><b>${ed ? 'Ready to save:' : 'Details filled in:'}</b><span class="mid">${ed ? 'Current details, abstract and keywords kept — edit if needed' : 'Details, abstract and keywords read from the PDF — check them and fill in what is empty'}</span></div>
+  <div class="card" style="padding:20px;margin-bottom:14px"><div class="hint" style="margin:0 0 14px">${ed ? 'Fill in the study\'s details as printed on its title page.' : 'Details marked <span class="tag">FROM PDF</span> were read from the PDF. Check them against the study\'s title page. Type anything left empty.'}</div>
+  ${field('Title', box(s.t), { req: true, pdf })}
+  ${field('Authors', `<div class="kws" style="gap:6px;margin-bottom:8px">${s.a.map(a => chip(a + ' <span class="x">✕</span>', undefined, 'y')).join('')}</div><div class="row">${box('', { ph: 'e.g. Juan Dela Cruz', st: 'flex:1' })}${btn('+ Add', 's')}</div>`, { req: true, pdf, note: 'Add one author at a time, in the order listed on the study.' })}
+  <div class="row" style="gap:14px;align-items:flex-start${o.phone ? ';flex-direction:column;align-items:stretch' : ''}">${field('College', box(s.full || S.s1.full, { suffix: '▾' }), { req: true, pdf, st: 'flex:2' })}${field('Year completed', box(String(s.y)), { req: true, pdf, st: 'flex:1' })}</div>
+  ${field('Adviser', box(s.adv), { req: true, pdf })}</div>
+  <div class="card" style="padding:20px;margin-bottom:14px"><div class="row"><span class="lbl">Abstract</span><span class="grow"></span><span class="pill">Editable</span></div><div class="area">${bars([100, 98, 100, 97, 100, 99, 64])}</div><div class="hint" style="text-align:right">${ed ? '88' : '92'} words</div></div>
+  <div class="card" style="padding:20px;margin-bottom:16px"><div class="lbl">Keywords</div><div class="hint" style="margin:0 0 10px">${ed ? 'Remove any keyword that does not fit. Nothing is added here; a PDF chosen again that prints keywords replaces them.' : 'Keywords marked <span class="tag auto">AUTO</span> were chosen automatically. Remove any that do not fit.'}</div><div class="kws" style="gap:7px">${kw}</div></div>
+  ${dup}<div class="row" style="justify-content:flex-end">${save}</div>${!ed && !o.ticked ? '<div class="hint" style="text-align:right;margin-right:40px">Tick “I checked — register anyway” above to save.</div>' : ''}<div style="height:40px"></div>`;
+};
+const regPage = (inner, tab = 'Register') => `${staffHdr(tab)}<div class="narrow">${inner}</div>`;
+
+/* ---------- overlays ---------- */
+const dialog = (icon, title, body, b2, w = 400) => `<div class="dim"></div><div class="dlg" style="width:${w}px;padding:24px;text-align:center"><div class="badge" style="width:48px;height:48px;font-size:20px">${icon}</div><div style="font-size:18px;font-weight:800;margin:8px 0">${title}</div>${body}<div class="row" style="margin-top:18px">${btn('Cancel', 's', 'flex:1')}${btn(b2, 'D', 'flex:1')}</div></div>`;
+
+/* ---------- phone bodies ---------- */
+const phoneStudent = () => `${appHdr('ISU Research Study E-Library', 'JD', { phone: true })}<div class="hero" style="padding:30px 16px"><h1 style="font-size:26px">Discover ISU Research</h1><p style="font-size:13px">Search posted studies from every college and year, ranked by relevance.</p><div class="col">${box('', { ph: 'Search by topic, keyword or title…', icon: '⌕', st: 'background:rgba(255,255,255,.55);border-color:#555' })}${btn('Search', 's full', 'background:#fff')}</div></div><div class="wrap"><div class="hscroll" style="margin-top:16px">${chip('Recent')}${COLLEGES.slice(0, 5).map(([c, n]) => chip(c, n)).join('')}</div><div class="sec">E-Library at a glance</div><div class="card" style="padding:14px"><b>Studies by college</b> <span class="mid" style="float:right;font-size:12px">7 total</span><div style="margin-top:8px">${COLLEGES.slice(0, 6).map(([c, n]) => `<div class="barrow"><span>${c}</span><span class="track"><b style="width:${n ? 100 : 0}%"></b></span><b>${n}</b></div>`).join('')}<div class="mut ctr">⋮</div></div></div><div class="sec">Recently added<span class="lnk">View all →</span></div><div class="hscroll">${studyCard(S.s7, { st: 'flex:none;width:280px' })}${studyCard(S.s3, { st: 'flex:none;width:280px' })}</div><div style="height:30px"></div></div>`;
+const phoneStaff = () => `${staffHdr('Dashboard', true)}<div class="wrap" style="padding-top:16px"><div class="card" style="padding:14px"><div class="mid" style="font-size:12px">Welcome back</div><div style="font-size:18px;font-weight:800">Maria Dela Cruz</div><span class="chip" style="margin-top:6px;background:var(--dark);color:#fff;border-color:var(--dark);font-size:12px">⌂ Research Staff</span><div class="cap" style="margin-top:10px">Today</div><b>Tue, Nov 10, 2026</b></div><div class="col" style="margin-top:12px">${[['📖', '7', 'Total Studies'], ['◷', '2', 'Added this month'], ['▦', '7', 'Added this year']].map(([i, n, l]) => `<div class="card stat" style="padding:12px"><span class="sq">${i}</span><div><div class="big" style="font-size:22px">${n}</div><div class="mid" style="font-size:12.5px">${l}</div></div></div>`).join('')}</div><div class="sec">Recent studies <span class="lnk">View all studies →</span></div><div class="row">${btn('+ Register study', 'p', 'flex:1')}${btn('⌕ Search e-library', 's', 'flex:1')}</div><div class="hscroll" style="margin-top:12px">${studyCard(S.s7, { st: 'flex:none;width:280px' })}${studyCard(S.s3, { st: 'flex:none;width:280px' })}</div><div style="height:30px"></div></div>`;
+
+/* ---------- frames ---------- */
+const SIGNIN = authPage(`${authTop('Research Study E-Library')}<div class="info">${ico('ⓘ')}<span>Search and read the university's research studies. Research Department staff can also register and post new ones.</span></div>${field('ISU username', userBox())}${field('Password', pwBox(false))}${btn('Sign in', 'p full')}<div class="row" style="margin:14px 0"><span class="btn l">Forgot password?</span><span class="grow"></span><span class="btn l">Create account</span></div><div class="row mut" style="font-size:12px"><span class="grow" style="height:1px;background:var(--soft)"></span>or<span class="grow" style="height:1px;background:var(--soft)"></span></div><div style="height:12px"></div>${btn('<span class="seal" style="width:18px;height:18px;font-size:10px;border-width:1px">G</span> Continue with Google', 's full')}`);
+const PHONE_SIGNIN = SIGNIN.replace('width:420px', 'width:358px');
+
+const F = [
+  { id: '01', name: 'Sign in', proto: '01 Sign in', html: SIGNIN.replace('class="authcard"', 'class="authcard"'),
+    links: 'Sign in → 10 (student) · Forgot password? → 05 · Create account → 02 · ☾ → dark version · Continue with Google → Google pop-up (not in the prototype)',
+    srs: 'FR-AUTH-01, 02, 08, 09, 13; AC-01, AC-02' },
+  { id: '02', name: 'Create account', proto: '02 Create account', html: authPage(`${authTop('Create account')}${field('Full name', box('Juan Dela Cruz'))}${field('ISU username', userBox('juan.delacruz'))}${field('Password', pwBox(), { note: 'Not your Gmail password.' })}${field('Confirm password', pwBox())}${CHECK}${btn('Create account', 'p full')}<div class="ctr mid" style="margin-top:14px;font-size:13px">Already have an account? <span class="btn l">Sign in</span></div>`),
+    links: 'Create account → 03 · Sign in → 01', srs: 'FR-AUTH-10, 12; AC-13' },
+  { id: '03', name: 'Check your ISU inbox', proto: '03 Check your ISU inbox', html: authPage(`${linkTop()}<div class="badge">✉</div><h2>Check your ISU inbox</h2><div class="ctr mid" style="font-size:13px;margin-bottom:16px">We sent a verification link to <b>juan.delacruz@isu.edu.ph</b>. Open it and click the link, then come back and tap <b>I've verified</b>.</div>${btn("I've verified", 'p full')}<div style="height:10px"></div>${btn('Resend email (60s)', 's full dis', 'background:#fff;color:var(--mut)')}<div class="ctr" style="margin-top:14px"><span class="btn l">Use a different account</span></div>`, { footer: false }),
+    links: 'Link in the email → 04 · I\'ve verified → 10 · Use a different account → 01 · Resend email: counts down 60 s after sending', srs: 'FR-AUTH-10; AC-13' },
+  { id: '04', name: 'Email verified (Firebase page)', proto: '04 Email verified (Firebase page)', html: `<div style="background:#fff;height:100%;min-height:1024px;padding-top:160px"><div style="width:460px;margin:0 auto;border:1.5px solid var(--line);border-radius:4px;padding:30px"><div style="font-size:22px;margin-bottom:12px">Your email has been verified</div><div>You can now sign in with your new account</div></div><div class="ctr mid" style="margin-top:22px;font-size:13px;font-style:italic">the email link opens Firebase's page (action URL cannot be changed, docs/17 §5)</div></div>`,
+    links: 'Whole page → back to 03 (prototype only)', srs: 'FR-AUTH-10; known limit: Firebase page, wording fixed by Firebase' },
+  { id: '05', name: 'Forgot password', proto: '05 Forgot password', html: authPage(`${authTop('Reset password')}${asteps(['cur', '', ''])}<div class="badge">🔒</div><div class="ctr mid" style="font-size:13px;margin-bottom:14px">We'll email a link to set a new e-library password.</div>${field('ISU username', userBox('juan.delacruz'))}${btn('Send reset link', 'p full')}<div style="height:14px"></div><div class="info">${ico('ⓘ')}<span>Your Gmail password does not change. This also adds a password to an account that has only used Continue with Google.</span></div><div class="ctr"><span class="btn l">← Back to sign in</span></div>`),
+    links: 'Send reset link → 06 · ← Back to sign in → 01', srs: 'FR-AUTH-11, 13' },
+  { id: '06', name: 'Forgot password – Check your ISU inbox', proto: '06 Forgot password – Check your ISU inbox', html: authPage(`${authTop('Reset password')}${asteps(['done', 'cur', ''])}<div class="badge">✉</div><div class="ctr" style="font-weight:800;font-size:18px;margin-bottom:6px">Check your ISU inbox</div><div class="ctr mid" style="font-size:13px">If an account exists for <b>j•••@isu.edu.ph</b>, we sent a link to set a new password.</div><div class="ctr mid" style="font-size:12.5px;margin:10px 0 16px">The email may say "Sign in to …" or "Reset your password". Either link lets you set a new password.</div>${btn('Resend link (60s)', 's full', 'color:var(--mut)')}<div class="ctr" style="margin-top:14px"><span class="btn l">Use a different email</span></div><div class="ctr" style="margin-top:10px"><span class="btn l">← Back to sign in</span></div>`),
+    links: 'Link in the email → 07 · Use a different email → 05 · ← Back to sign in → 01', srs: 'FR-AUTH-11, 13; AC-16, AC-17 (5 link emails per day)' },
+  { id: '07', name: 'Create a new password', proto: '07 Create a new password', html: authPage(`${linkTop()}${asteps(['done', 'done', 'cur'])}<div class="badge">🔒</div><h2>Create a new password</h2><div class="ctr mid" style="font-size:13px;margin-bottom:14px">For <b>juan.delacruz@isu.edu.ph</b>. Only for this site; your Gmail password does not change.</div>${field('New password', pwBox(), { note: 'Not your Gmail password.' })}${field('Confirm new password', pwBox())}${CHECK}${btn('Save password', 'p full')}<div style="height:10px"></div>${btn('Cancel', 's full')}`, { footer: false }),
+    links: 'Save password → 08 · Cancel → 01', srs: 'FR-AUTH-10, 11; AC-16' },
+  { id: '08', name: 'Password changed', proto: '08 Password changed', html: authPage(`${linkTop()}<div class="badge ok">✓</div><h2>Password changed</h2><div class="ctr mid" style="font-size:13px;margin-bottom:16px">Your new e-library password is saved. Sign in with your ISU email and this password. Your Gmail password is unchanged.</div>${btn('Sign in', 'p full')}`, { footer: false }),
+    links: 'Sign in → 01', srs: 'FR-AUTH-11' },
+  { id: '09', name: 'This link no longer works', proto: '09 This link no longer works', html: authPage(`${linkTop()}<div class="badge">!</div><h2>This link no longer works</h2><div class="ctr mid" style="font-size:13px;margin-bottom:16px">This link can't be used. It may have expired or been used already, or it is not for the ISU email you typed. Request a new link and open the newest email. No account yet? Use Create account.</div>${btn('Send a new link', 'p full')}`, { footer: false }),
+    links: 'Send a new link → 05', srs: 'FR-AUTH-11' },
+  { id: '10', name: 'Student dashboard', proto: '10 Student dashboard', html: studentDash(),
+    links: 'Search box → 11 · Search → 13 · Recent / college chip / bar / keyword chip / View all → / “View details →” on a card → Search (13) · Sign Out → 27 · ☾ → dark version', srs: 'FR-STU-01, 02, 03, 05, 06; FR-AUTH-04, 06' },
+  { id: '11', name: 'Search autocomplete', proto: '11 Search autocomplete', html: studentDash({ q: 'ric', ac: autocomplete }),
+    links: 'Row “rice” → 13 (search for rice) · up to 6 suggestions', srs: 'FR-SRCH-11; FR-STU-01' },
+  { id: '12', name: 'Search results – Did you mean', proto: '12 Search results – Did you mean', html: `${searchHdr('ISU Research Study E-Library', 'raeding comprehension')}<div class="wrap" style="padding-top:18px"><div style="font-weight:800;font-size:15px">1 result for “raeding comprehension”</div><div style="margin:6px 0 14px;font-size:13.5px">Did you mean: <b style="text-decoration:underline">reading</b> comprehension?</div>${resultCard(1, S.s3, { pct: '97%', snip: `Reading ${hl('comprehension')} remains a concern among junior high school learners.` })}</div>`,
+    links: 'Did you mean → searches the corrected words · back arrow → previous screen · Sign Out → 27', srs: 'FR-SRCH-01, 02, 05, 08, 11, 12' },
+  { id: '12b', name: 'Search results – Showing results for', proto: '12b Search results – Showing results for', html: `${searchHdr('ISU Research Study E-Library', 'irrigaton')}<div class="wrap" style="padding-top:18px"><div style="font-weight:800;font-size:15px">1 result for “irrigation”</div><div style="margin:6px 0 2px;font-size:13.5px">Showing results for <b>irrigation</b></div><div class="mid" style="font-size:12.5px;margin-bottom:14px">Search instead for <span style="text-decoration:underline">“irrigaton”</span></div>${resultCard(1, S.s2, { pct: '97%', snip: `Alternate wetting and drying is a water-saving ${hl('irrigation')} practice for lowland rice.` })}</div>`,
+    links: 'Search instead for “irrigaton” → searches the typed word · back arrow → previous screen', srs: 'FR-SRCH-11, 12; AC-21' },
+  { id: '13', name: 'Study Details (student)', proto: '13 Study Details (student)', html: `${searchHdr('ISU Research Study E-Library', 'rice')}<div class="wrap" style="padding-top:18px"><div class="row" style="margin-bottom:14px"><b style="font-size:15px">2 results for “rice”</b><span class="grow"></span>${btn('▤ View Summary (2)', 'p')}</div>${resultCard(1, S.s2, { on: true, pct: '97%', snip: `Alternate wetting and drying is a water-saving irrigation practice for lowland ${hl('rice')}.` })}${resultCard(2, S.s1, { on: true, pct: '94%', snip: `This study developed a mobile application that reads low-cost ultrasonic sensors placed in ${hl('rice')} fields and shows the water level of each paddy on a phone.`, det: details('student') })}<div style="height:30px"></div></div>`,
+    links: 'Title → opens / closes Study Details · tick boxes → View Summary (2) → 14 · Read full study → Google Drive viewer (view only) · Similar study title → that study · Citation row → 15', srs: 'FR-SRCH-08, 09, 12, 13, 14, 16; FR-SUM-01; AC-09' },
+  { id: '13b', name: 'Study Details (staff)', proto: '13b Study Details (staff)', html: `${searchHdr('Search E-Library', '')}<div class="wrap" style="padding-top:18px"><div style="font-weight:800;font-size:15px;margin-bottom:14px">7 studies, newest first</div>${[S.s7, S.s3, S.s5].map((s, i) => resultCard(i + 1, s)).join('')}${resultCard(4, S.s1, { det: details('staff') })}${[S.s2, S.s4, S.s6].map((s, i) => resultCard(i + 5, s)).join('')}<div style="height:30px"></div></div>`,
+    links: 'Open in Drive → Google Drive · Edit → 22 · Delete → 23 · back arrow → previous screen', srs: 'FR-SRCH-09, 13, 14, 15; FR-REG-10, 11' },
+  { id: '14', name: 'Combined summary', proto: '14 Combined summary', overlay: true, html: `${searchHdr('ISU Research Study E-Library', 'rice')}<div class="wrap" style="padding-top:18px"><div class="row" style="margin-bottom:14px"><b style="font-size:15px">2 results for “rice”</b><span class="grow"></span>${btn('▤ View Summary (2)', 'p')}</div>${resultCard(1, S.s2, { on: true, pct: '97%' })}${resultCard(2, S.s1, { on: true, pct: '94%' })}</div><div class="dim"></div><div class="dlg" style="width:640px;top:470px"><div style="padding:20px 22px 14px"><div class="row"><div><div style="font-size:18px;font-weight:800">Summary of 2 Results</div><div class="mid" style="font-size:13px">for <b>“rice”</b></div></div><span class="grow"></span><span class="x" style="width:30px;height:30px;font-size:13px">✕</span></div><span class="chip" style="margin-top:10px;font-size:12px">▤ Extractive summary · selected results</span></div><div class="hr" style="margin:0"></div><div style="padding:18px 22px;font-size:13.5px;line-height:1.6">Alternate wetting and drying is a water-saving irrigation practice for lowland ${hl('rice')} <u style="text-decoration-style:dotted">(Galang, 2024)</u>. This study developed a mobile application that reads low-cost ultrasonic sensors placed in ${hl('rice')} fields and shows the water level of each paddy on a phone <u style="text-decoration-style:dotted">(Bautista &amp; Villanueva, 2025)</u>.<div style="background:var(--page);border-radius:10px;padding:12px 14px;margin-top:14px;font-size:12.5px"><div class="cap">References</div><div style="margin-top:6px;padding-left:22px;text-indent:-22px">${CITE1}</div><div style="margin-top:6px;padding-left:22px;text-indent:-22px">${CITE2}</div></div><div class="cap" style="margin-top:14px">Key terms</div><div class="kws" style="gap:6px;margin-top:6px">${[...S.s2.k, ...S.s1.k].map(k => chip(k, undefined, 'y')).join('')}</div></div><div style="border-top:1px solid var(--soft);padding:12px 22px;text-align:right">${btn('Close', 'p')}</div></div>`,
+    links: 'Round close button / Close / click outside → closes · (Galang, 2024) and (Bautista &amp; Villanueva, 2025) → that study in 13', srs: 'FR-SUM-01 to 06; AC-11' },
+  { id: '15', name: 'Citation row', proto: '15 Citation row', w: 1000, h: 140, html: `<div style="padding:26px 30px;background:var(--page)"><div class="dr" style="font-size:14px"><span class="k">Citation</span><span>${CITE1}</span></div><div class="hint" style="margin-top:10px">Plain text, no copy button (crop of 13).</div></div>`,
+    links: 'Whole frame → back to 13 (prototype only)', srs: 'FR-SRCH-14' },
+  { id: '16', name: 'Staff dashboard', proto: '16 Staff dashboard', html: staffDash(),
+    links: 'Tabs: Dashboard 16 · Register 17 · Search 26 · Statistics 24 · Settings 25 · MD avatar → 30 · Sign Out → 27 · “View all studies →” / Search e-library → 26 · Register study → 17 · “View details →” on a card → 13b', srs: 'FR-DASH-01, 02, 03, 06, 07 (errata #91: whole library)' },
+  { id: '17', name: 'Register – Choose PDF', proto: '17 Register – Choose PDF', html: regPage(`<div style="padding-top:18px">${btn('← Back to dashboard', 's sm')}</div>${rsteps(['Choose PDF', 'Reading', 'Check &amp; save'], 1)}${step1Card()}<div class="row">${btn('▤ Read PDF &amp; continue', 'p', 'width:50%')}</div>`),
+    links: 'Choose a different PDF → file chooser · Paste → pastes the Drive link · Read PDF &amp; continue → 18 → 19 · ← Back to dashboard → 16', srs: 'FR-REG-01, 02, 03; FR-PDF-01' },
+  { id: '18', name: 'Register – Reading PDF', proto: '18 Register – Reading PDF', html: regPage(`<div style="height:30px"></div>${rsteps(['Choose PDF', 'Reading', 'Check &amp; save'], 2)}${step1Card({ dis: true })}<div class="card ctr" style="padding:28px"><div class="badge" style="width:64px;height:64px;border-style:dashed">▤</div><b>Reading PDF and filling in details...</b><div class="mid" style="font-size:13px">From this computer</div><div class="mid" style="font-size:13px">Reading page 5 (up to 40)…</div><div class="track" style="width:320px;margin:12px auto 0"><b style="width:72%"></b></div></div>`),
+    links: 'Goes to 19 by itself when reading ends (After delay in the prototype)', srs: 'FR-PDF-04, 05, 06, 07, 08, 09, 10, 11; NFR-PERF-04' },
+  { id: '19', name: 'Register – Check &amp; save', proto: '19 Register – Check &amp; save', html: regPage(`<div style="padding-top:18px">${btn('← Change PDF', 's sm')}</div>${rsteps(['Choose PDF', 'Reading', 'Check &amp; save'], 3)}${checkSave()}`),
+    links: 'Tick “I checked — register anyway” / Show details → 20 · ✕ on a chip removes it · ← Change PDF → 17 · Confirm &amp; Save stays off until the tick', srs: 'FR-REG-04, 06, 07, 13, 14, 15; AC-05, AC-20, AC-22' },
+  { id: '20', name: 'Register – Possible duplicate', proto: '20 Register – Possible duplicate', html: regPage(`<div style="padding-top:18px">${btn('← Change PDF', 's sm')}</div>${rsteps(['Choose PDF', 'Reading', 'Check &amp; save'], 3)}${checkSave({ open: true, ticked: true })}`),
+    links: 'Hide details → 19 · Confirm &amp; Save → 21 · Open in Drive → the other study\'s PDF', srs: 'FR-REG-06, 07, 08; AC-14' },
+  { id: '21', name: 'Study posted! toast', proto: '21 Study posted! toast', h: 1024, html: staffDash({ after: true, toast: true }),
+    links: 'Toast closes by itself after 3 s → 16 (no close button)', srs: 'FR-REG-09; FR-DASH-02, 03' },
+  { id: '22', name: 'Edit study', proto: '22 Edit study', html: regPage(`<div style="padding-top:18px">${btn('← Cancel', 's sm')}</div>${rsteps(['Edit study', 'Reading', 'Check &amp; save'], 1)}${step1Card({ edit: true })}<div class="row">${btn('▤ Continue', 'p', 'width:50%')}</div>`, ''),
+    links: 'Continue → 22b (no PDF: everything kept) · ← Cancel → 13b', srs: 'FR-REG-10, 12; AC-07' },
+  { id: '22b', name: 'Edit study – Check &amp; save', proto: '22b Edit study – Check &amp; save', html: regPage(`<div style="padding-top:18px">${btn('← Change PDF', 's sm')}</div>${rsteps(['Edit study', 'Reading', 'Check &amp; save'], 3)}${checkSave({ edit: true })}`, ''),
+    links: 'Save changes → 13b · ← Change PDF → 22', srs: 'FR-REG-10, 14, 15' },
+  { id: '23', name: 'Delete this study?', proto: '23 Delete this study?', overlay: true, html: `${searchHdr('Search E-Library', '')}<div class="wrap" style="padding-top:18px">${resultCard(4, S.s1, { det: details('staff') })}</div>${dialog('🗑', 'Delete this study?', `<div style="font-weight:800;margin-bottom:8px">${S.s1.t}</div><div class="mid" style="font-size:13px">This removes it from the e-library for everyone and cannot be undone. The PDF stays in Google Drive.</div>`, 'Delete')}`,
+    links: 'Cancel (focused) → closes · Delete → removes the study, back to the list (26)', srs: 'FR-REG-11; FR-SRCH-15; AC-07' },
+  { id: '24', name: 'Statistics', proto: '24 Statistics', html: `${staffHdr('Statistics')}<div class="wrap" style="padding-top:22px">${glance()}<div class="row" style="align-items:stretch;gap:16px;margin-top:16px"><div class="col" style="flex:1.5;gap:16px"><div class="card" style="padding:18px"><div class="row"><b>Studies by year</b><span class="grow"></span><span class="mid" style="font-size:12px">Academic Year</span></div><div class="vbars" style="margin-top:12px">${[['2023', 2], ['2024', 2], ['2025', 3]].map(([y, n]) => `<div class="vb">${n}<b style="height:${n * 38}px"></b></div>`).join('')}</div><div class="vlab"><span>2023</span><span>2024</span><span>2025</span></div></div><div class="card" style="padding:18px"><div class="row"><b>Added per month</b><span class="grow"></span><span class="mid" style="font-size:12px">Dec 2025 – Nov 2026</span></div><div class="vbars" style="margin-top:12px">${[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2].map(n => `<div class="vb"><span class="${n ? '' : 'mut'}">${n}</span>${n ? `<b style="height:${n * 50}px"></b>` : ''}</div>`).join('')}</div><div class="vlab">${['Dec ’25', 'Jan ’26', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'].map(m => `<span>${m}</span>`).join('')}</div><div class="hint">When each study was posted on the e-library, not its Academic Year.</div></div></div><div class="card" style="flex:1;padding:18px"><div class="row"><b>Top advisers</b><span class="grow"></span><span class="mid" style="font-size:12px">Top 8</span></div><div style="margin-top:12px">${['Dr. Cecilia R. Navarro', 'Prof. Elena S. Domingo', 'Dr. Grace A. Cabrera', 'Dr. Liza M. Fernandez', 'Engr. Noel P. Santiago', 'Dr. Ramon T. Agustin', 'Engr. Rina F. Aquino', 'Dr. Victor J. Lazaro'].map(a => `<div style="margin:8px 0;font-size:12.5px">${a}<div class="row" style="gap:8px"><span class="track grow"><b style="width:100%"></b></span><b>1</b></div></div>`).join('')}</div></div></div><div class="card" style="padding:18px;margin:16px 0 40px"><div class="row"><b>Keyword model</b><span class="grow"></span><span class="mid" style="font-size:12px">Naive Bayes + TF-IDF phrases</span></div><div class="row" style="gap:40px;margin:12px 0"><div><span class="big" style="font-size:26px;font-weight:800">7</span> <span class="mid">training studies (with keywords)</span></div><div><span style="font-size:26px;font-weight:800">28</span> <span class="mid">known keywords</span></div></div><div class="info" style="margin-bottom:12px">! Fewer than 30 studies with keywords — not reliable yet.</div><div class="cap">Leave-one-out test</div><div class="mid" style="font-size:12.5px;margin:4px 0 8px">7 studies tested, 0 copies hidden</div><table class="t"><tr><th>Measure</th><th>Model</th><th>Baseline</th></tr><tr><td>At least one correct keyword</td><td><b>71%</b></td><td>0%</td></tr><tr><td>Precision (correct ÷ suggested)</td><td><b>17%</b></td><td>0%</td></tr><tr><td>Recall (real keywords found)</td><td><b>25%</b></td><td>0%</td></tr></table><div class="hint">Each study's keywords are hidden in turn; a new model trained on the other studies (its near-copies left out too) suggests up to 6, compared with its real keywords. Baseline: always the 6 most used keywords.</div></div></div>`,
+    links: 'A college bar or a keyword chip → Search on that college / keyword (26) · College dropdown filters Top keywords', srs: 'FR-DASH-08 (errata #91: no “(mine)” mark); FR-REG-13' },
+  { id: '25', name: 'Settings', proto: '25 Settings', html: `${staffHdr('Settings')}<div class="narrow" style="padding-top:26px"><div class="card" style="padding:22px"><div style="font-size:18px;font-weight:800;margin-bottom:8px">Account</div>${[['👤', 'Name', 'Maria Dela Cruz'], ['✉', 'Email', 'maria.delacruz@isu.edu.ph'], ['▤', 'Role', 'Research Department Staff']].map(([i, k, v]) => `<div class="row" style="padding:12px 0;border-bottom:1px solid var(--soft)"><span class="sq" style="width:34px;height:34px;border-radius:8px;background:var(--fill);display:flex;align-items:center;justify-content:center">${i}</span><div><div class="mid" style="font-size:12px">${k}</div><b>${v}</b></div></div>`).join('')}<div class="row" style="padding:12px 0;border-bottom:1px solid var(--soft)"><span style="width:34px;height:34px;border-radius:8px;background:var(--fill);display:flex;align-items:center;justify-content:center">☾</span><div><div class="mid" style="font-size:12px">Theme</div></div><span class="grow"></span><div class="row" style="gap:0;border:1.5px solid var(--line);border-radius:9px;padding:3px"><span class="btn sm" style="background:#fff;border:1.5px solid var(--ink)">☀ Light</span><span class="btn sm">☾ Dark</span><span class="btn sm">▭ System</span></div></div><div style="margin-top:18px">${btn('⇥ Sign Out', 'd')}</div></div></div>`,
+    links: 'Theme Light / Dark / System → changes the theme at once · Sign Out → 27', srs: 'FR-DASH-05, 06; FR-AUTH-06; AC-15 (errata #91: no College row)' },
+  { id: '26', name: 'View all studies', proto: '26 View all studies', html: `${searchHdr('Search E-Library', '')}<div class="wrap" style="padding-top:18px"><div style="font-weight:800;font-size:15px;margin-bottom:14px">7 studies, newest first</div>${[S.s7, S.s3, S.s5, S.s1, S.s2, S.s4, S.s6].map((s, i) => resultCard(i + 1, s)).join('')}<div style="height:30px"></div></div>`,
+    links: 'A title → its Study Details (13b) · College / Year dropdowns filter · back arrow → previous screen', srs: 'FR-SRCH-04, 05, 06 (errata #91: staff start on All Colleges)' },
+  { id: '27', name: 'Sign out?', proto: '27 Sign out?', overlay: true, h: 1024, html: `${staffDash()}${dialog('⇥', 'Sign out?', '<div class="mid" style="font-size:13px">You will need to sign in with your ISU Google account again to use the e-library.</div>', 'Sign Out')}`,
+    links: 'Cancel → closes · Sign Out → 01 (from every Sign Out button, student and staff)', srs: 'FR-AUTH-06' },
+  { id: '30', name: 'Account menu (staff)', proto: '30 Account menu (staff)', h: 520, html: `${staffDash()}<div class="card" style="position:absolute;right:24px;top:58px;width:260px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)"><b>Maria Dela Cruz</b><div class="mid" style="font-size:12.5px">maria.delacruz@isu.edu.ph</div><div class="mid" style="font-size:12.5px">Research Staff</div><div class="hr" style="margin:10px 0"></div><div class="row">${ico('⚙')}Settings</div></div>`,
+    links: 'Opened by the MD avatar · Settings → 25 · click outside → closes', srs: 'FR-DASH-05 (errata #91: “Research Staff”, no college)' },
+  /* phone 390 */
+  { id: '29-01', name: 'Phone – Sign in', proto: '29 Phone – 01 Sign in', w: 390, html: `<div class="ph">${PHONE_SIGNIN}</div>`, links: 'Same links as 01', srs: 'FR-AUTH-01, 09; AC-23 (phone)' },
+  { id: '29-10', name: 'Phone – Student dashboard', proto: '29 Phone – 10 Student dashboard', w: 390, html: `<div class="ph">${phoneStudent()}</div>`, links: 'Same links as 10 · chips and “Recently added” cards scroll sideways · Sign Out is an icon button', srs: 'FR-STU-01 to 06; AC-23 (phone)' },
+  { id: '29-12', name: 'Phone – Search results', proto: '29 Phone – 12 Search results', w: 390, html: `<div class="ph">${searchHdr('ISU Research Study E-Library', 'raeding comprehension', { phone: true }).replace('<span class="chip" style="background:rgba(255,255,255,.4);border-color:#555;font-size:12px">7 studies</span>', '')}<div class="wrap" style="padding-top:14px"><div style="font-weight:800">1 result for “raeding comprehension”</div><div style="margin:6px 0 12px;font-size:13px">Did you mean: <b style="text-decoration:underline">reading</b> comprehension?</div>${resultCard(1, S.s3, { pct: '97%', snip: `Reading ${hl('comprehension')} remains a concern among junior high school learners.` })}</div></div>`, links: 'Same links as 12', srs: 'FR-SRCH-11, 12; AC-23 (phone)' },
+  { id: '29-13', name: 'Phone – Study Details', proto: '29 Phone – 13 Study Details', w: 390, html: `<div class="ph">${searchHdr('ISU Research Study E-Library', 'rice', { phone: true }).replace('<span class="chip" style="background:rgba(255,255,255,.4);border-color:#555;font-size:12px">7 studies</span>', '')}<div class="wrap" style="padding-top:14px">${resultCard(2, S.s1, { on: true, pct: '94%', det: details('student', true) })}</div></div>`, links: 'Same links as 13 · rows show the label above the value', srs: 'FR-SRCH-09, 13, 14, 16; AC-23 (phone)' },
+  { id: '29-16', name: 'Phone – Staff dashboard', proto: '29 Phone – 16 Staff dashboard', w: 390, html: `<div class="ph">${phoneStaff()}</div>`, links: 'Same links as 16 · tabs scroll sideways · the two buttons sit side by side', srs: 'FR-DASH-01 to 03, 07; AC-23 (phone)' },
+  { id: '29-19', name: 'Phone – Check &amp; save', proto: '29 Phone – 19 Check &amp; save', w: 390, html: `<div class="ph">${staffHdr('Register', true)}<div class="wrap"><div style="padding-top:14px">${btn('← Change PDF', 's sm')}</div>${rsteps(['Choose PDF', 'Reading', 'Check &amp; save'], 3)}${checkSave({ phone: true })}</div></div>`, links: 'Same links as 19 · Confirm &amp; Save is full width', srs: 'FR-REG-04, 06, 07; AC-23 (phone)' }
+];
+window.FRAMES = F.map(f => ({ id: f.id, name: f.name.replace(/&amp;/g, '&') }));
+
+/* ---------- render ---------- */
+const params = new URLSearchParams(location.search);
+const only = params.get('f');
+const out = document.getElementById('out');
+out.innerHTML = F.filter(f => !only || f.id === only).map(f => {
+  const w = f.w || 1440, h = f.h;
+  return `<section class="sheet${w < 500 ? ' narrowsheet' : ''}" id="f${f.id}" style="width:${w + 52}px"><div class="sheet-hd"><span class="no">${f.id}</span><span class="nm">${f.name}</span><span class="meta">ISU Research Study E-Library · Wireframe · ${w}${h ? ' × ' + h : ''} px${f.overlay ? ' · overlay' : ''} · prototype frame “${f.proto}”</span></div><div class="frame" style="width:${w + 4}px;${h ? 'height:' + (h + 4) + 'px;' : 'min-height:' + ((w < 500 ? 844 : 1024) + 4) + 'px;'}">${f.html}</div><div class="notes" style="width:${w}px"><span class="k">Clicks</span><span>${f.links}</span><span class="k">SRS</span><span>${f.srs}</span></div></section>`;
+}).join('');
+</script>
+</body>
+</html>
